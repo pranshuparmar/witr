@@ -15,8 +15,12 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
+var version = "v0.1.0"
+var commit = "dev"
+var buildDate = "unknown"
+
 func printHelp() {
-	fmt.Println("Usage: witr [--pid N | --port N | name] [--short] [--tree] [--json] [--warnings] [--no-color] [--env] [--help]")
+	fmt.Println("Usage: witr [--pid N | --port N | name] [--short] [--tree] [--json] [--warnings] [--no-color] [--env] [--help] [--version]")
 	fmt.Println("  --pid <n>         Explain a specific PID")
 	fmt.Println("  --port <n>        Explain port usage")
 	fmt.Println("  --short           One-line summary")
@@ -26,6 +30,7 @@ func printHelp() {
 	fmt.Println("  --no-color        Disable colorized output")
 	fmt.Println("  --env             Show only environment variables for the process")
 	fmt.Println("  --help            Show this help message")
+	fmt.Println("  --version         Show version and exit")
 }
 
 // Helper: which flags need a value (not bool flags)?
@@ -38,6 +43,7 @@ func flagNeedsValue(flag string) bool {
 }
 
 func main() {
+	versionFlag := flag.Bool("version", false, "show version and exit")
 
 	// Reorder os.Args so all flags (with their values) come before positional arguments
 	reordered := []string{os.Args[0]}
@@ -72,6 +78,12 @@ func main() {
 
 	flag.Parse()
 
+	if *versionFlag {
+		fmt.Printf("witr %s (commit %s, built %s)\n", version, commit, buildDate)
+		os.Exit(0)
+	}
+	// To embed version, commit, and build date, use:
+	// go build -ldflags "-X main.version=v0.1.0 -X main.commit=$(git rev-parse --short HEAD) -X 'main.buildDate=$(date +%Y-%m-%d)'" -o witr ./cmd/witr
 	if *envFlag {
 		var t model.Target
 		switch {
