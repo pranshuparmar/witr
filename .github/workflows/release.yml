@@ -49,13 +49,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install UPX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y upx-ucl
+
       - name: Build linux/amd64
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${{ steps.vars.outputs.VERSION }} -X main.commit=${{ steps.vars.outputs.COMMIT }} -X 'main.buildDate=${{ steps.vars.outputs.DATE }}'" -o witr-linux-amd64 ./cmd/witr
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.version=${{ steps.vars.outputs.VERSION }} -X main.commit=${{ steps.vars.outputs.COMMIT }} -X 'main.buildDate=${{ steps.vars.outputs.DATE }}'" -o witr-linux-amd64 ./cmd/witr
 
       - name: Build linux/arm64
         run: |
-          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=${{ steps.vars.outputs.VERSION }} -X main.commit=${{ steps.vars.outputs.COMMIT }} -X 'main.buildDate=${{ steps.vars.outputs.DATE }}'" -o witr-linux-arm64 ./cmd/witr
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "-s -w -X main.version=${{ steps.vars.outputs.VERSION }} -X main.commit=${{ steps.vars.outputs.COMMIT }} -X 'main.buildDate=${{ steps.vars.outputs.DATE }}'" -o witr-linux-arm64 ./cmd/witr
+
+      - name: Compress binaries with UPX
+        run: |
+          upx --best --lzma witr-linux-amd64
+          upx --best --lzma witr-linux-arm64
+          ls -lh witr-linux-amd64 witr-linux-arm64
 
       - name: Generate SHA256SUMS
         run: |
