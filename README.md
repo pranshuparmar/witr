@@ -394,6 +394,13 @@ sudo rm -f /usr/local/bin/witr
 sudo rm -f /usr/local/share/man/man1/witr.1
 ```
 
+### 8.5 Nix flake
+
+If you use Nix, you can build **witr** from source and run without installation:
+```bash
+nix run github:pranshuparmar/witr -- --port 5000
+```
+
 ---
 
 ## 9. Platform Support
