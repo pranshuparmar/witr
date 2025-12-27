@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pranshuparmar/witr/internal/linux/proc"
 	"github.com/pranshuparmar/witr/internal/output"
+	"github.com/pranshuparmar/witr/internal/platform"
 	"github.com/pranshuparmar/witr/internal/process"
 	"github.com/pranshuparmar/witr/internal/source"
 	"github.com/pranshuparmar/witr/internal/target"
@@ -59,7 +59,7 @@ func main() {
 		if len(arg) > 0 && arg[0] == '-' {
 			reordered = append(reordered, arg)
 			// If this flag takes a value (not a bool flag), keep the value with it
-			if flagNeedsValue(arg) && i+1 < len(os.Args) && os.Args[i+1][0] != '-' {
+			if flagNeedsValue(arg) && i+1 < len(os.Args) && len(os.Args[i+1]) > 0 && os.Args[i+1][0] != '-' {
 				reordered = append(reordered, os.Args[i+1])
 				i++
 			}
@@ -112,10 +112,8 @@ func main() {
 			fmt.Print("Multiple matching processes found:\n\n")
 			for i, pid := range pids {
 				cmdline := "(unknown)"
-				cmdlineBytes, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
-				if err == nil {
-					cmd := strings.ReplaceAll(string(cmdlineBytes), "\x00", " ")
-					cmdline = strings.TrimSpace(cmd)
+				if p, err := platform.Current.ReadProcess(pid); err == nil {
+					cmdline = p.Cmdline
 				}
 				fmt.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
 			}
@@ -124,7 +122,7 @@ func main() {
 			os.Exit(1)
 		}
 		pid := pids[0]
-		procInfo, err := proc.ReadProcess(pid)
+		procInfo, err := platform.Current.ReadProcess(pid)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -191,10 +189,8 @@ func main() {
 		fmt.Print("Multiple matching processes found:\n\n")
 		for i, pid := range pids {
 			cmdline := "(unknown)"
-			cmdlineBytes, err := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", pid))
-			if err == nil {
-				cmd := strings.ReplaceAll(string(cmdlineBytes), "\x00", " ")
-				cmdline = strings.TrimSpace(cmd)
+			if p, err := platform.Current.ReadProcess(pid); err == nil {
+				cmdline = p.Cmdline
 			}
 			fmt.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
 		}

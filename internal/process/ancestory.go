@@ -2,35 +2,10 @@ package process
 
 import (
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 
-	proc "github.com/pranshuparmar/witr/internal/linux/proc"
+	"github.com/pranshuparmar/witr/internal/platform"
 	"github.com/pranshuparmar/witr/pkg/model"
 )
-
-const clockTicks = 100 // safe default, good enough for now
-
-func bootTime() time.Time {
-	data, err := os.ReadFile("/proc/stat")
-	if err != nil {
-		return time.Now()
-	}
-
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "btime") {
-			parts := strings.Fields(line)
-			if len(parts) == 2 {
-				sec, _ := strconv.ParseInt(parts[1], 10, 64)
-				return time.Unix(sec, 0)
-			}
-		}
-	}
-	return time.Now()
-}
 
 func BuildAncestry(pid int) ([]model.Process, error) {
 	var chain []model.Process
@@ -44,7 +19,7 @@ func BuildAncestry(pid int) ([]model.Process, error) {
 		}
 		seen[current] = true
 
-		p, err := proc.ReadProcess(current)
+		p, err := platform.Current.ReadProcess(current)
 		if err != nil {
 			break
 		}

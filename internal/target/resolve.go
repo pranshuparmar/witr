@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/pranshuparmar/witr/internal/platform"
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
@@ -21,10 +22,10 @@ func Resolve(t model.Target) ([]int, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid port")
 		}
-		return ResolvePort(port)
+		return platform.Current.ResolvePort(port)
 
 	case model.TargetName:
-		return ResolveName(t.Value)
+		return platform.Current.ResolveName(t.Value)
 
 	default:
 		return nil, fmt.Errorf("unknown target")

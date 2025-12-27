@@ -5,6 +5,7 @@ type SourceType string
 const (
 	SourceContainer  SourceType = "container"
 	SourceSystemd    SourceType = "systemd"
+	SourceLaunchd    SourceType = "launchd"
 	SourceSupervisor SourceType = "supervisor"
 	SourceCron       SourceType = "cron"
 	SourceShell      SourceType = "shell"

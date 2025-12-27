@@ -1,3 +1,5 @@
+//go:build linux
+
 package proc
 
 type Socket struct {
