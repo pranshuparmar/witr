@@ -81,18 +81,18 @@ jobs:
             
             ### Quick Install (Recommended)
             ```bash
-            curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh | bash
+            curl -fsSL https://raw.githubusercontent.com/eboye/witr/main/install.sh | bash
             ```
             
             ### Manual Download
             ```bash
             # For AMD64 (most PCs/servers)
-            wget https://github.com/pranshuparmar/witr/releases/download/${{ steps.vars.outputs.VERSION }}/witr-linux-amd64
+            wget https://github.com/eboye/witr/releases/download/${{ steps.vars.outputs.VERSION }}/witr-linux-amd64
             chmod +x witr-linux-amd64
             sudo mv witr-linux-amd64 /usr/local/bin/witr
             
             # For ARM64 (Raspberry Pi, ARM servers)
-            wget https://github.com/pranshuparmar/witr/releases/download/${{ steps.vars.outputs.VERSION }}/witr-linux-arm64
+            wget https://github.com/eboye/witr/releases/download/${{ steps.vars.outputs.VERSION }}/witr-linux-arm64
             chmod +x witr-linux-arm64
             sudo mv witr-linux-arm64 /usr/local/bin/witr
             ```
@@ -104,7 +104,7 @@ jobs:
             
             ---
             
-            This is an automated release from the latest main branch. For the latest source code, see the [main branch](https://github.com/pranshuparmar/witr/tree/main).
+            This is an automated release from the latest main branch. For the latest source code, see the [main branch](https://github.com/eboye/witr/tree/main).
           files: |
             witr-linux-amd64
             witr-linux-arm64
