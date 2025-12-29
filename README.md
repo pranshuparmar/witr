@@ -30,6 +30,7 @@
   - [8.5 Verify Installation](#85-verify-installation)
   - [8.6 Uninstallation](#86-uninstallation)
   - [8.7 Nix Flake](#87-nix-flake)
+  - [8.8 Shell Completion](#88-shell-completion)
 - [9. Platform Support](#9-platform-support)
   - [9.1 Feature Compatibility Matrix](#91-feature-compatibility-matrix)
   - [9.2 Permissions Note](#92-permissions-note)
@@ -466,6 +467,27 @@ If you use Nix, you can build **witr** from source and run without installation:
 
 ```bash
 nix run github:pranshuparmar/witr -- --port 5000
+```
+
+### 8.8 Shell Completion
+
+witr supports tab completion for bash, zsh, fish, and PowerShell (including `pwsh`).
+
+```bash
+# Bash (add to ~/.bashrc)
+source <(witr completion bash)
+
+# Zsh (add to ~/.zshrc)
+source <(witr completion zsh)
+
+# Fish
+witr completion fish > ~/.config/fish/completions/witr.fish
+
+# PowerShell (add to $PROFILE)
+witr completion powershell | Out-String | Invoke-Expression
+
+# PowerShell Core
+witr completion pwsh | Out-String | Invoke-Expression
 ```
 
 ---

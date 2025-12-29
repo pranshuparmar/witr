@@ -22,7 +22,13 @@ var commit = ""
 var buildDate = ""
 
 func printHelp() {
-	fmt.Println("Usage: witr [--pid N | --port N | name] [--short] [--tree] [--json] [--warnings] [--no-color] [--env] [--help] [--version]")
+	fmt.Println("Usage: witr [--pid N | --port N | name] [options]")
+	fmt.Println("       witr completion <shell>")
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println("  completion <shell>  Generate shell completion script (bash, zsh, fish, powershell)")
+	fmt.Println()
+	fmt.Println("Options:")
 	fmt.Println("  --pid <n>         Explain a specific PID")
 	fmt.Println("  --port <n>        Explain port usage")
 	fmt.Println("  --short           One-line summary")
@@ -45,6 +51,18 @@ func flagNeedsValue(flag string) bool {
 }
 
 func main() {
+	// Handle completion subcommands before any flag parsing
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "completion":
+			handleCompletion(os.Args[2:])
+			return
+		case "__complete":
+			handleComplete(os.Args[2:])
+			return
+		}
+	}
+
 	// Sanity check: fail build if version is not injected
 	if version == "" {
 		fmt.Fprintln(os.Stderr, "ERROR: version not set. Use -ldflags '-X main.version=...' when building.")
