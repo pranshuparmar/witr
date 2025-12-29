@@ -26,19 +26,19 @@ jobs:
 
       - name: Build linux/amd64
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-linux-amd64 ./cmd/witr
+          GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-linux-amd64 ./cmd/witr
 
       - name: Build linux/arm64
         run: |
-          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-linux-arm64 ./cmd/witr
+          GOOS=linux GOARCH=arm64 go build -ldflags "-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-linux-arm64 ./cmd/witr
 
       - name: Build darwin/amd64
         run: |
-          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-darwin-amd64 ./cmd/witr
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-darwin-amd64 ./cmd/witr
 
       - name: Build darwin/arm64
         run: |
-          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-darwin-arm64 ./cmd/witr
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X 'main.buildDate=$DATE'" -o witr-darwin-arm64 ./cmd/witr
 
       - name: Generate SHA256SUMS
         run: |
