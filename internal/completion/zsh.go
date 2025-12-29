@@ -14,7 +14,7 @@ _witr() {
     if [[ ${words[2]} == "completion" ]]; then
         if (( CURRENT == 3 )); then
             local -a shells
-            shells=(bash zsh fish powershell pwsh)
+            shells=(bash zsh fish)
             _describe -t shells 'shell' shells
         fi
         return

@@ -15,8 +15,6 @@ complete -c witr -n "__fish_use_subcommand; and __witr_no_terminal_flag" -a "com
 complete -c witr -n "__fish_seen_subcommand_from completion" -a "bash" -d "Generate bash completion script"
 complete -c witr -n "__fish_seen_subcommand_from completion" -a "zsh" -d "Generate zsh completion script"
 complete -c witr -n "__fish_seen_subcommand_from completion" -a "fish" -d "Generate fish completion script"
-complete -c witr -n "__fish_seen_subcommand_from completion" -a "powershell" -d "Generate PowerShell completion script"
-complete -c witr -n "__fish_seen_subcommand_from completion" -a "pwsh" -d "Generate PowerShell (Core) completion script"
 
 # Helper to check if --help or --version was given
 function __witr_no_terminal_flag

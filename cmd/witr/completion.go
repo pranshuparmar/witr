@@ -50,11 +50,9 @@ func handleCompletion(args []string) {
 		script = completion.Zsh()
 	case "fish":
 		script = completion.Fish()
-	case "powershell", "pwsh":
-		script = completion.PowerShell()
 	default:
 		fmt.Fprintf(os.Stderr, "Error: unsupported shell %q\n", shell)
-		fmt.Fprintf(os.Stderr, "Supported shells: bash, zsh, fish, powershell, pwsh\n")
+		fmt.Fprintf(os.Stderr, "Supported shells: bash, zsh, fish\n")
 		os.Exit(exitInvalidArg)
 	}
 
@@ -70,8 +68,6 @@ func printCompletionUsage() {
 	fmt.Println("  bash        Generate bash completion script")
 	fmt.Println("  zsh         Generate zsh completion script")
 	fmt.Println("  fish        Generate fish completion script")
-	fmt.Println("  powershell  Generate PowerShell completion script")
-	fmt.Println("  pwsh        Generate PowerShell (Core) completion script")
 	fmt.Println()
 	fmt.Println("Installation:")
 	fmt.Println()
@@ -85,8 +81,4 @@ func printCompletionUsage() {
 	fmt.Println()
 	fmt.Println("  Fish:")
 	fmt.Println("    witr completion fish > ~/.config/fish/completions/witr.fish")
-	fmt.Println()
-	fmt.Println("  PowerShell:")
-	fmt.Println("    # Add to $PROFILE:")
-	fmt.Println("    witr completion powershell | Out-String | Invoke-Expression")
 }

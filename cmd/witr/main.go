@@ -26,7 +26,7 @@ func printHelp() {
 	fmt.Println("       witr completion <shell>")
 	fmt.Println()
 	fmt.Println("Commands:")
-	fmt.Println("  completion <shell>  Generate shell completion script (bash, zsh, fish, powershell)")
+	fmt.Println("  completion <shell>  Generate shell completion script (bash, zsh, fish)")
 	fmt.Println()
 	fmt.Println("Options:")
 	fmt.Println("  --pid <n>         Explain a specific PID")

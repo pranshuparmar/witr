@@ -14,7 +14,7 @@ _witr_completions() {
     # Handle completion subcommand
     if [[ "${COMP_WORDS[1]}" == "completion" ]]; then
         if [[ ${COMP_CWORD} -eq 2 ]]; then
-            COMPREPLY=($(compgen -W "bash zsh fish powershell pwsh" -- "${cur}"))
+            COMPREPLY=($(compgen -W "bash zsh fish" -- "${cur}"))
         fi
         return 0
     fi

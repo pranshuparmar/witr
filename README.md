@@ -471,7 +471,7 @@ nix run github:pranshuparmar/witr -- --port 5000
 
 ### 8.8 Shell Completion
 
-witr supports tab completion for bash, zsh, fish, and PowerShell (including `pwsh`).
+witr supports tab completion for bash, zsh, and fish.
 
 ```bash
 # Bash (add to ~/.bashrc)
@@ -482,12 +482,6 @@ source <(witr completion zsh)
 
 # Fish
 witr completion fish > ~/.config/fish/completions/witr.fish
-
-# PowerShell (add to $PROFILE)
-witr completion powershell | Out-String | Invoke-Expression
-
-# PowerShell Core
-witr completion pwsh | Out-String | Invoke-Expression
 ```
 
 ---
