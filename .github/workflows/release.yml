@@ -55,10 +55,26 @@ jobs:
           strip dist/${BIN} || true
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/${{ env.PROJECT_NAME }}-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Build Linux packages (.deb, .rpm)
+        if: matrix.os == 'linux'
+        run: |
+          curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.2/nfpm_2.41.2_Linux_x86_64.tar.gz | tar -xz nfpm
+          ARCH=${{ matrix.arch }} VERSION=${VERSION#v} ./nfpm pkg --packager deb --target dist/
+          ARCH=${{ matrix.arch }} VERSION=${VERSION#v} ./nfpm pkg --packager rpm --target dist/
+        env:
+          VERSION: ${{ github.ref_name }}
+
+      - name: Upload Linux packages
+        if: matrix.os == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PROJECT_NAME }}-${{ matrix.arch }}-pkg
+          path: dist/*.{deb,rpm}
 
   publish:
     name: Publish Release
@@ -74,7 +90,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
           pattern: ${{ env.PROJECT_NAME }}-*

@@ -1,0 +1,17 @@
+Source: witr
+Section: utils
+Priority: optional
+Maintainer: Pranshu Parmar <pranshuparmar@github.com>
+Build-Depends: debhelper-compat (= 13), golang-any
+Standards-Version: 4.6.2
+Homepage: https://github.com/pranshuparmar/witr
+Vcs-Browser: https://github.com/pranshuparmar/witr
+Vcs-Git: https://github.com/pranshuparmar/witr.git
+
+Package: witr
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Why is this running? (witr)
+ witr makes process causality explicit.
+ It explains where a running thing came from, how it was started,
+ and what chain of systems is responsible for it existing right now.

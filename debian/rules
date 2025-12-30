@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+
+export DH_GOLANG_EXCLUDES := chocolatey
+export DH_GOLANG_INSTALL_ALL := 1
+
+%:
+	dh $@ --buildsystem=golang --with=golang
