@@ -2,22 +2,26 @@
 
 package proc
 
-type CommandRunner interface {
+import "os/exec"
+
+//go:generate mockgen -destination=mocks/mock_executor.go -package=mocks github.com/pranshuparmar/witr/internal/proc Executor
+
+type Executor interface {
 	Run(name string, args ...string) ([]byte, error)
 }
 
-type FileReader interface {
-	ReadFile(path string) ([]byte, error)
+type RealExecutor struct{}
+
+func (r *RealExecutor) Run(name string, args ...string) ([]byte, error) {
+	return exec.Command(name, args...).Output()
 }
 
-type CommandRunnerFunc func(name string, args ...string) ([]byte, error)
+var executor Executor = &RealExecutor{}
 
-func (f CommandRunnerFunc) Run(name string, args ...string) ([]byte, error) {
-	return f(name, args...)
+func SetExecutor(e Executor) {
+	executor = e
 }
 
-type FileReaderFunc func(path string) ([]byte, error)
-
-func (f FileReaderFunc) ReadFile(path string) ([]byte, error) {
-	return f(path)
+func ResetExecutor() {
+	executor = &RealExecutor{}
 }
