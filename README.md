@@ -34,7 +34,8 @@
   - [9.1 Feature Compatibility Matrix](#91-feature-compatibility-matrix)
   - [9.2 Permissions Note](#92-permissions-note)
 - [10. Success Criteria](#10-success-criteria)
-- [11. AI Assistance Disclaimer](#11-ai-assistance-disclaimer)
+- [11. Security Policy](#11-security-policy)
+- [12. AI Assistance Disclaimer](#12-ai-assistance-disclaimer)
 
 ---
 
@@ -544,7 +545,13 @@ witr is successful if:
 
 ---
 
-## 11. AI Assistance Disclaimer
+## 11. Security Policy
+
+We take the security of **witr** seriously. If you believe you have found a security vulnerability, please report it to us responsibly. See our [Security Policy](SECURITY.md) for more details.
+
+---
+
+## 12. AI Assistance Disclaimer
 
 This project was developed with assistance from AI/LLMs (including GitHub Copilot, ChatGPT, and related tools), supervised by humans who occasionally knew what they were doing.
 

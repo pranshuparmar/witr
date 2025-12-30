@@ -5,8 +5,27 @@ on:
   push:
     branches:
       - main
+      - staging
 
 jobs:
+  check-signed-commits:
+    name: Check Signed Commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for signed commits
+        uses: 1Password/check-signed-commits-action@v1
+        
+  semantic-pull-request:
+    name: Semantic PR Title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   validate:
     name: Lint/Test/Validate
     runs-on: ubuntu-latest

@@ -1,0 +1,16 @@
+name: PR Branch Enforcement
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-branch:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if target is main
+        run: |
+          echo "::error::Pull Requests must be opened against the 'staging' branch, not 'main'."
+          exit 1
