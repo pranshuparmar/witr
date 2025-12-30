@@ -4,9 +4,10 @@ package target
 
 import (
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/internal/proc"
 )
 
 func ResolvePort(port int) ([]int, error) {
@@ -16,7 +17,7 @@ func ResolvePort(port int) ([]int, error) {
 	// -n = no hostname resolution
 	// -P = no port name resolution
 	// -t = terse output (PIDs only)
-	out, err := exec.Command("lsof", "-i", fmt.Sprintf("TCP:%d", port), "-s", "TCP:LISTEN", "-n", "-P", "-t").Output()
+	out, err := proc.Run("lsof", "-i", fmt.Sprintf("TCP:%d", port), "-s", "TCP:LISTEN", "-n", "-P", "-t")
 	if err != nil {
 		// Try alternative: netstat + grep
 		return resolvePortNetstat(port)
@@ -57,7 +58,7 @@ func ResolvePort(port int) ([]int, error) {
 func resolvePortNetstat(port int) ([]int, error) {
 	// Fallback using netstat
 	// On macOS: netstat -anv -p tcp | grep LISTEN | grep .<port>
-	out, err := exec.Command("netstat", "-anv", "-p", "tcp").Output()
+	out, err := proc.Run("netstat", "-anv", "-p", "tcp")
 	if err != nil {
 		return nil, fmt.Errorf("no process listening on port %d", port)
 	}

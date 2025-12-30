@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -31,7 +30,7 @@ func GetResourceContext(pid int) *model.ResourceContext {
 // checkPreventsSleep checks if a process has sleep prevention assertions
 func checkPreventsSleep(pid int) bool {
 	// pmset -g assertions shows all power assertions
-	out, err := exec.Command("pmset", "-g", "assertions").Output()
+	out, err := executor.Run("pmset", "-g", "assertions")
 	if err != nil {
 		return false
 	}
@@ -60,7 +59,7 @@ func checkPreventsSleep(pid int) bool {
 // getThermalState returns the current thermal pressure state
 func getThermalState() string {
 	// pmset -g therm shows thermal conditions
-	out, err := exec.Command("pmset", "-g", "therm").Output()
+	out, err := executor.Run("pmset", "-g", "therm")
 	if err != nil {
 		return ""
 	}

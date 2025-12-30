@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -19,7 +18,7 @@ func readListeningSockets() (map[string]Socket, error) {
 	// -s TCP:LISTEN = only in LISTEN state
 	// -n = don't resolve hostnames
 	// -P = don't resolve port names
-	out, err := exec.Command("lsof", "-i", "TCP", "-s", "TCP:LISTEN", "-n", "-P", "-F", "pn").Output()
+	out, err := executor.Run("lsof", "-i", "TCP", "-s", "TCP:LISTEN", "-n", "-P", "-F", "pn")
 	if err != nil {
 		// lsof might fail without root, try netstat as fallback
 		return readListeningSocketsNetstat()
@@ -60,7 +59,7 @@ func readListeningSocketsNetstat() (map[string]Socket, error) {
 	sockets := make(map[string]Socket)
 
 	// Use netstat as fallback
-	out, err := exec.Command("netstat", "-an", "-p", "tcp").Output()
+	out, err := executor.Run("netstat", "-an", "-p", "tcp")
 	if err != nil {
 		return sockets, nil
 	}

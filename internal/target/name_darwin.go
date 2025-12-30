@@ -5,9 +5,10 @@ package target
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/internal/proc"
 )
 
 // isValidServiceLabel validates that a launchd service label contains only
@@ -35,7 +36,7 @@ func ResolveName(name string) ([]int, error) {
 
 	// Use ps to list all processes on macOS
 	// ps -axo pid=,comm=,args=
-	out, err := exec.Command("ps", "-axo", "pid=,comm=,args=").Output()
+	out, err := proc.Run("ps", "-axo", "pid=,comm=,args=")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list processes: %w", err)
 	}
@@ -164,7 +165,7 @@ func resolveLaunchdServicePID(name string) (int, error) {
 	for _, label := range labels {
 		// All labels are derived from validated name, so they're safe
 		// launchctl print system/<label> or gui/<uid>/<label>
-		out, err := exec.Command("launchctl", "print", "system/"+label).Output()
+		out, err := proc.Run("launchctl", "print", "system/"+label)
 		if err == nil {
 			// Parse output to find PID
 			// Look for "pid = <number>"

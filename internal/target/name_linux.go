@@ -5,9 +5,10 @@ package target
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/internal/proc"
 )
 
 func ResolveName(name string) ([]int, error) {
@@ -120,7 +121,7 @@ func resolveSystemdServiceMainPID(name string) (int, error) {
 	if !strings.HasSuffix(svcName, ".service") {
 		svcName += ".service"
 	}
-	out, err := exec.Command("systemctl", "show", svcName, "-p", "MainPID", "--value").Output()
+	out, err := proc.Run("systemctl", "show", svcName, "-p", "MainPID", "--value")
 	if err != nil {
 		return 0, err
 	}

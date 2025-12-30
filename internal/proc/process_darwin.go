@@ -5,7 +5,6 @@ package proc
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +15,7 @@ import (
 func ReadProcess(pid int) (model.Process, error) {
 	// Read process info using ps command on macOS
 	// ps -p <pid> -o pid=,ppid=,uid=,lstart=,state=,ucomm=
-	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "pid=,ppid=,uid=,lstart=,state=,ucomm=").Output()
+	out, err := executor.Run("ps", "-p", strconv.Itoa(pid), "-o", "pid=,ppid=,uid=,lstart=,state=,ucomm=")
 	if err != nil {
 		return model.Process{}, fmt.Errorf("process %d not found: %w", pid, err)
 	}
@@ -130,7 +129,7 @@ func ReadProcess(pid int) (model.Process, error) {
 
 func getCommandLine(pid int) string {
 	// Use ps to get full command line
-	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "args=").Output()
+	out, err := executor.Run("ps", "-p", strconv.Itoa(pid), "-o", "args=")
 	if err != nil {
 		return ""
 	}
@@ -144,7 +143,7 @@ func getEnvironment(pid int) []string {
 	// or using the proc_pidinfo syscall. For simplicity, we use ps -E when available
 	// Note: This might not work for all processes due to SIP restrictions
 
-	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-E", "-o", "command=").Output()
+	out, err := executor.Run("ps", "-p", strconv.Itoa(pid), "-E", "-o", "command=")
 	if err != nil {
 		return env
 	}
@@ -186,7 +185,7 @@ func isEnvVarName(name string) bool {
 
 func getWorkingDirectory(pid int) string {
 	// Use lsof to get current working directory
-	out, err := exec.Command("lsof", "-a", "-p", strconv.Itoa(pid), "-d", "cwd", "-F", "n").Output()
+	out, err := executor.Run("lsof", "-a", "-p", strconv.Itoa(pid), "-d", "cwd", "-F", "n")
 	if err != nil {
 		return "unknown"
 	}
@@ -226,7 +225,7 @@ func detectLaunchdService(pid int) string {
 	// Try to find the launchd service managing this process
 	// Use launchctl blame on macOS 10.10+
 
-	out, err := exec.Command("launchctl", "blame", strconv.Itoa(pid)).Output()
+	out, err := executor.Run("launchctl", "blame", strconv.Itoa(pid))
 	if err == nil {
 		blame := strings.TrimSpace(string(out))
 		if blame != "" && !strings.Contains(blame, "unknown") {
@@ -280,7 +279,7 @@ func detectGitInfo(cwd string) (string, string) {
 
 func checkResourceUsage(pid int, currentHealth string) string {
 	// Use ps to get CPU and memory usage
-	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "pcpu=,rss=").Output()
+	out, err := executor.Run("ps", "-p", strconv.Itoa(pid), "-o", "pcpu=,rss=")
 	if err != nil {
 		return currentHealth
 	}

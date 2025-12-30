@@ -6,10 +6,11 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/internal/proc"
 )
 
 // LaunchdInfo contains parsed information about a launchd service
@@ -57,7 +58,7 @@ var plistSearchPaths = []string{
 // GetServiceLabel uses launchctl blame to get the service label for a PID
 func GetServiceLabel(pid int) (string, string, error) {
 	// launchctl blame <pid> returns the service that started the process
-	out, err := exec.Command("launchctl", "blame", strconv.Itoa(pid)).Output()
+	out, err := proc.Run("launchctl", "blame", strconv.Itoa(pid))
 	if err != nil {
 		return "", "", fmt.Errorf("launchctl blame failed: %w", err)
 	}
@@ -105,7 +106,7 @@ func GetServiceLabel(pid int) (string, string, error) {
 // findServiceByPID queries launchctl list to find a service matching the given PID
 func findServiceByPID(pid int) (string, string) {
 	// launchctl list shows: PID Status Label
-	out, err := exec.Command("launchctl", "list").Output()
+	out, err := proc.Run("launchctl", "list")
 	if err != nil {
 		return "", ""
 	}
@@ -150,7 +151,7 @@ func FindPlistPath(label string) string {
 // ParsePlist reads and parses a launchd plist file
 func ParsePlist(path string) (*LaunchdInfo, error) {
 	// Use plutil to convert to XML (handles binary plists)
-	out, err := exec.Command("plutil", "-convert", "xml1", "-o", "-", path).Output()
+	out, err := proc.Run("plutil", "-convert", "xml1", "-o", "-", path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert plist: %w", err)
 	}
