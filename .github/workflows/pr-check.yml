@@ -11,37 +11,6 @@ on:
 permissions: read-all
 
 jobs:
-  scorecard:
-    name: Scorecard Analysis
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      id-token: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Run analysis
-        uses: ossf/scorecard-action@v2.4.0
-        with:
-          results_file: results.sarif
-          results_format: sarif
-          publish_results: true
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SARIF file
-          path: results.sarif
-          retention-days: 5
-
-      - name: Upload to code-scanning
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
-          
   check-signed-commits:
     name: Check Signed Commits
     if: github.event_name == 'pull_request'
