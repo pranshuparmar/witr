@@ -1,0 +1,31 @@
+package source
+
+import (
+	"testing"
+
+	"github.com/pranshuparmar/witr/pkg/model"
+)
+
+func TestDetectCron(t *testing.T) {
+	tests := []struct {
+		name     string
+		ancestry []model.Process
+		wantNil  bool
+	}{
+		{"cron", []model.Process{{Command: "cron"}, {Command: "job"}}, false},
+		{"crond", []model.Process{{Command: "crond"}, {Command: "job"}}, false},
+		{"no cron", []model.Process{{Command: "bash"}}, true},
+		{"empty", []model.Process{}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectCron(tt.ancestry)
+			if tt.wantNil && got != nil {
+				t.Errorf("detectCron() = %v, want nil", got)
+			}
+			if !tt.wantNil && got == nil {
+				t.Error("detectCron() = nil, want non-nil")
+			}
+		})
+	}
+}
