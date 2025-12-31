@@ -214,7 +214,7 @@ func detectContainer(pid int) string {
 	switch {
 	case strings.Contains(lowerCmd, "docker"):
 		return "docker"
-	case strings.Contains(lowerCmd, "podman"):
+	case strings.Contains(lowerCmd, "podman"), strings.Contains(lowerCmd, "libpod"):
 		return "podman"
 	case strings.Contains(lowerCmd, "kubepods"):
 		return "kubernetes"

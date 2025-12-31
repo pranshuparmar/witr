@@ -23,7 +23,7 @@ func detectContainer(ancestry []model.Process) *model.Source {
 				Name:       "docker",
 				Confidence: 0.9,
 			}
-		case strings.Contains(content, "podman"):
+		case strings.Contains(content, "podman"), strings.Contains(content, "libpod"):
 			return &model.Source{
 				Type:       model.SourceContainer,
 				Name:       "podman",

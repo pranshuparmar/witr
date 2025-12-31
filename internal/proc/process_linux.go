@@ -42,7 +42,7 @@ func ReadProcess(pid int) (model.Process, error) {
 		switch {
 		case strings.Contains(cgroupStr, "docker"):
 			container = "docker"
-		case strings.Contains(cgroupStr, "podman"):
+		case strings.Contains(cgroupStr, "podman"), strings.Contains(cgroupStr, "libpod"):
 			container = "podman"
 		case strings.Contains(cgroupStr, "kubepods"):
 			container = "kubernetes"
