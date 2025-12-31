@@ -11,7 +11,6 @@ import (
 
 	"github.com/pranshuparmar/witr/internal/output"
 	procpkg "github.com/pranshuparmar/witr/internal/proc"
-	"github.com/pranshuparmar/witr/internal/process"
 	"github.com/pranshuparmar/witr/internal/source"
 	"github.com/pranshuparmar/witr/internal/target"
 	"github.com/pranshuparmar/witr/pkg/model"
@@ -197,7 +196,7 @@ func main() {
 
 	pid := pids[0]
 
-	ancestry, err := process.BuildAncestry(pid)
+	ancestry, err := procpkg.ResolveAncestry(pid)
 	if err != nil {
 		fmt.Println()
 		fmt.Println("Error:")
