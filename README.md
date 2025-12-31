@@ -2,42 +2,6 @@
 
 <img width="631" height="445" alt="witr" src="https://github.com/user-attachments/assets/e51cace3-0070-4200-9d1f-c4c9fbc81b8d" />
 
----
-
-## Table of Contents
-
-- [1. Purpose](#1-purpose)
-- [2. Goals](#2-goals)
-- [3. Core Concept](#3-core-concept)
-- [4. Supported Targets](#4-supported-targets)
-  - [4.1 Name (process or service)](#41-name-process-or-service)
-  - [4.2 PID](#42-pid)
-  - [4.3 Port](#43-port)
-- [5. Output Behavior](#5-output-behavior)
-  - [5.1 Output Principles](#51-output-principles)
-  - [5.2 Standard Output Sections](#52-standard-output-sections)
-- [6. Flags & Options](#6-flags--options)
-- [7. Example Outputs](#7-example-outputs)
-  - [7.1 Name Based Query](#71-name-based-query)
-  - [7.2 Short Output](#72-short-output)
-  - [7.3 Tree Output](#73-tree-output)
-  - [7.4 Multiple Matches](#74-multiple-matches)
-- [8. Installation](#8-installation)
-  - [8.1 Homebrew (macOS & Linux)](#81-homebrew-macos--linux)
-  - [8.2 Arch Linux (AUR)](#82-arch-linux-aur)
-  - [8.3 Script Installation (Recommended)](#83-script-installation-recommended)
-  - [8.4 Manual Installation](#84-manual-installation)
-  - [8.5 Verify Installation](#85-verify-installation)
-  - [8.6 Uninstallation](#86-uninstallation)
-  - [8.7 Nix Flake](#87-nix-flake)
-- [9. Platform Support](#9-platform-support)
-  - [9.1 Feature Compatibility Matrix](#91-feature-compatibility-matrix)
-  - [9.2 Permissions Note](#92-permissions-note)
-- [10. Success Criteria](#10-success-criteria)
-- [11. AI Assistance Disclaimer](#11-ai-assistance-disclaimer)
-
----
-
 ## 1. Purpose
 
 **witr** exists to answer a single question:
