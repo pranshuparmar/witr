@@ -27,7 +27,7 @@ func main() {
 	// To embed version, commit, and build date, use:
 	// go build -ldflags "-X main.version=v0.1.0 -X main.commit=$(git rev-parse --short HEAD) -X 'main.buildDate=$(date +%Y-%m-%d)'" -o witr ./cmd/witr
 	if version == "" {
-		version = "dev"
+		version = "v0.0.0-dev"
 	}
 	if commit == "" {
 		commit = "unknown"
@@ -38,13 +38,18 @@ func main() {
 
 	rootCmd := &cobra.Command{
 		Use:   "witr [process name]",
-		Short: "Explain processes",
-		Long:  "witr explains processes and their ancestry, showing how they were started and what they are doing.",
+		Short: "Why is this running?",
+		Long:  "witr explains why a process or port is running by tracing its ancestry.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			envFlag, _ := cmd.Flags().GetBool("env")
 			pidFlag, _ := cmd.Flags().GetString("pid")
 			portFlag, _ := cmd.Flags().GetString("port")
+			// Show help if no arguments or relevant flags are provided
+			if !envFlag && pidFlag == "" && portFlag == "" && len(args) == 0 {
+				cmd.Help()
+				return nil
+			}
 			shortFlag, _ := cmd.Flags().GetBool("short")
 			treeFlag, _ := cmd.Flags().GetBool("tree")
 			jsonFlag, _ := cmd.Flags().GetBool("json")
@@ -210,12 +215,14 @@ func main() {
 
 	rootCmd.Flags().String("pid", "", "pid to look up")
 	rootCmd.Flags().String("port", "", "port to look up")
-	rootCmd.Flags().Bool("short", false, "short output")
-	rootCmd.Flags().Bool("tree", false, "tree output")
-	rootCmd.Flags().Bool("json", false, "output as JSON")
+	rootCmd.Flags().Bool("short", false, "show only ancestry")
+	rootCmd.Flags().Bool("tree", false, "shows only ancestry as a tree")
+	rootCmd.Flags().Bool("json", false, "show result as JSON")
 	rootCmd.Flags().Bool("warnings", false, "show only warnings")
 	rootCmd.Flags().Bool("no-color", false, "disable colorized output")
-	rootCmd.Flags().Bool("env", false, "show only environment variables for the process")
+	rootCmd.Flags().Bool("env", false, "show environment variables for the process")
+
+	rootCmd.SilenceUsage = true
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
