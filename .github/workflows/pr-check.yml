@@ -2,13 +2,54 @@ name: PR Check
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
       - main
+      - staging
+
+permissions: read-all
 
 jobs:
+  check-signed-commits:
+    name: Check Signed Commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for signed commits
+        uses: 1Password/check-signed-commits-action@v1
+        
+  semantic-pull-request:
+    name: Semantic PR Title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  check-branch:
+    name: Check Target Branch
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify target branch
+        run: |
+          if [ "${{ github.base_ref }}" = "main" ]; then
+            echo "::error::Pull Requests from forks must be opened against the 'staging' branch, not 'main'."
+            exit 1
+          fi
+
   validate:
     name: Lint/Test/Validate
+    needs: [check-signed-commits, semantic-pull-request, check-branch]
+    if: |
+      always() &&
+      (github.event_name != 'pull_request' || 
+       (needs.check-signed-commits.result == 'success' && 
+        needs.semantic-pull-request.result == 'success' && 
+        needs.check-branch.result == 'success'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
