@@ -22,10 +22,11 @@ var buildDate = ""
 
 func printHelp() {
 	fmt.Println("Usage: witr [--pid N | --port N | name] [--short] [--tree] [--json] [--warnings] [--no-color] [--env] [--help] [--version]")
-	fmt.Println("       witr ps <pattern> [--sort cpu|mem|age|pid] [--json] [--no-color]")
+	fmt.Println("       witr ps <pattern> [--sort cpu|mem|age|pid] [--json] [--watch] [--no-color]")
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  ps <pattern>      List all processes matching pattern (e.g., 'witr ps node')")
+	fmt.Println("                    Use --watch for interactive TUI with live refresh")
 	fmt.Println()
 	fmt.Println("Flags:")
 	fmt.Println("  --pid <n>         Explain a specific PID")

@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pranshuparmar/witr/internal/batch"
 	"github.com/pranshuparmar/witr/internal/output"
+	"github.com/pranshuparmar/witr/internal/tui"
 )
 
 func runPS(args []string) {
@@ -22,6 +24,7 @@ func runPS(args []string) {
 	noColor := fs.Bool("no-color", false, "disable colors")
 	sortBy := fs.String("sort", "", "sort by: cpu, mem, age, pid")
 	jsonOut := fs.Bool("json", false, "output as JSON")
+	watch := fs.Bool("watch", false, "interactive TUI mode with live refresh")
 	fs.Parse(reordered)
 
 	if fs.NArg() == 0 {
@@ -35,6 +38,7 @@ func runPS(args []string) {
 		fmt.Println("  witr ps node --sort mem   # Sorted by memory usage")
 		fmt.Println("  witr ps node --sort age   # Sorted by age (oldest first)")
 		fmt.Println("  witr ps python --json     # JSON output")
+		fmt.Println("  witr ps node --watch      # Interactive TUI with live refresh")
 		fmt.Println()
 		fmt.Println("Flags:")
 		fs.PrintDefaults()
@@ -43,6 +47,12 @@ func runPS(args []string) {
 
 	pattern := fs.Arg(0)
 	colorEnabled := !*noColor
+
+	// Watch mode: launch interactive TUI
+	if *watch {
+		runWatchMode(pattern, *sortBy)
+		return
+	}
 
 	start := time.Now()
 
@@ -126,4 +136,14 @@ func reorderPSArgs(args []string) []string {
 	}
 
 	return append(flags, positionals...)
+}
+
+// runWatchMode launches the interactive TUI
+func runWatchMode(pattern, sortBy string) {
+	model := tui.New(pattern, sortBy)
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error running TUI: %v\n", err)
+		os.Exit(1)
+	}
 }
