@@ -3,7 +3,7 @@ package output
 import (
 	"encoding/json"
 
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 func ToJSON(r model.Result) (string, error) {

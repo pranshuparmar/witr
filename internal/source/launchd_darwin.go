@@ -5,8 +5,8 @@ package source
 import (
 	"strings"
 
-	"github.com/pranshuparmar/witr/internal/launchd"
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/internal/launchd"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 func detectLaunchd(ancestry []model.Process) *model.Source {

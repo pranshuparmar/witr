@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 // GetSocketStates returns all socket states for a given port

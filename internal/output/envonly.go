@@ -3,7 +3,7 @@ package output
 import (
 	"fmt"
 
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 // RenderEnvOnly prints only the command and environment variables for a process

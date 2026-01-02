@@ -1,6 +1,6 @@
 package source
 
-import "github.com/pranshuparmar/witr/pkg/model"
+import "github.com/SanCognition/witr/pkg/model"
 
 func detectCron(ancestry []model.Process) *model.Source {
 	for _, p := range ancestry {

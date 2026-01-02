@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 // isValidSymlinkTarget validates that a symlink target is safe and reasonable

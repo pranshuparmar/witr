@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Installs the latest release of witr from GitHub
-# Repo: https://github.com/pranshuparmar/witr
+# Repo: https://github.com/SanCognition/witr
 
 set -euo pipefail
 
-REPO="pranshuparmar/witr"
+REPO="SanCognition/witr"
 
 # Standard configurable install prefix (override to avoid sudo):
 #   INSTALL_PREFIX="$HOME/.local" ./install.sh

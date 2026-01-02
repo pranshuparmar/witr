@@ -1,6 +1,6 @@
 package source
 
-import "github.com/pranshuparmar/witr/pkg/model"
+import "github.com/SanCognition/witr/pkg/model"
 
 func DetectPrimary(chain []model.Process) string {
 	for _, p := range chain {

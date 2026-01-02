@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 // GetFileContext returns file descriptor and lock info for a process

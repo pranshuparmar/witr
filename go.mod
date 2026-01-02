@@ -1,4 +1,4 @@
-module github.com/pranshuparmar/witr
+module github.com/SanCognition/witr
 
 go 1.25
 

@@ -9,11 +9,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pranshuparmar/witr/internal/output"
-	procpkg "github.com/pranshuparmar/witr/internal/proc"
-	"github.com/pranshuparmar/witr/internal/source"
-	"github.com/pranshuparmar/witr/internal/target"
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/internal/output"
+	procpkg "github.com/SanCognition/witr/internal/proc"
+	"github.com/SanCognition/witr/internal/source"
+	"github.com/SanCognition/witr/internal/target"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 var version = ""

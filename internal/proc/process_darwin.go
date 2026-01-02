@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 func ReadProcess(pid int) (model.Process, error) {

@@ -10,9 +10,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/pranshuparmar/witr/internal/batch"
-	"github.com/pranshuparmar/witr/internal/output"
-	"github.com/pranshuparmar/witr/internal/tui"
+	"github.com/SanCognition/witr/internal/batch"
+	"github.com/SanCognition/witr/internal/output"
+	"github.com/SanCognition/witr/internal/tui"
 )
 
 func runPS(args []string) {

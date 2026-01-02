@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/pranshuparmar/witr/internal/batch"
+	"github.com/SanCognition/witr/internal/batch"
 )
 
 // View renders the UI

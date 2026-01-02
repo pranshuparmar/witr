@@ -22,7 +22,7 @@ When you need to verify a change locally, compile the CLI with Go 1.25+
 so that the embedded version data stays accurate:
 
 ```bash
-git clone https://github.com/pranshuparmar/witr.git
+git clone https://github.com/SanCognition/witr.git
 cd witr
 go build -ldflags "-X main.version=v0.0.0-dev -X main.commit=$(git rev-parse --short HEAD) -X 'main.buildDate=$(date +%Y-%m-%d)'" -o witr ./cmd/witr
 ./witr --help  # quick smoke test

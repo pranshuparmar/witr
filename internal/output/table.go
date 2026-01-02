@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/pranshuparmar/witr/internal/batch"
+	"github.com/SanCognition/witr/internal/batch"
 )
 
 // Color codes (reusing from standard.go)

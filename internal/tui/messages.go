@@ -5,8 +5,8 @@ package tui
 import (
 	"time"
 
-	"github.com/pranshuparmar/witr/internal/batch"
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/internal/batch"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 // tickMsg signals a refresh tick

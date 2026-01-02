@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/pranshuparmar/witr/internal/batch"
-	procpkg "github.com/pranshuparmar/witr/internal/proc"
+	"github.com/SanCognition/witr/internal/batch"
+	procpkg "github.com/SanCognition/witr/internal/proc"
 )
 
 // renderDetailsPanel renders the right-side details panel

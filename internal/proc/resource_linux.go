@@ -2,7 +2,7 @@
 
 package proc
 
-import "github.com/pranshuparmar/witr/pkg/model"
+import "github.com/SanCognition/witr/pkg/model"
 
 // GetResourceContext returns resource usage context for a process
 // Linux implementation - TODO: implement using /proc and cgroup info

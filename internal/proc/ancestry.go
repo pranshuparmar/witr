@@ -3,7 +3,7 @@ package proc
 import (
 	"fmt"
 
-	"github.com/pranshuparmar/witr/pkg/model"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 func ResolveAncestry(pid int) ([]model.Process, error) {

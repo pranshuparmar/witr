@@ -335,13 +335,13 @@ The easiest way to install **witr** is via the install script.
 #### Quick install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/SanCognition/witr/main/install.sh | bash
 ```
 
 #### Review before install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/SanCognition/witr/main/install.sh -o install.sh
 cat install.sh
 chmod +x install.sh
 ./install.sh
@@ -366,10 +366,10 @@ If you prefer manual installation, follow these simple steps for your platform:
 
 ```bash
 # Download the binary
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr-linux-amd64 -o witr-linux-amd64
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr-linux-amd64 -o witr-linux-amd64
 
 # Verify checksum (Optional, should print OK)
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
 grep witr-linux-amd64 SHA256SUMS | sha256sum -c -
 
 # Rename and install
@@ -377,7 +377,7 @@ mv witr-linux-amd64 witr && chmod +x witr
 sudo mv witr /usr/local/bin/witr
 
 # Install the man page (Optional)
-sudo curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
+sudo curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
 sudo mandb >/dev/null 2>&1 || true
 ```
 
@@ -385,10 +385,10 @@ sudo mandb >/dev/null 2>&1 || true
 
 ```bash
 # Download the binary
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr-linux-arm64 -o witr-linux-arm64
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr-linux-arm64 -o witr-linux-arm64
 
 # Verify checksum (Optional, should print OK)
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
 grep witr-linux-arm64 SHA256SUMS | sha256sum -c -
 
 # Rename and install
@@ -396,7 +396,7 @@ mv witr-linux-arm64 witr && chmod +x witr
 sudo mv witr /usr/local/bin/witr
 
 # Install the man page (Optional)
-sudo curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
+sudo curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
 sudo mandb >/dev/null 2>&1 || true
 ```
 
@@ -404,10 +404,10 @@ sudo mandb >/dev/null 2>&1 || true
 
 ```bash
 # Download the binary
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr-darwin-arm64 -o witr-darwin-arm64
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr-darwin-arm64 -o witr-darwin-arm64
 
 # Verify checksum (Optional, should print OK)
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
 grep witr-darwin-arm64 SHA256SUMS | shasum -a 256 -c -
 
 # Rename and install
@@ -416,17 +416,17 @@ sudo mv witr /usr/local/bin/witr
 
 # Install the man page (Optional)
 sudo mkdir -p /usr/local/share/man/man1
-sudo curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
+sudo curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
 ```
 
 #### macOS amd64 (Intel Macs):
 
 ```bash
 # Download the binary
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr-darwin-amd64 -o witr-darwin-amd64
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr-darwin-amd64 -o witr-darwin-amd64
 
 # Verify checksum (Optional, should print OK)
-curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
+curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/SHA256SUMS -o SHA256SUMS
 grep witr-darwin-amd64 SHA256SUMS | shasum -a 256 -c -
 
 # Rename and install
@@ -435,7 +435,7 @@ sudo mv witr /usr/local/bin/witr
 
 # Install the man page (Optional)
 sudo mkdir -p /usr/local/share/man/man1
-sudo curl -fsSL https://github.com/pranshuparmar/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
+sudo curl -fsSL https://github.com/SanCognition/witr/releases/latest/download/witr.1 -o /usr/local/share/man/man1/witr.1
 ```
 
 **Explanation:**
@@ -466,7 +466,7 @@ sudo rm -f /usr/local/share/man/man1/witr.1
 If you use Nix, you can build **witr** from source and run without installation:
 
 ```bash
-nix run github:pranshuparmar/witr -- --help
+nix run github:SanCognition/witr -- --help
 ```
 
 ---

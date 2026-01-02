@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	procpkg "github.com/pranshuparmar/witr/internal/proc"
-	"github.com/pranshuparmar/witr/internal/source"
-	"github.com/pranshuparmar/witr/pkg/model"
+	procpkg "github.com/SanCognition/witr/internal/proc"
+	"github.com/SanCognition/witr/internal/source"
+	"github.com/SanCognition/witr/pkg/model"
 )
 
 // AnalyzeAsync runs full process analysis concurrently.

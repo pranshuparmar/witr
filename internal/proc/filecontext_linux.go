@@ -2,7 +2,7 @@
 
 package proc
 
-import "github.com/pranshuparmar/witr/pkg/model"
+import "github.com/SanCognition/witr/pkg/model"
 
 // GetFileContext returns file descriptor and lock info for a process
 // Linux implementation - TODO: implement using /proc/<pid>/fd and /proc/locks
