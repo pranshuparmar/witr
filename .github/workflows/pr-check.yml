@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - staging
 
 jobs:
   validate:
@@ -21,9 +22,9 @@ jobs:
 
       - name: Verify formatting
         run: |
-          if [ -n "$(gofmt -l .)" ]; then
+          if [ -n "$(gofmt -l $(find . -type f -name '*.go' -not -path './vendor/*'))" ]; then
             echo "Go code is not formatted:"
-            gofmt -d .
+            gofmt -d $(find . -type f -name '*.go' -not -path './vendor/*')
             exit 1
           fi
 
