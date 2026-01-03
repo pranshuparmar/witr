@@ -3,9 +3,31 @@
 package proc
 
 import (
+	"encoding/hex"
+	"fmt"
 	"net"
 	"testing"
 )
+
+func encodeProcNetTCP6(ip net.IP, port int) string {
+	ip16 := ip.To16()
+	if ip16 == nil {
+		return ""
+	}
+
+	// /proc/net/tcp6 stores IPv6 as 4 LE 32-bit groups
+	// parseAddr reverses bytes within each 4-byte group to decode
+	// so we just inverse the transformation for our tests
+	stored := make([]byte, 16)
+	for i := 0; i < 4; i++ {
+		stored[i*4+0] = ip16[i*4+3]
+		stored[i*4+1] = ip16[i*4+2]
+		stored[i*4+2] = ip16[i*4+1]
+		stored[i*4+3] = ip16[i*4+0]
+	}
+
+	return hex.EncodeToString(stored) + ":" + fmt.Sprintf("%04X", port)
+}
 
 func TestParseAddr(t *testing.T) {
 	tests := []struct {
@@ -44,10 +66,10 @@ func TestParseAddr(t *testing.T) {
 			wantPort: 443,
 		},
 		{
-			name:     "IPv6 link-local",
-			raw:      "000080FE00000000FF005450EDA1FFFE:1F90",
+			name:     "IPv6 link-local fe80::1",
+			raw:      encodeProcNetTCP6(net.ParseIP("fe80::1"), 8080),
 			ipv6:     true,
-			wantAddr: "",
+			wantAddr: "fe80::1",
 			wantPort: 8080,
 		},
 		// Edge cases
@@ -105,17 +127,13 @@ func TestParseAddr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotAddr, gotPort := parseAddr(tt.raw, tt.ipv6)
-			if tt.wantAddr == "" && tt.name == "IPv6 link-local" {
-				ip := net.ParseIP(gotAddr)
-				if ip == nil || ip.To16() == nil || ip.To4() != nil {
-					t.Errorf("parseAddr() gotAddr = %v, want a valid IPv6 address", gotAddr)
-				}
-			} else if tt.wantAddr != "" && gotAddr != tt.wantAddr {
+			if gotAddr != tt.wantAddr {
 				t.Errorf("parseAddr() gotAddr = %v, want %v", gotAddr, tt.wantAddr)
 			}
 			if gotPort != tt.wantPort {
 				t.Errorf("parseAddr() gotPort = %v, want %v", gotPort, tt.wantPort)
 			}
 		})
+
 	}
 }

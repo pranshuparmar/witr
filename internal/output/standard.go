@@ -2,6 +2,8 @@ package output
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 	"time"
 
 	"github.com/pranshuparmar/witr/pkg/model"
@@ -263,17 +265,18 @@ func RenderStandard(r model.Result, colorEnabled bool) {
 			addr := proc.BindAddresses[i]
 			port := proc.ListeningPorts[i]
 			if addr != "" && port > 0 {
+				hostPort := net.JoinHostPort(addr, strconv.Itoa(port))
 				if colorEnabled {
 					if i == 0 {
-						fmt.Printf("%sListening%s   : %s:%d\n", colorGreen, colorReset, addr, port)
+						fmt.Printf("%sListening%s   : %s\n", colorGreen, colorReset, hostPort)
 					} else {
-						fmt.Printf("              %s:%d\n", addr, port)
+						fmt.Printf("              %s\n", hostPort)
 					}
 				} else {
 					if i == 0 {
-						fmt.Printf("Listening   : %s:%d\n", addr, port)
+						fmt.Printf("Listening   : %s\n", hostPort)
 					} else {
-						fmt.Printf("              %s:%d\n", addr, port)
+						fmt.Printf("              %s\n", hostPort)
 					}
 				}
 			}
