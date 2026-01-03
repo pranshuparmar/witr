@@ -55,7 +55,7 @@ func RenderWarnings(warnings []string, colorEnabled bool) {
 	}
 }
 
-func RenderStandard(r model.Result, colorEnabled bool) {
+func RenderStandard(r model.Result, colorEnabled bool, verbose bool) {
 	// Target
 	target := "unknown"
 	if len(r.Ancestry) > 0 {
@@ -359,6 +359,115 @@ func RenderStandard(r model.Result, colorEnabled bool) {
 			fmt.Println("\nWarnings    :")
 			for _, w := range r.Warnings {
 				fmt.Printf("  • %s\n", w)
+			}
+		}
+	}
+
+	// Extended information for verbose mode
+	if verbose {
+		if colorEnabled {
+			fmt.Printf("\n%sExtended Information%s:\n", colorMagenta, colorReset)
+		} else {
+			fmt.Println("\nExtended Information:")
+		}
+
+		// Memory information
+		if proc.Memory.VMS > 0 {
+			if colorEnabled {
+				fmt.Printf("\n%sMemory%s:\n", colorGreen, colorReset)
+				fmt.Printf("  Virtual: %.1f MB\n", proc.Memory.VMSMB)
+				fmt.Printf("  Resident: %.1f MB\n", proc.Memory.RSSMB)
+				if proc.Memory.Shared > 0 {
+					fmt.Printf("  Shared: %.1f MB\n", float64(proc.Memory.Shared)/(1024*1024))
+				}
+			} else {
+				fmt.Printf("\nMemory:\n")
+				fmt.Printf("  Virtual: %.1f MB\n", proc.Memory.VMSMB)
+				fmt.Printf("  Resident: %.1f MB\n", proc.Memory.RSSMB)
+				if proc.Memory.Shared > 0 {
+					fmt.Printf("  Shared: %.1f MB\n", float64(proc.Memory.Shared)/(1024*1024))
+				}
+			}
+		}
+
+		// I/O statistics
+		if proc.IO.ReadBytes > 0 || proc.IO.WriteBytes > 0 {
+			if colorEnabled {
+				fmt.Printf("\n%sI/O Statistics%s:\n", colorGreen, colorReset)
+				if proc.IO.ReadBytes > 0 {
+					fmt.Printf("  Read: %.1f MB (%d ops)\n", float64(proc.IO.ReadBytes)/(1024*1024), proc.IO.ReadOps)
+				}
+				if proc.IO.WriteBytes > 0 {
+					fmt.Printf("  Write: %.1f MB (%d ops)\n", float64(proc.IO.WriteBytes)/(1024*1024), proc.IO.WriteOps)
+				}
+			} else {
+				fmt.Printf("\nI/O Statistics:\n")
+				if proc.IO.ReadBytes > 0 {
+					fmt.Printf("  Read: %.1f MB (%d ops)\n", float64(proc.IO.ReadBytes)/(1024*1024), proc.IO.ReadOps)
+				}
+				if proc.IO.WriteBytes > 0 {
+					fmt.Printf("  Write: %.1f MB (%d ops)\n", float64(proc.IO.WriteBytes)/(1024*1024), proc.IO.WriteOps)
+				}
+			}
+		}
+
+		// File descriptors
+		if proc.FDCount > 0 {
+			if colorEnabled {
+				if proc.FDLimit == 0 {
+					fmt.Printf("\n%sFile Descriptors%s: %d/unlimited\n", colorGreen, colorReset, proc.FDCount)
+				} else {
+					fmt.Printf("\n%sFile Descriptors%s: %d/%d\n", colorGreen, colorReset, proc.FDCount, proc.FDLimit)
+				}
+				if len(proc.FileDescs) > 0 && len(proc.FileDescs) <= 10 {
+					for _, fd := range proc.FileDescs {
+						fmt.Printf("  %s\n", fd)
+					}
+				} else if len(proc.FileDescs) > 10 {
+					fmt.Printf("  Showing first 10 of %d descriptors:\n", len(proc.FileDescs))
+					for i := 0; i < 10; i++ {
+						fmt.Printf("  %s\n", proc.FileDescs[i])
+					}
+					fmt.Printf("  ... and %d more\n", len(proc.FileDescs)-10)
+				}
+			} else {
+				if proc.FDLimit == 0 {
+					fmt.Printf("\nFile Descriptors: %d/unlimited\n", proc.FDCount)
+				} else {
+					fmt.Printf("\nFile Descriptors: %d/%d\n", proc.FDCount, proc.FDLimit)
+				}
+				if len(proc.FileDescs) > 0 && len(proc.FileDescs) <= 10 {
+					for _, fd := range proc.FileDescs {
+						fmt.Printf("  %s\n", fd)
+					}
+				} else if len(proc.FileDescs) > 10 {
+					fmt.Printf("  Showing first 10 of %d descriptors:\n", len(proc.FileDescs))
+					for i := 0; i < 10; i++ {
+						fmt.Printf("  %s\n", proc.FileDescs[i])
+					}
+					fmt.Printf("  ... and %d more\n", len(proc.FileDescs)-10)
+				}
+			}
+		}
+
+		// Children and threads
+		if proc.ThreadCount > 1 || len(proc.Children) > 0 {
+			if colorEnabled {
+				fmt.Printf("\n%sProcess Details%s:\n", colorGreen, colorReset)
+				if proc.ThreadCount > 1 {
+					fmt.Printf("  Threads: %d\n", proc.ThreadCount)
+				}
+				if len(proc.Children) > 0 {
+					fmt.Printf("  Children: %v\n", proc.Children)
+				}
+			} else {
+				fmt.Printf("\nProcess Details:\n")
+				if proc.ThreadCount > 1 {
+					fmt.Printf("  Threads: %d\n", proc.ThreadCount)
+				}
+				if len(proc.Children) > 0 {
+					fmt.Printf("  Children: %v\n", proc.Children)
+				}
 			}
 		}
 	}
