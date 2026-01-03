@@ -5,6 +5,7 @@ package target
 import (
 	"fmt"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -35,17 +36,12 @@ func ResolvePort(port int) ([]int, error) {
 		}
 	}
 
-	// Return the lowest PID (the main listener, not forked children)
-	var result []int
-	minPID := 0
+	// collect all owning pids so callers can handle multi-owner sockets
+	result := make([]int, 0, len(pidSet))
 	for pid := range pidSet {
-		if minPID == 0 || pid < minPID {
-			minPID = pid
-		}
+		result = append(result, pid)
 	}
-	if minPID > 0 {
-		result = append(result, minPID)
-	}
+	sort.Ints(result)
 
 	if len(result) == 0 {
 		return nil, fmt.Errorf("socket found but owning process not detected")
@@ -64,6 +60,7 @@ func resolvePortNetstat(port int) ([]int, error) {
 
 	portStr := fmt.Sprintf(".%d", port)
 
+	pidSet := make(map[int]bool) // collect matches so we can return all owners
 	for line := range strings.Lines(string(out)) {
 		if !strings.Contains(line, "LISTEN") {
 			continue
@@ -78,9 +75,18 @@ func resolvePortNetstat(port int) ([]int, error) {
 			// The PID is typically in the 9th field
 			pid, err := strconv.Atoi(fields[8])
 			if err == nil && pid > 0 {
-				return []int{pid}, nil
+				pidSet[pid] = true
 			}
 		}
+	}
+
+	result := make([]int, 0, len(pidSet))
+	for pid := range pidSet {
+		result = append(result, pid)
+	}
+	sort.Ints(result)
+	if len(result) > 0 {
+		return result, nil
 	}
 
 	return nil, fmt.Errorf("no process listening on port %d", port)
