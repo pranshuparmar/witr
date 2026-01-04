@@ -246,11 +246,14 @@ func getWorkingDirectory(pid int) string {
 }
 
 func detectContainer(pid int) string {
-	// On FreeBSD, check if running inside a jail
-	// Use jls to check jail status
-	out, err := exec.Command("jls", "-j", strconv.Itoa(pid)).Output()
-	if err == nil && strings.TrimSpace(string(out)) != "" {
-		return "jail"
+	// On FreeBSD, check if running inside a jail by checking the jail ID
+	// JID = 0 means running on host, JID > 0 means running in a jail
+	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "jid=").Output()
+	if err == nil {
+		jid := strings.TrimSpace(string(out))
+		if jid != "" && jid != "0" {
+			return "jail"
+		}
 	}
 
 	// Check command line for container patterns
