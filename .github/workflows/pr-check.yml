@@ -40,15 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - os: linux
-            arch: amd64
-          - os: linux
-            arch: arm64
-          - os: darwin
-            arch: amd64
-          - os: darwin
-            arch: arm64
+        os: [ linux, darwin, windows, freebsd ]
+        arch: [ amd64, arm64 ]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
