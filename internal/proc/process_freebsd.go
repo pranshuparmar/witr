@@ -195,18 +195,8 @@ func getCommandLine(pid int) string {
 func getEnvironment(pid int) []string {
 	var env []string
 
-	// On FreeBSD, try procfs first if mounted
-	procEnvPath := fmt.Sprintf("/proc/%d/environ", pid)
-	if envBytes, err := os.ReadFile(procEnvPath); err == nil {
-		for _, e := range strings.Split(string(envBytes), "\x00") {
-			if e != "" {
-				env = append(env, e)
-			}
-		}
-		return env
-	}
-
-	// Fallback: use procstat -e if available
+	// Use procstat -e to get environment variables
+	// procstat does not require procfs to be mounted
 	out, err := exec.Command("procstat", "-e", strconv.Itoa(pid)).Output()
 	if err != nil {
 		return env
@@ -231,14 +221,9 @@ func getEnvironment(pid int) []string {
 }
 
 func getWorkingDirectory(pid int) string {
-	// Try procfs first if mounted
-	procCwdPath := fmt.Sprintf("/proc/%d/cwd", pid)
-	if cwd, err := os.Readlink(procCwdPath); err == nil {
-		return cwd
-	}
-
-	// Fallback: use procstat -f to get current working directory
+	// Use procstat -f to get current working directory
 	// procstat -f shows file descriptors, including a special "cwd" entry
+	// procstat does not require procfs to be mounted
 	out, err := exec.Command("procstat", "-f", strconv.Itoa(pid)).Output()
 	if err != nil {
 		return "unknown"

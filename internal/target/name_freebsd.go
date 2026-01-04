@@ -161,11 +161,7 @@ func resolveRcServicePID(name string) (int, error) {
 	if err == nil {
 		pid, err := strconv.Atoi(strings.TrimSpace(string(content)))
 		if err == nil && pid > 0 {
-			// Verify process exists
-			if _, err := os.Stat(fmt.Sprintf("/proc/%d", pid)); err == nil {
-				return pid, nil
-			}
-			// Try checking via ps
+			// Verify process exists using ps command
 			out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "pid=").Output()
 			if err == nil && strings.TrimSpace(string(out)) != "" {
 				return pid, nil
