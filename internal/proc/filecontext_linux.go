@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
@@ -55,24 +56,22 @@ func getFileLimit(pid int) int {
 		return softLimit
 	}
 
-	return 0
+	return linuxDefaultMaxOpenFile
 }
 
 func getDefaultMaxOpenFiles() int {
 	// This seems to be a common default for many systems.
-	const REASONABLE_DEFAULT int = 1024
+	const reasonableDefault int = 1024
 
-	output, err := exec.Command("ulimit", "-Sn").Output()
+	// https://www.man7.org/linux/man-pages/man2/getrlimit.2.html
+	var rlimit syscall.Rlimit
+	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rlimit)
 	if err != nil {
-		return REASONABLE_DEFAULT
+		return reasonableDefault
 	}
 
-	softLimit, err := strconv.Atoi(string(output))
-	if err != nil {
-		return REASONABLE_DEFAULT
-	}
-
-	return softLimit
+	fmt.Println(rlimit)
+	return int(rlimit.Max)
 }
 
 func getLockedFiles(pid int) []string {
