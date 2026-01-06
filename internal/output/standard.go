@@ -324,6 +324,13 @@ func RenderStandard(r model.Result, colorEnabled bool, verbose bool) {
 
 	// File context (open files, locks)
 	if r.FileContext != nil {
+		if r.FileContext.OpenFiles > 0 && r.FileContext.FileLimit == 0 {
+			if colorEnabled {
+				fmt.Printf("%sOpen Files%s  : %d of unlimited\n", colorCyan, colorReset, r.FileContext.OpenFiles)
+			} else {
+				fmt.Printf("Open Files  : %d of unlimited\n", r.FileContext.OpenFiles)
+			}
+		}
 		if r.FileContext.OpenFiles > 0 && r.FileContext.FileLimit > 0 {
 			usagePercent := float64(r.FileContext.OpenFiles) / float64(r.FileContext.FileLimit) * 100
 			if colorEnabled {
