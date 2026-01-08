@@ -1,5 +1,5 @@
 .nh
-.TH "WITR" "1" "Jan 2026" "witr" "Usage"
+.TH "WITR" "1" "Jan 2026" "" ""
 
 .SH NAME
 witr - Why is this running?
@@ -46,6 +46,10 @@ witr explains why a process or port is running by tracing its ancestry.
 	show only ancestry as a tree
 
 .PP
+\fB--verbose\fP[=false]
+	show extended process information
+
+.PP
 \fB--warnings\fP[=false]
 	show only warnings
 
@@ -80,16 +84,10 @@ witr explains why a process or port is running by tracing its ancestry.
   # Output machine-readable JSON
   witr chrome --json
 
+  # Show extended process information (memory, I/O, file descriptors)
+  witr mysql --verbose
+
   # Combine flags: inspect port, show environment variables, output JSON
   witr --port 8080 --env --json
 
 .EE
-
-.SH SEE ALSO
-ps(1), lsof(8), netstat(8)
-
-.SH PROJECT PAGE
-https://github.com/pranshuparmar/witr
-
-.SH AUTHOR
-Pranshu Parmar

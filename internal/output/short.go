@@ -9,6 +9,7 @@ import (
 var (
 	colorResetShort   = ansiString("\033[0m")
 	colorMagentaShort = ansiString("\033[35m")
+	colorGreenShort   = ansiString("\033[32m")
 	colorBoldShort    = ansiString("\033[2m")
 )
 
@@ -23,8 +24,13 @@ func RenderShort(w io.Writer, r model.Result, colorEnabled bool) {
 				p.Print(" → ")
 			}
 		}
+
 		if colorEnabled {
-			p.Printf("%s (%spid %d%s)", proc.Command, colorBoldShort, proc.PID, colorResetShort)
+			nameColor := ansiString("")
+			if i == len(r.Ancestry)-1 {
+				nameColor = colorGreenShort
+			}
+			p.Printf("%s%s%s (%spid %d%s)", nameColor, proc.Command, colorResetShort, colorBoldShort, proc.PID, colorResetShort)
 		} else {
 			p.Printf("%s (pid %d)", proc.Command, proc.PID)
 		}

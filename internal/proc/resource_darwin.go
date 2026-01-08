@@ -106,9 +106,7 @@ func getThermalState() string {
 					case "2":
 						return "Heavy thermal pressure"
 					default:
-						if level != "0" {
-							return "Thermal pressure level " + level
-						}
+						return "Thermal pressure level " + level
 					}
 				}
 			}

@@ -1,9 +1,9 @@
-//go:build linux || darwin
+//go:build linux || darwin || freebsd || windows
 
 package main
 
 import (
-	"github.com/pranshuparmar/witr/cmd"
+	"github.com/pranshuparmar/witr/internal/app"
 )
 
 var (
@@ -15,6 +15,6 @@ var (
 // go build -ldflags "-X main.version=v0.1.0 -X main.commit=$(git rev-parse --short HEAD) -X 'main.buildDate=$(date +%Y-%m-%d)'" -o witr ./cmd/witr
 
 func main() {
-	cmd.SetVersionBuildCommitString(version, commit, buildDate)
-	cmd.Execute()
+	app.SetVersionBuildCommitString(version, commit, buildDate)
+	app.Execute()
 }

@@ -80,8 +80,7 @@ func ResolveName(name string) ([]int, error) {
 
 		// Match against full command line
 		if strings.Contains(args, lowerName) &&
-			!strings.Contains(args, "grep") &&
-			!strings.Contains(args, "witr") {
+			!strings.Contains(args, "grep") {
 			procPIDs = append(procPIDs, pid)
 		}
 	}

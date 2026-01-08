@@ -51,8 +51,7 @@ func ResolveName(name string) ([]int, error) {
 			cmd := strings.ReplaceAll(string(cmdline), "\x00", " ")
 			// Exclude self, parent, and grep
 			if strings.Contains(strings.ToLower(cmd), lowerName) &&
-				!strings.Contains(strings.ToLower(cmd), "grep") &&
-				!strings.Contains(strings.ToLower(cmd), "witr") {
+				!strings.Contains(strings.ToLower(cmd), "grep") {
 				procPIDs = append(procPIDs, pid)
 			}
 		}

@@ -1,6 +1,6 @@
-//go:build linux || darwin
+//go:build linux || darwin || freebsd || windows
 
-package cmd
+package app
 
 import (
 	"encoding/json"
@@ -36,7 +36,7 @@ var rootCmd = &cobra.Command{
 		DisableNoDescFlag: false,
 	},
 	Example: _genExamples(),
-	RunE:    runRoot,
+	RunE:    runApp,
 }
 
 func _genExamples() string {
@@ -115,7 +115,7 @@ func init() {
 
 }
 
-func runRoot(cmd *cobra.Command, args []string) error {
+func runApp(cmd *cobra.Command, args []string) error {
 	envFlag, _ := cmd.Flags().GetBool("env")
 	pidFlag, _ := cmd.Flags().GetString("pid")
 	portFlag, _ := cmd.Flags().GetString("port")
@@ -172,7 +172,10 @@ func runRoot(cmd *cobra.Command, args []string) error {
 				Env     []string `json:"Env"`
 			}
 			out := envOut{Command: procInfo.Cmdline, Env: procInfo.Env}
-			enc, _ := json.MarshalIndent(out, "", "  ")
+			enc, err := json.MarshalIndent(out, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal json: %w", err)
+			}
 			fmt.Fprintln(outw, string(enc))
 		} else {
 			output.RenderEnvOnly(outw, procInfo, !noColorFlag)
@@ -194,6 +197,9 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	pids, err := target.Resolve(t)
+	if err == nil && len(pids) == 0 {
+		err = fmt.Errorf("no matching process found")
+	}
 	if err != nil {
 		errStr := err.Error()
 		var errorMsg string
@@ -234,6 +240,34 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		resolvedTarget = proc.Command
 	}
 
+	if verboseFlag && len(ancestry) > 0 {
+		memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, err := procpkg.ReadExtendedInfo(pid)
+		if err == nil {
+			proc.Memory = memInfo
+			proc.IO = ioStats
+			proc.FileDescs = fileDescs
+			proc.FDCount = fdCount
+			proc.FDLimit = fdLimit
+			proc.Children = children
+			proc.ThreadCount = threadCount
+			ancestry[len(ancestry)-1] = proc
+		}
+	}
+
+	var resCtx *model.ResourceContext
+	var fileCtx *model.FileContext
+	if verboseFlag {
+		resCtx = procpkg.GetResourceContext(pid)
+		fileCtx = procpkg.GetFileContext(pid)
+	}
+
+	var childProcesses []model.Process
+	if (verboseFlag || treeFlag) && proc.PID > 0 {
+		if children, err := procpkg.ResolveChildren(proc.PID); err == nil {
+			childProcesses = children
+		}
+	}
+
 	// Calculate restart count (consecutive same-command entries)
 	restartCount := 0
 	lastCmd := ""
@@ -245,13 +279,18 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	res := model.Result{
-		Target:         t,
-		ResolvedTarget: resolvedTarget,
-		Process:        proc,
-		RestartCount:   restartCount,
-		Ancestry:       ancestry,
-		Source:         src,
-		Warnings:       source.Warnings(ancestry),
+		Target:          t,
+		ResolvedTarget:  resolvedTarget,
+		Process:         proc,
+		RestartCount:    restartCount,
+		Ancestry:        ancestry,
+		Source:          src,
+		Warnings:        source.Warnings(ancestry),
+		ResourceContext: resCtx,
+		FileContext:     fileCtx,
+	}
+	if len(childProcesses) > 0 {
+		res.ChildProcesses = childProcesses
 	}
 
 	// Add socket state info for port queries
@@ -263,19 +302,16 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Add resource context (thermal state, sleep prevention)
-	res.ResourceContext = procpkg.GetResourceContext(pid)
-
-	// Add file context (open files, locks)
-	res.FileContext = procpkg.GetFileContext(pid)
-
 	if jsonFlag {
-		importJSON, _ := output.ToJSON(res)
+		importJSON, err := output.ToJSON(res)
+		if err != nil {
+			return fmt.Errorf("failed to generate json output: %w", err)
+		}
 		fmt.Fprintln(outw, importJSON)
 	} else if warnFlag {
 		output.RenderWarnings(outw, res.Warnings, !noColorFlag)
 	} else if treeFlag {
-		output.PrintTree(outw, res.Ancestry, !noColorFlag)
+		output.PrintTree(outw, res.Ancestry, res.ChildProcesses, !noColorFlag)
 	} else if shortFlag {
 		output.RenderShort(outw, res, !noColorFlag)
 	} else {
@@ -283,7 +319,9 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 	return nil
 }
+
 func Root() *cobra.Command { return rootCmd }
+
 func SetVersionBuildCommitString(Version string, Commit string, BuildDate string) {
 	version = Version
 	commit = Commit

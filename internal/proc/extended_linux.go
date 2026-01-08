@@ -91,8 +91,10 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 		for _, line := range lines {
 			if strings.Contains(line, "Max open files") {
 				fields := strings.Fields(line)
-				if len(fields) >= 2 {
-					if limit, err := strconv.ParseUint(strings.ReplaceAll(fields[1], "-", "0"), 10, 64); err == nil {
+				if len(fields) >= 4 {
+					if fields[3] == "unlimited" {
+						fdLimit = 0
+					} else if limit, err := strconv.ParseUint(fields[3], 10, 64); err == nil {
 						fdLimit = limit
 					}
 				}

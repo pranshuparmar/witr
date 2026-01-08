@@ -220,9 +220,6 @@ func ReadProcess(pid int) (model.Process, error) {
 		container = resolveDockerProxyContainer(cmdline)
 	}
 
-	// Read extended information
-	memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, _ := ReadExtendedInfo(pid)
-
 	return model.Process{
 		PID:            pid,
 		PPID:           ppid,
@@ -240,13 +237,6 @@ func ReadProcess(pid int) (model.Process, error) {
 		Health:         health,
 		Forked:         forked,
 		Env:            env,
-		Memory:         memInfo,
-		IO:             ioStats,
-		FileDescs:      fileDescs,
-		FDCount:        fdCount,
-		FDLimit:        fdLimit,
-		Children:       children,
-		ThreadCount:    threadCount,
 	}, nil
 }
 
