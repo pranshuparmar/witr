@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/internal/output"
 )
 
 func ResolveName(name string) ([]int, error) {
@@ -74,18 +76,20 @@ func ResolveName(name string) ([]int, error) {
 		uniquePIDs[pid] = true
 	}
 	if len(uniquePIDs) > 1 {
-		fmt.Printf("Ambiguous target: \"%s\"\n\n", name)
+		safeName := output.SanitizeTerminal(name)
+
+		fmt.Printf("Ambiguous target: \"%s\"\n\n", safeName)
 		fmt.Println("The name matches multiple entities:")
 		fmt.Println()
 		// Service entry first
-		fmt.Printf("[1] PID %d   %s: master process   (service)\n", servicePID, name)
+		fmt.Printf("[1] PID %d   %s: master process   (service)\n", servicePID, safeName)
 		// Process entries (skip if PID matches servicePID)
 		idx := 2
 		for _, pid := range procPIDs {
 			if pid == servicePID {
 				continue
 			}
-			fmt.Printf("[%d] PID %d   %s: worker process   (manual)\n", idx, pid, name)
+			fmt.Printf("[%d] PID %d   %s: worker process   (manual)\n", idx, pid, safeName)
 			idx++
 		}
 		fmt.Println()

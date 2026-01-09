@@ -1,24 +1,33 @@
 package output
 
 import (
-	"fmt"
+	"io"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-func PrintChildren(root model.Process, children []model.Process, colorEnabled bool) {
-	rootLine := formatProcessLine(root, colorEnabled)
+func PrintChildren(w io.Writer, root model.Process, children []model.Process, colorEnabled bool) {
+	p := NewPrinter(w)
+
+	rootName := root.Command
+	if rootName == "" && root.Cmdline != "" {
+		rootName = root.Cmdline
+	}
+	if rootName == "" {
+		rootName = "unknown"
+	}
+
 	if colorEnabled {
-		fmt.Printf("%sChildren%s of %s:\n", colorMagentaTree, colorResetTree, rootLine)
+		p.Printf("%sChildren%s of %s (%spid %d%s):\n", colorMagentaTree, colorResetTree, rootName, colorBoldTree, root.PID, colorResetTree)
 	} else {
-		fmt.Printf("Children of %s:\n", rootLine)
+		p.Printf("Children of %s (pid %d):\n", rootName, root.PID)
 	}
 
 	if len(children) == 0 {
 		if colorEnabled {
-			fmt.Printf("%sNo child processes found.%s\n", colorGreen, colorReset)
+			p.Printf("%sNo child processes found.%s\n", colorGreen, colorReset)
 		} else {
-			fmt.Println("No child processes found.")
+			p.Println("No child processes found.")
 		}
 		return
 	}
@@ -28,38 +37,32 @@ func PrintChildren(root model.Process, children []model.Process, colorEnabled bo
 	for i, child := range children {
 		if i >= limit {
 			remaining := count - limit
-			prefix := treeConnector(true, colorEnabled)
-			fmt.Printf("  %s... and %d more\n", prefix, remaining)
+			if colorEnabled {
+				p.Printf("  %s└─ %s... and %d more\n", colorMagentaTree, colorResetTree, remaining)
+			} else {
+				p.Printf("  └─ ... and %d more\n", remaining)
+			}
 			break
 		}
 
+		connector := "├─ "
 		isLast := (i == count-1) || (i == limit-1 && count <= limit)
-		prefix := treeConnector(isLast, colorEnabled)
-		fmt.Printf("  %s%s\n", prefix, formatProcessLine(child, colorEnabled))
-	}
-}
+		if isLast {
+			connector = "└─ "
+		}
 
-func treeConnector(isLast bool, colorEnabled bool) string {
-	connector := "├─ "
-	if isLast {
-		connector = "└─ "
-	}
-	if colorEnabled {
-		return colorMagentaTree + connector + colorResetTree
-	}
-	return connector
-}
+		childName := child.Command
+		if childName == "" && child.Cmdline != "" {
+			childName = child.Cmdline
+		}
+		if childName == "" {
+			childName = "unknown"
+		}
 
-func formatProcessLine(proc model.Process, colorEnabled bool) string {
-	name := proc.Command
-	if name == "" && proc.Cmdline != "" {
-		name = proc.Cmdline
+		if colorEnabled {
+			p.Printf("  %s%s%s%s (%spid %d%s)\n", colorMagentaTree, connector, colorResetTree, childName, colorBoldTree, child.PID, colorResetTree)
+		} else {
+			p.Printf("  %s%s (pid %d)\n", connector, childName, child.PID)
+		}
 	}
-	if name == "" {
-		name = "unknown"
-	}
-	if colorEnabled {
-		return fmt.Sprintf("%s (%spid %d%s)", name, colorBoldTree, proc.PID, colorResetTree)
-	}
-	return fmt.Sprintf("%s (pid %d)", name, proc.PID)
 }

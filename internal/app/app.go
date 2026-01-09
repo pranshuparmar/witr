@@ -101,6 +101,7 @@ func init() {
 	rootCmd.Version = version
 
 	rootCmd.SetVersionTemplate(fmt.Sprintf("witr {{.Version}} (commit %s, built %s)\n", commit, buildDate))
+	rootCmd.SetErr(output.NewSafeTerminalWriter(os.Stderr))
 
 	rootCmd.Flags().String("pid", "", "pid to look up")
 	rootCmd.Flags().String("port", "", "port to look up")
@@ -130,6 +131,9 @@ func runApp(cmd *cobra.Command, args []string) error {
 	noColorFlag, _ := cmd.Flags().GetBool("no-color")
 	verboseFlag, _ := cmd.Flags().GetBool("verbose")
 
+	outw := cmd.OutOrStdout()
+	outp := output.NewPrinter(outw)
+
 	if envFlag {
 		var t model.Target
 		switch {
@@ -148,13 +152,13 @@ func runApp(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("error: %v", err)
 		}
 		if len(pids) > 1 {
-			fmt.Print("Multiple matching processes found:\n\n")
+			outp.Print("Multiple matching processes found:\n\n")
 			for i, pid := range pids {
 				cmdline := procpkg.GetCmdline(pid)
-				fmt.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
+				outp.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
 			}
-			fmt.Println("\nRe-run with:")
-			fmt.Println("  witr --pid <pid> --env")
+			outp.Println("\nRe-run with:")
+			outp.Println("  witr --pid <pid> --env")
 			return fmt.Errorf("multiple processes found")
 		}
 		pid := pids[0]
@@ -172,9 +176,9 @@ func runApp(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return fmt.Errorf("failed to marshal json: %w", err)
 			}
-			fmt.Println(string(enc))
+			fmt.Fprintln(outw, string(enc))
 		} else {
-			output.RenderEnvOnly(procInfo, !noColorFlag)
+			output.RenderEnvOnly(outw, procInfo, !noColorFlag)
 		}
 		return nil
 	}
@@ -208,13 +212,13 @@ func runApp(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(pids) > 1 {
-		fmt.Print("Multiple matching processes found:\n\n")
+		outp.Print("Multiple matching processes found:\n\n")
 		for i, pid := range pids {
 			cmdline := procpkg.GetCmdline(pid)
-			fmt.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
+			outp.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
 		}
-		fmt.Println("\nRe-run with:")
-		fmt.Println("  witr --pid <pid>")
+		outp.Println("\nRe-run with:")
+		outp.Println("  witr --pid <pid>")
 		return fmt.Errorf("multiple processes found")
 	}
 
@@ -222,7 +226,8 @@ func runApp(cmd *cobra.Command, args []string) error {
 
 	ancestry, err := procpkg.ResolveAncestry(pid)
 	if err != nil {
-		errorMsg := fmt.Sprintf("%s\n\nNo matching process or service found. Please check your query or try a different name/port/PID.\nFor usage and options, run: witr --help", err.Error())
+		errStr := err.Error()
+		errorMsg := fmt.Sprintf("%s\n\nNo matching process or service found. Please check your query or try a different name/port/PID.\nFor usage and options, run: witr --help", errStr)
 		return errors.New(errorMsg)
 	}
 
@@ -251,7 +256,6 @@ func runApp(cmd *cobra.Command, args []string) error {
 
 	var resCtx *model.ResourceContext
 	var fileCtx *model.FileContext
-
 	if verboseFlag {
 		resCtx = procpkg.GetResourceContext(pid)
 		fileCtx = procpkg.GetFileContext(pid)
@@ -303,19 +307,21 @@ func runApp(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to generate json output: %w", err)
 		}
-		fmt.Println(importJSON)
+		fmt.Fprintln(outw, importJSON)
 	} else if warnFlag {
-		output.RenderWarnings(res.Warnings, !noColorFlag)
+		output.RenderWarnings(outw, res.Warnings, !noColorFlag)
 	} else if treeFlag {
-		output.PrintTree(res.Ancestry, res.ChildProcesses, !noColorFlag)
+		output.PrintTree(outw, res.Ancestry, res.ChildProcesses, !noColorFlag)
 	} else if shortFlag {
-		output.RenderShort(res, !noColorFlag)
+		output.RenderShort(outw, res, !noColorFlag)
 	} else {
-		output.RenderStandard(res, !noColorFlag, verboseFlag)
+		output.RenderStandard(outw, res, !noColorFlag, verboseFlag)
 	}
 	return nil
 }
+
 func Root() *cobra.Command { return rootCmd }
+
 func SetVersionBuildCommitString(Version string, Commit string, BuildDate string) {
 	version = Version
 	commit = Commit

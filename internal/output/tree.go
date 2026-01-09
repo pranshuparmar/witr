@@ -1,92 +1,72 @@
 package output
 
 import (
-	"fmt"
+	"io"
+	"strings"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
 var (
-	colorResetTree   = "\033[0m"
-	colorMagentaTree = "\033[35m"
-	colorGreenTree   = "\033[32m"
-	colorBoldTree    = "\033[2m"
+	colorResetTree   = ansiString("\033[0m")
+	colorMagentaTree = ansiString("\033[35m")
+	colorGreenTree   = ansiString("\033[32m")
+	colorBoldTree    = ansiString("\033[2m")
 )
 
-func PrintTree(chain []model.Process, children []model.Process, colorEnabled bool) {
-	colorReset := ""
-	colorMagenta := ""
-	colorGreen := ""
-	colorBold := ""
-	if colorEnabled {
-		colorReset = colorResetTree
-		colorMagenta = colorMagentaTree
-		colorGreen = colorGreenTree
-		colorBold = colorBoldTree
-	}
-	for i, p := range chain {
-		prefix := ""
-		for j := 0; j < i; j++ {
-			prefix += "  "
-		}
+func PrintTree(w io.Writer, chain []model.Process, children []model.Process, colorEnabled bool) {
+	p := NewPrinter(w)
+
+	for i, proc := range chain {
+		indent := strings.Repeat("  ", i)
 		if i > 0 {
 			if colorEnabled {
-				prefix += colorMagenta + "└─ " + colorReset
+				p.Printf("%s%s└─ %s", indent, colorMagentaTree, colorResetTree)
 			} else {
-				prefix += "└─ "
+				p.Printf("%s└─ ", indent)
 			}
 		}
+
 		if colorEnabled {
-			// Highlight target process (last in chain) in green
-			cmdColor := ""
+			cmdColor := ansiString("")
 			if i == len(chain)-1 {
-				cmdColor = colorGreen
+				cmdColor = colorGreenTree
 			}
-			fmt.Printf("%s%s%s%s (%spid %d%s)\n", prefix, cmdColor, p.Command, colorReset, colorBold, p.PID, colorReset)
+			p.Printf("%s%s%s (%spid %d%s)\n", cmdColor, proc.Command, colorResetTree, colorBoldTree, proc.PID, colorResetTree)
 		} else {
-			fmt.Printf("%s%s (pid %d)\n", prefix, p.Command, p.PID)
+			p.Printf("%s (pid %d)\n", proc.Command, proc.PID)
 		}
 	}
 
-	// Print children if any
-	if len(children) > 0 {
-		basePrefix := ""
-		for j := 0; j < len(chain); j++ {
-			basePrefix += "  "
+	if len(children) == 0 {
+		return
+	}
+
+	baseIndent := strings.Repeat("  ", len(chain))
+
+	limit := 10
+	count := len(children)
+	for i, child := range children {
+		if i >= limit {
+			remaining := count - limit
+			if colorEnabled {
+				p.Printf("%s%s└─ %s... and %d more\n", baseIndent, colorMagentaTree, colorResetTree, remaining)
+			} else {
+				p.Printf("%s└─ ... and %d more\n", baseIndent, remaining)
+			}
+			break
 		}
 
-		limit := 10
-		count := len(children)
-		for i, child := range children {
-			if i >= limit {
-				remaining := count - limit
-				prefix := basePrefix
-				if colorEnabled {
-					prefix += colorMagenta + "└─ " + colorReset
-				} else {
-					prefix += "└─ "
-				}
-				fmt.Printf("%s... and %d more\n", prefix, remaining)
-				break
-			}
+		connector := "├─ "
+		isLast := (i == count-1) || (i == limit-1 && count <= limit)
+		if isLast {
+			connector = "└─ "
+		}
 
-			connector := "├─ "
-			if i == count-1 || (i == limit-1 && count <= limit) {
-				connector = "└─ "
-			}
-
-			prefix := basePrefix
-			if colorEnabled {
-				prefix += colorMagenta + connector + colorReset
-			} else {
-				prefix += connector
-			}
-
-			if colorEnabled {
-				fmt.Printf("%s%s (%spid %d%s)\n", prefix, child.Command, colorBold, child.PID, colorReset)
-			} else {
-				fmt.Printf("%s%s (pid %d)\n", prefix, child.Command, child.PID)
-			}
+		if colorEnabled {
+			p.Printf("%s%s%s%s%s (%spid %d%s)\n", baseIndent, colorMagentaTree, connector, colorResetTree, child.Command, colorBoldTree, child.PID, colorResetTree)
+		} else {
+			p.Printf("%s%s%s (pid %d)\n", baseIndent, connector, child.Command, child.PID)
 		}
 	}
 }

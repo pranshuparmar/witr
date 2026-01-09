@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/internal/output"
 )
 
 func ResolvePort(port int) ([]int, error) {
@@ -187,9 +189,9 @@ func handlePortAmbiguity(port int, addressToPID map[string]int) ([]int, error) {
 	for i, entry := range entries {
 		// Get command name
 		cmdline := "(unknown)"
-		out, err := exec.Command("ps", "-p", strconv.Itoa(entry.pid), "-o", "args").Output()
+		psOut, err := exec.Command("ps", "-p", strconv.Itoa(entry.pid), "-o", "args").Output()
 		if err == nil {
-			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+			lines := strings.Split(strings.TrimSpace(string(psOut)), "\n")
 			if len(lines) >= 2 {
 				cmdline = strings.TrimSpace(lines[1])
 			}
@@ -202,8 +204,10 @@ func handlePortAmbiguity(port int, addressToPID map[string]int) ([]int, error) {
 			context = " (jail)"
 		}
 
-		fmt.Fprintf(os.Stderr, "[%d] PID %d   %s   %s%s\n",
-			i+1, entry.pid, entry.addr, cmdline, context)
+		safeAddr := output.SanitizeTerminal(entry.addr)
+		safeCmdline := output.SanitizeTerminal(cmdline)
+		safeContext := output.SanitizeTerminal(context)
+		fmt.Fprintf(os.Stderr, "[%d] PID %d   %s   %s%s\n", i+1, entry.pid, safeAddr, safeCmdline, safeContext)
 	}
 
 	fmt.Fprintln(os.Stderr, "")
