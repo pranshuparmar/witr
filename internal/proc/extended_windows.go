@@ -21,11 +21,12 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 	var fdCount int
 	var fdLimit uint64
 
-	// Use wmic to get process details
-	cmd := exec.Command("wmic", "process", "where", fmt.Sprintf("ProcessId=%d", pid), "get", "HandleCount,ReadOperationCount,ReadTransferCount,ThreadCount,VirtualSize,WorkingSetSize,WriteOperationCount,WriteTransferCount", "/format:list")
+	// Use powershell to get process details
+	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ProcessId=%d\" | ForEach-Object { \"HandleCount=$($_.HandleCount)\"; \"ReadOperationCount=$($_.ReadOperationCount)\"; \"ReadTransferCount=$($_.ReadTransferCount)\"; \"ThreadCount=$($_.ThreadCount)\"; \"VirtualSize=$($_.VirtualSize)\"; \"WorkingSetSize=$($_.WorkingSetSize)\"; \"WriteOperationCount=$($_.WriteOperationCount)\"; \"WriteTransferCount=$($_.WriteTransferCount)\" }", pid)
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript)
 	out, err := cmd.Output()
 	if err != nil {
-		return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, fmt.Errorf("wmic extended info: %w", err)
+		return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, fmt.Errorf("powershell extended info: %w", err)
 	}
 
 	lines := strings.Split(string(out), "\n")
@@ -63,19 +64,18 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 		}
 	}
 
-	childCmd := exec.Command("wmic", "process", "where", fmt.Sprintf("ParentProcessId=%d", pid), "get", "ProcessId", "/format:csv")
+	childCmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ParentProcessId=%d\" | Select-Object ProcessId | ConvertTo-Csv -NoTypeInformation", pid))
 	if childOut, err := childCmd.Output(); err == nil {
 		childLines := strings.Split(string(childOut), "\n")
 		for _, line := range childLines {
 			line = strings.TrimSpace(line)
-			if line == "" || strings.HasPrefix(line, "Node") {
+			if line == "" || strings.HasPrefix(line, "\"ProcessId\"") {
 				continue
 			}
-			parts := strings.Split(line, ",")
-			if len(parts) >= 2 {
-				if cpid, err := strconv.Atoi(strings.TrimSpace(parts[len(parts)-1])); err == nil {
-					children = append(children, cpid)
-				}
+			// "1234"
+			pidStr := strings.Trim(line, "\"")
+			if cpid, err := strconv.Atoi(pidStr); err == nil {
+				children = append(children, cpid)
 			}
 		}
 	}

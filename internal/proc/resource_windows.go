@@ -12,8 +12,9 @@ import (
 )
 
 func GetResourceContext(pid int) *model.ResourceContext {
-	// wmic path Win32_PerfFormattedData_PerfProc_Process where IDProcess=PID get PercentProcessorTime,WorkingSetPrivate /format:list
-	cmd := exec.Command("wmic", "path", "Win32_PerfFormattedData_PerfProc_Process", "where", fmt.Sprintf("IDProcess=%d", pid), "get", "PercentProcessorTime,WorkingSetPrivate", "/format:list")
+	// powershell Get-CimInstance Win32_PerfFormattedData_PerfProc_Process
+	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_PerfFormattedData_PerfProc_Process -Filter \"IDProcess=%d\" | ForEach-Object { 'PercentProcessorTime=' + $_.PercentProcessorTime; 'WorkingSetPrivate=' + $_.WorkingSetPrivate }", pid)
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil

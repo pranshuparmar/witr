@@ -548,7 +548,7 @@ pixi exec witr --help
 
 - **Linux** (x86_64, arm64) - Full feature support (`/proc`).
 - **macOS** (x86_64, arm64) - Uses `ps`, `lsof`, `sysctl`, `pgrep`.
-- **Windows** (x86_64, arm64) - Uses `wmic`, `tasklist`, `netstat`.
+- **Windows** (x86_64, arm64) - Uses `Get-CimInstance`, `tasklist`, `netstat`.
 - **FreeBSD** (x86_64, arm64) - Uses `procstat`, `ps`, `lsof`.
 
 ---
@@ -609,7 +609,7 @@ Note: Due to macOS System Integrity Protection (SIP), some system process detail
 
 #### Windows
 
-On Windows, witr uses `wmic`, `tasklist`, and `netstat`. To see details for processes owned by other users or system services, you must run the terminal as **Administrator**.
+On Windows, witr uses `Get-CimInstance`, `tasklist`, and `netstat`. To see details for processes owned by other users or system services, you must run the terminal as **Administrator**.
 
 ```powershell
 # Run in Administrator PowerShell

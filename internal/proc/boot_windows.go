@@ -9,19 +9,14 @@ import (
 )
 
 func bootTime() time.Time {
-	// wmic os get lastbootuptime
-	out, err := exec.Command("wmic", "os", "get", "lastbootuptime").Output()
+	// powershell Get-CimInstance Win32_OperatingSystem
+	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", "Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object -ExpandProperty LastBootUpTime | Get-Date -Format 'yyyyMMddHHmmss'").Output()
 	if err != nil {
 		return time.Now()
 	}
 	// Output format:
-	// LastBootUpTime
-	// 20231025123456.123456+120
-	lines := strings.Split(string(out), "\n")
-	if len(lines) < 2 {
-		return time.Now()
-	}
-	val := strings.TrimSpace(lines[1])
+	// 20231025123456
+	val := strings.TrimSpace(string(out))
 	if len(val) < 14 {
 		return time.Now()
 	}

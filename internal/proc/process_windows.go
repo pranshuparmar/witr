@@ -32,17 +32,17 @@ func ReadProcess(pid int) (model.Process, error) {
 		name = strings.Trim(parts[0], "\"")
 	}
 
-	// Get more info via wmic
-	// wmic process where processid=PID get CommandLine,CreationDate,ExecutablePath,ParentProcessId /format:list
-	wmicCmd := exec.Command("wmic", "process", "where", fmt.Sprintf("processid=%d", pid), "get", "CommandLine,CreationDate,ExecutablePath,ParentProcessId,Status", "/format:list")
-	wmicOut, _ := wmicCmd.Output()
+	// Get more info via powershell
+	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ProcessId=%d\" | ForEach-Object { \"CommandLine=$($_.CommandLine)\"; \"CreationDate=$($_.CreationDate.ToUniversalTime().ToString('yyyyMMddHHmmss'))\"; \"ExecutablePath=$($_.ExecutablePath)\"; \"ParentProcessId=$($_.ParentProcessId)\"; \"Status=$($_.Status)\" }", pid)
+	psCmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript)
+	psOut, _ := psCmd.Output()
 
 	var cmdline, exe string
 	var ppid int
 	var startedAt time.Time
 	health := "healthy"
 
-	lines := strings.Split(string(wmicOut), "\n")
+	lines := strings.Split(string(psOut), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -52,25 +52,12 @@ func ReadProcess(pid int) (model.Process, error) {
 			cmdline = strings.TrimPrefix(line, "CommandLine=")
 		} else if strings.HasPrefix(line, "CreationDate=") {
 			val := strings.TrimPrefix(line, "CreationDate=")
-			// Format: YYYYMMDDHHMMSS.mmmmmm+UUU
-			if len(val) >= 21 {
+			// Format: YYYYMMDDHHMMSS (UTC)
+			if len(val) >= 14 {
 				t, err := time.Parse("20060102150405", val[:14])
 				if err == nil {
-					offsetPart := val[len(val)-4:]
-					sign := offsetPart[0]
-					offsetMins, err := strconv.Atoi(offsetPart[1:])
-					if err == nil {
-						if sign == '-' {
-							offsetMins = -offsetMins
-						}
-						loc := time.FixedZone("Local", offsetMins*60)
-						startedAt = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), loc)
-					} else {
-						startedAt = t
-					}
+					startedAt = t
 				}
-			} else if len(val) >= 14 {
-				startedAt, _ = time.Parse("20060102150405", val[:14])
 			}
 		} else if strings.HasPrefix(line, "ExecutablePath=") {
 			exe = strings.TrimPrefix(line, "ExecutablePath=")
