@@ -54,7 +54,7 @@ func GetSocketStateForPort(port int) *model.SocketInfo {
 
 			// Field 3: st (state in hex)
 			stateHex := fields[3]
-			stateVal, _ := strconv.ParseInt(stateHex, 16, 64)
+			stateVal, _ := strconv.ParseInt(stateHex, 16, 0)
 			stateStr := mapTCPState(int(stateVal))
 
 			info := model.SocketInfo{

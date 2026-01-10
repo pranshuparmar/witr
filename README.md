@@ -296,15 +296,12 @@ witr nginx
 ```
 
 ```
-Ambiguous target: "nginx"
+Multiple matching processes found:
 
-The name matches multiple entities:
+[1] PID 2311  nginx -g daemon off;
+[2] PID 24891 nginx -g daemon off;
 
-[1] PID 2311   nginx: master process   (service)
-[2] PID 24891  nginx: worker process   (manual)
-
-witr cannot determine intent safely.
-Please re-run with an explicit PID:
+Re-run with:
   witr --pid <pid>
 ```
 

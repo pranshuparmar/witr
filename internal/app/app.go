@@ -152,6 +152,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("error: %v", err)
 		}
 		if len(pids) > 1 {
+			cmd.SilenceErrors = true
 			outp.Print("Multiple matching processes found:\n\n")
 			for i, pid := range pids {
 				cmdline := procpkg.GetCmdline(pid)
@@ -212,6 +213,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(pids) > 1 {
+		cmd.SilenceErrors = true
 		outp.Print("Multiple matching processes found:\n\n")
 		for i, pid := range pids {
 			cmdline := procpkg.GetCmdline(pid)

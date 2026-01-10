@@ -1,0 +1,149 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions: read-all
+
+jobs:
+  build:
+    name: "Build: Binaries"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+            run_tests: true
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+            run_tests: false
+          - os: darwin
+            arch: amd64
+            runner: macos-15
+            run_tests: true
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+            run_tests: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+
+      - name: Build ${{ matrix.os }}/${{ matrix.arch }}
+        run: |
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o witr-${{ matrix.os }}-${{ matrix.arch }} ./cmd/witr
+          chmod +x witr-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: witr-${{ matrix.os }}-${{ matrix.arch }}
+          path: witr-${{ matrix.os }}-${{ matrix.arch }}
+
+  functional-tests:
+    name: "Tests: Functional"
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+            run_tests: true
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+            run_tests: false
+          - os: darwin
+            arch: amd64
+            runner: macos-15
+            run_tests: true
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+            run_tests: true
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: witr-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Make executable
+        run: chmod +x witr-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Verify Version
+        if: matrix.run_tests == true
+        run: ./witr-${{ matrix.os }}-${{ matrix.arch }} --version
+
+      - name: Verify Help
+        if: matrix.run_tests == true
+        run: ./witr-${{ matrix.os }}-${{ matrix.arch }} --help
+
+      - name: Verify PID & Flags
+        if: matrix.run_tests == true
+        run: |
+          BINARY=./witr-${{ matrix.os }}-${{ matrix.arch }}
+          
+          # Start a background process
+          sleep 60 &
+          TEST_PID=$!
+          echo "Testing against PID: $TEST_PID"
+          
+          # Basic PID lookup
+          $BINARY --pid $TEST_PID
+          
+          # JSON output
+          $BINARY --pid $TEST_PID --json
+          
+          # Env vars
+          $BINARY --pid $TEST_PID --env
+          
+          # Short output
+          $BINARY --pid $TEST_PID --short
+          
+          # No color
+          $BINARY --pid $TEST_PID --no-color
+          
+          # Cleanup
+          kill $TEST_PID
+
+      - name: Verify Tree View (Nested Process)
+        if: matrix.run_tests == true
+        run: |
+          BINARY=./witr-${{ matrix.os }}-${{ matrix.arch }}
+          
+          # Create a nested chain: sh -> sh -> sleep
+          sh -c 'sh -c "sleep 60 & echo \$! > pid.txt" & wait' &
+          
+          # Wait for pid file
+          count=0
+          while [ ! -f pid.txt ] && [ $count -lt 10 ]; do
+            sleep 1
+            count=$((count+1))
+          done
+          
+          if [ ! -f pid.txt ]; then
+            echo "Failed to start background process"
+            exit 1
+          fi
+          
+          TEST_PID=$(cat pid.txt)
+          rm pid.txt
+          echo "Testing against PID: $TEST_PID"
+          
+          # Tree view
+          $BINARY --pid $TEST_PID --tree
+          
+          # Cleanup
+          kill $TEST_PID

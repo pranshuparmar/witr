@@ -7,10 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/pranshuparmar/witr/internal/output"
 )
 
 // isValidServiceLabel validates that a service name contains only
@@ -94,62 +93,31 @@ func ResolveName(name string) ([]int, error) {
 		}
 	}
 
-	// If all matches are filtered out, treat as no result
-	if len(procPIDs) == 0 {
-		return nil, fmt.Errorf("no running process or service named %q", name)
-	}
-
 	// Service detection (rc.d)
 	servicePID, _ := resolveRcServicePID(name)
 
-	// Ambiguity: both process and service, but only if there are at least two unique PIDs
-	uniquePIDs := map[int]bool{}
-	if servicePID > 0 {
-		uniquePIDs[servicePID] = true
-	}
+	// Merge and dedupe matches, keeping service PID first.
+	seen := map[int]bool{}
+	var procUnique []int
 	for _, pid := range procPIDs {
-		uniquePIDs[pid] = true
+		if pid == servicePID || seen[pid] {
+			continue
+		}
+		seen[pid] = true
+		procUnique = append(procUnique, pid)
 	}
-	if len(uniquePIDs) > 1 {
-		safeName := output.SanitizeTerminal(name)
+	sort.Ints(procUnique)
 
-		fmt.Printf("Ambiguous target: \"%s\"\n\n", safeName)
-		fmt.Println("The name matches multiple entities:")
-		fmt.Println()
-		// Service entry first
-		if servicePID > 0 {
-			fmt.Printf("[1] PID %d   %s: rc.d service   (service)\n", servicePID, safeName)
-		}
-		// Process entries (skip if PID matches servicePID)
-		idx := 2
-		if servicePID == 0 {
-			idx = 1
-		}
-		for _, pid := range procPIDs {
-			if pid == servicePID {
-				continue
-			}
-			fmt.Printf("[%d] PID %d   %s: process   (manual)\n", idx, pid, safeName)
-			idx++
-		}
-		fmt.Println()
-		fmt.Println("witr cannot determine intent safely.")
-		fmt.Println("Please re-run with an explicit PID:")
-		fmt.Println("  witr --pid <pid>")
-		os.Exit(1)
-	}
-
-	// Service only
+	var pids []int
 	if servicePID > 0 {
-		return []int{servicePID}, nil
+		pids = append(pids, servicePID)
 	}
+	pids = append(pids, procUnique...)
 
-	// Process only
-	if len(procPIDs) > 0 {
-		return procPIDs, nil
+	if len(pids) == 0 {
+		return nil, fmt.Errorf("no running process or service named %q", name)
 	}
-
-	return nil, fmt.Errorf("no running process or service named %q", name)
+	return pids, nil
 }
 
 // resolveRcServicePID tries to resolve a FreeBSD rc.d service and returns its PID if running.

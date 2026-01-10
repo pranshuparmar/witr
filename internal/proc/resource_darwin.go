@@ -20,8 +20,14 @@ func GetResourceContext(pid int) *model.ResourceContext {
 	// Get thermal state
 	ctx.ThermalState = getThermalState()
 
+	cpu, mem, err := getCPUAndMemoryUsage(pid)
+	if err == nil {
+		ctx.CPUUsage = cpu
+		ctx.MemoryUsage = mem
+	}
+
 	// Only return if we have meaningful data
-	if ctx.PreventsSleep || ctx.ThermalState != "" {
+	if ctx.PreventsSleep || ctx.ThermalState != "" || err == nil {
 		return ctx
 	}
 
@@ -125,4 +131,36 @@ func GetEnergyImpact(pid int) string {
 	// A future enhancement could parse Activity Monitor's energy data via private APIs
 
 	return ""
+}
+
+func getCPUAndMemoryUsage(pid int) (float64, uint64, error) {
+	// Construct the command to execute
+	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "%cpu=,rss=").Output()
+
+	if err != nil {
+		return 0, 0, err
+	}
+
+	output := string(out)
+	fields := strings.Fields(output)
+	if len(fields) < 2 {
+		return 0, 0, err
+	}
+
+	// Parse CPU usage
+	cpuUsage, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Parse RSS (Resident Set Size) memory usage in kilobytes
+	rssKilobytes, err := strconv.ParseUint(fields[1], 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Convert kilobytes to bytes
+	memoryUsageBytes := rssKilobytes * 1024
+
+	return cpuUsage, memoryUsageBytes, nil
 }
