@@ -139,7 +139,31 @@ func ReadProcess(pid int) (model.Process, error) {
 		Health:         health,
 		Forked:         forked,
 		Env:            env,
+		ExeDeleted:     isBinaryDeleted(pid),
 	}, nil
+}
+
+func isBinaryDeleted(pid int) bool {
+	// Use lsof to get the executable path (txt)
+	out, err := exec.Command("lsof", "-a", "-p", strconv.Itoa(pid), "-d", "txt", "-F", "n").Output()
+	if err != nil {
+		return false
+	}
+
+	path := ""
+	for line := range strings.Lines(string(out)) {
+		if len(line) > 1 && line[0] == 'n' {
+			path = line[1:]
+			break
+		}
+	}
+
+	if path == "" {
+		return false
+	}
+
+	_, err = os.Stat(path)
+	return os.IsNotExist(err)
 }
 
 // deriveDisplayCommand returns a human-readable command name that avoids macOS

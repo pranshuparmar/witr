@@ -29,6 +29,9 @@ type Process struct {
 	// Environment variables (key=value)
 	Env []string
 
+	// True if the executable was deleted after the process started
+	ExeDeleted bool
+
 	// Extended information for verbose output
 	Memory      MemoryInfo `json:",omitempty"`
 	IO          IOStats    `json:",omitempty"`

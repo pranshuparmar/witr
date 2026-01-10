@@ -4,6 +4,7 @@ package proc
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -101,5 +102,14 @@ func ReadProcess(pid int) (model.Process, error) {
 		Health:         health,
 		Forked:         "unknown",
 		Env:            []string{}, // Hard to get on Windows
+		ExeDeleted:     isWindowsBinaryDeleted(exe),
 	}, nil
+}
+
+func isWindowsBinaryDeleted(path string) bool {
+	if path == "" {
+		return false
+	}
+	_, err := os.Stat(path)
+	return os.IsNotExist(err)
 }
