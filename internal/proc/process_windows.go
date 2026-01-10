@@ -87,6 +87,9 @@ func ReadProcess(pid int) (model.Process, error) {
 
 	ports, addrs := GetListeningPortsForPID(pid)
 
+	wd, env := readPEBData(pid)
+	serviceName := detectWindowsServiceSource(pid)
+
 	return model.Process{
 		PID:            pid,
 		PPID:           ppid,
@@ -95,11 +98,27 @@ func ReadProcess(pid int) (model.Process, error) {
 		Exe:            exe,
 		StartedAt:      startedAt,
 		User:           readUser(pid),
-		WorkingDir:     "unknown", // Hard to get on Windows without injection
+		WorkingDir:     wd,
 		ListeningPorts: ports,
 		BindAddresses:  addrs,
 		Health:         health,
 		Forked:         "unknown",
-		Env:            []string{}, // Hard to get on Windows
+		Env:            env,
+		Service:        serviceName,
 	}, nil
+}
+
+// detectWindowsServiceSource checks if a PID belongs to a Windows Service via wmic.
+func detectWindowsServiceSource(pid int) string {
+	cmd := exec.Command("wmic", "service", "where", fmt.Sprintf("ProcessId=%d", pid), "get", "Name", "/format:list")
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	return parseWmicServiceName(string(out))
+}
+
+func parseWmicServiceName(output string) string {
+	return parseWmicServiceNameInternal(output)
 }
