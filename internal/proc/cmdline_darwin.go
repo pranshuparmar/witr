@@ -3,14 +3,13 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 )
 
 // GetCmdline returns the command line for a given PID
 func GetCmdline(pid int) string {
-	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "args=").Output()
+	out, err := executor.Run("ps", "-p", strconv.Itoa(pid), "-o", "args=")
 	if err != nil {
 		return "(unknown)"
 	}

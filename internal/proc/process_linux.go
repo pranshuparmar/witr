@@ -5,7 +5,6 @@ package proc
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -98,7 +97,7 @@ func ReadProcess(pid int) (model.Process, error) {
 
 	// Service detection (try systemctl show for this PID)
 	service := ""
-	svcOut, err := exec.Command("systemctl", "status", fmt.Sprintf("%d", pid)).CombinedOutput()
+	svcOut, err := executor.Run("systemctl", "status", fmt.Sprintf("%d", pid))
 	if err == nil && strings.Contains(string(svcOut), "Loaded: loaded") {
 		// Try to extract service name from output
 		for line := range strings.Lines(string(svcOut)) {

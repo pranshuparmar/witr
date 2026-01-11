@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -19,7 +18,7 @@ func socketsForPID(pid int) []string {
 	// -i TCP = TCP sockets
 	// -n = don't resolve hostnames
 	// -P = don't resolve port names
-	out, err := exec.Command("lsof", "-a", "-p", strconv.Itoa(pid), "-i", "TCP", "-n", "-P", "-F", "n").Output()
+	out, err := executor.Run("lsof", "-a", "-p", strconv.Itoa(pid), "-i", "TCP", "-n", "-P", "-F", "n")
 	if err != nil {
 		return inodes
 	}
