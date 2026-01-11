@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -38,8 +39,7 @@ func ResolveName(name string) ([]int, error) {
 		return nil, fmt.Errorf("failed to list processes: %w", err)
 	}
 
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
+	for line := range strings.Lines(string(out)) {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -82,66 +82,36 @@ func ResolveName(name string) ([]int, error) {
 
 		// Match against full command line
 		if strings.Contains(args, lowerName) &&
-			!strings.Contains(args, "grep") &&
-			!strings.Contains(args, "witr") {
+			!strings.Contains(args, "grep") {
 			procPIDs = append(procPIDs, pid)
 		}
-	}
-
-	// If all matches are filtered out, treat as no result
-	if len(procPIDs) == 0 {
-		return nil, fmt.Errorf("no running process or service named %q", name)
 	}
 
 	// Service detection (launchd)
 	servicePID, _ := resolveLaunchdServicePID(name)
 
-	// Ambiguity: both process and service, but only if there are at least two unique PIDs
-	uniquePIDs := map[int]bool{}
-	if servicePID > 0 {
-		uniquePIDs[servicePID] = true
-	}
+	// Merge and dedupe matches, keeping service PID first.
+	seen := map[int]bool{}
+	var procUnique []int
 	for _, pid := range procPIDs {
-		uniquePIDs[pid] = true
+		if pid == servicePID || seen[pid] {
+			continue
+		}
+		seen[pid] = true
+		procUnique = append(procUnique, pid)
 	}
-	if len(uniquePIDs) > 1 {
-		fmt.Printf("Ambiguous target: \"%s\"\n\n", name)
-		fmt.Println("The name matches multiple entities:")
-		fmt.Println()
-		// Service entry first
-		if servicePID > 0 {
-			fmt.Printf("[1] PID %d   %s: launchd service   (service)\n", servicePID, name)
-		}
-		// Process entries (skip if PID matches servicePID)
-		idx := 2
-		if servicePID == 0 {
-			idx = 1
-		}
-		for _, pid := range procPIDs {
-			if pid == servicePID {
-				continue
-			}
-			fmt.Printf("[%d] PID %d   %s: process   (manual)\n", idx, pid, name)
-			idx++
-		}
-		fmt.Println()
-		fmt.Println("witr cannot determine intent safely.")
-		fmt.Println("Please re-run with an explicit PID:")
-		fmt.Println("  witr --pid <pid>")
-		os.Exit(1)
-	}
+	sort.Ints(procUnique)
 
-	// Service only
+	var pids []int
 	if servicePID > 0 {
-		return []int{servicePID}, nil
+		pids = append(pids, servicePID)
 	}
+	pids = append(pids, procUnique...)
 
-	// Process only
-	if len(procPIDs) > 0 {
-		return procPIDs, nil
+	if len(pids) == 0 {
+		return nil, fmt.Errorf("no running process or service named %q", name)
 	}
-
-	return nil, fmt.Errorf("no running process or service named %q", name)
+	return pids, nil
 }
 
 // resolveLaunchdServicePID tries to resolve a launchd service and returns its PID if running.
@@ -166,8 +136,7 @@ func resolveLaunchdServicePID(name string) (int, error) {
 		if err == nil {
 			// Parse output to find PID
 			// Look for "pid = <number>"
-			lines := strings.Split(string(out), "\n")
-			for _, line := range lines {
+			for line := range strings.Lines(string(out)) {
 				line = strings.TrimSpace(line)
 				if strings.HasPrefix(line, "pid = ") {
 					pidStr := strings.TrimPrefix(line, "pid = ")

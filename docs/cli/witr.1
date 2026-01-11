@@ -1,0 +1,93 @@
+.nh
+.TH "WITR" "1" "Jan 2026" "" ""
+
+.SH NAME
+witr - Why is this running?
+
+
+.SH SYNOPSIS
+\fBwitr [process name] [flags]\fP
+
+
+.SH DESCRIPTION
+witr explains why a process or port is running by tracing its ancestry.
+
+
+.SH OPTIONS
+\fB--env\fP[=false]
+	show environment variables for the process
+
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for witr
+
+.PP
+\fB--json\fP[=false]
+	show result as JSON
+
+.PP
+\fB--no-color\fP[=false]
+	disable colorized output
+
+.PP
+\fB--pid\fP=""
+	pid to look up
+
+.PP
+\fB--port\fP=""
+	port to look up
+
+.PP
+\fB--short\fP[=false]
+	show only ancestry
+
+.PP
+\fB--tree\fP[=false]
+	show only ancestry as a tree
+
+.PP
+\fB--verbose\fP[=false]
+	show extended process information
+
+.PP
+\fB--warnings\fP[=false]
+	show only warnings
+
+
+.SH EXAMPLE
+.EX
+
+  # Inspect a running process by name
+  witr nginx
+
+  # Look up a process by PID
+  witr --pid 1234
+
+  # Find the process listening on a specific port
+  witr --port 5432
+
+  # Show the full process ancestry (who started whom)
+  witr postgres --tree
+
+  # Show only warnings (suspicious env, arguments, parents)
+  witr docker --warnings
+
+  # Display only environment variables of the process
+  witr node --env
+
+  # Short, single-line output (useful for scripts)
+  witr sshd --short
+
+  # Disable colorized output (CI or piping)
+  witr redis --no-color
+
+  # Output machine-readable JSON
+  witr chrome --json
+
+  # Show extended process information (memory, I/O, file descriptors)
+  witr mysql --verbose
+
+  # Combine flags: inspect port, show environment variables, output JSON
+  witr --port 8080 --env --json
+
+.EE

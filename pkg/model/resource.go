@@ -13,4 +13,10 @@ type ResourceContext struct {
 
 	// CPU scheduling priority if throttled
 	AppNapped bool
+
+	// CPU usage percentage (0-100)
+	CPUUsage float64
+
+	// Memory usage in bytes
+	MemoryUsage uint64
 }

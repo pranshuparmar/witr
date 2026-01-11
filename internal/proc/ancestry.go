@@ -1,6 +1,8 @@
 package proc
 
 import (
+	"fmt"
+
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
@@ -21,22 +23,17 @@ func ResolveAncestry(pid int) ([]model.Process, error) {
 			break
 		}
 
-		chain = append(chain, p)
+		chain = append([]model.Process{p}, chain...)
 
-		// pid 1 is always the root (launchd on macOS, init/systemd on Linux)
-		if p.PID == 1 || p.PPID == 0 {
+		if p.PPID == 0 || p.PID == 1 {
 			break
 		}
-
 		current = p.PPID
 	}
 
-	return reverse(chain), nil
-}
-
-func reverse(in []model.Process) []model.Process {
-	for i, j := 0, len(in)-1; i < j; i, j = i+1, j-1 {
-		in[i], in[j] = in[j], in[i]
+	if len(chain) == 0 {
+		return nil, fmt.Errorf("no process ancestry found")
 	}
-	return in
+
+	return chain, nil
 }

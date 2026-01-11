@@ -1,14 +1,40 @@
 name: PR Check
+permissions:
+  contents: read
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches:
       - main
+      - staging
+
+permissions: read-all
 
 jobs:
-  validate:
-    name: Lint/Test/Validate
+  check-signed-commits:
+    name: "Security: Check Signed Commits"
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for signed commits
+        uses: 1Password/check-signed-commits-action@v1
+        
+  semantic-pull-request:
+    name: "Compliance: Check PR Title"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  lint:
+    name: "Code Quality: Lint"
+    needs: [check-signed-commits, semantic-pull-request]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -21,33 +47,67 @@ jobs:
 
       - name: Verify formatting
         run: |
-          if [ -n "$(gofmt -l .)" ]; then
+          if [ -n "$(find . -name "*.go" -not -path "./vendor/*" | xargs gofmt -l)" ]; then
             echo "Go code is not formatted:"
-            gofmt -d .
+            find . -name "*.go" -not -path "./vendor/*" | xargs gofmt -d
             exit 1
           fi
 
+  vet:
+    name: "Code Quality: Vet"
+    needs: [check-signed-commits, semantic-pull-request]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+
       - name: Run go vet
         run: go vet ./...
+
+  test:
+    name: "Tests: Unit"
+    needs: [check-signed-commits, semantic-pull-request]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
 
       - name: Run tests
         run: go test -v ./...
 
   build:
-    name: Build
-    needs: validate
+    name: "Build: Binaries"
+    needs: [lint, vet, test]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - os: linux
             arch: amd64
+            runner: ubuntu-latest
+            run_tests: true
           - os: linux
             arch: arm64
+            runner: ubuntu-latest
+            run_tests: false
           - os: darwin
             arch: amd64
+            runner: macos-15
+            run_tests: true
           - os: darwin
             arch: arm64
+            runner: macos-latest
+            run_tests: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -60,3 +120,4 @@ jobs:
       - name: Build ${{ matrix.os }}/${{ matrix.arch }}
         run: |
           GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o witr-${{ matrix.os }}-${{ matrix.arch }} ./cmd/witr
+          chmod +x witr-${{ matrix.os }}-${{ matrix.arch }}

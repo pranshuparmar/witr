@@ -1,30 +1,33 @@
 package output
 
 import (
-	"fmt"
+	"io"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
 // RenderEnvOnly prints only the command and environment variables for a process
-func RenderEnvOnly(proc model.Process, colorEnabled bool) {
-	colorResetEnv := ""
-	colorBlueEnv := ""
-	colorRedEnv := ""
-	colorGreenEnv := ""
+func RenderEnvOnly(w io.Writer, proc model.Process, colorEnabled bool) {
+	p := NewPrinter(w)
+
+	colorResetEnv := ansiString("")
+	colorBlueEnv := ansiString("")
+	colorRedEnv := ansiString("")
+	colorGreenEnv := ansiString("")
 	if colorEnabled {
-		colorResetEnv = "\033[0m"
-		colorBlueEnv = "\033[34m"
-		colorRedEnv = "\033[31m"
-		colorGreenEnv = "\033[32m"
+		colorResetEnv = ansiString("\033[0m")
+		colorBlueEnv = ansiString("\033[34m")
+		colorRedEnv = ansiString("\033[31m")
+		colorGreenEnv = ansiString("\033[32m")
 	}
-	fmt.Printf("%sCommand%s     : %s\n", colorGreenEnv, colorResetEnv, proc.Cmdline)
+
+	p.Printf("%sCommand%s     : %s\n", colorGreenEnv, colorResetEnv, proc.Cmdline)
 	if len(proc.Env) > 0 {
-		fmt.Printf("%sEnvironment%s :\n", colorBlueEnv, colorResetEnv)
+		p.Printf("%sEnvironment%s :\n", colorBlueEnv, colorResetEnv)
 		for _, env := range proc.Env {
-			fmt.Printf("  %s\n", env)
+			p.Printf("  %s\n", env)
 		}
 	} else {
-		fmt.Printf("%sNo environment variables found.%s\n", colorRedEnv, colorResetEnv)
+		p.Printf("%sNo environment variables found.%s\n", colorRedEnv, colorResetEnv)
 	}
 }

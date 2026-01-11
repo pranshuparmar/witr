@@ -16,14 +16,32 @@ func detectContainer(ancestry []model.Process) *model.Source {
 		}
 		content := string(data)
 
-		if strings.Contains(content, "docker") ||
-			strings.Contains(content, "containerd") ||
-			strings.Contains(content, "kubepods") {
-
+		switch {
+		case strings.Contains(content, "docker"):
 			return &model.Source{
-				Type:       model.SourceContainer,
-				Name:       "container",
-				Confidence: 0.9,
+				Type: model.SourceContainer,
+				Name: "docker",
+			}
+		case strings.Contains(content, "podman"), strings.Contains(content, "libpod"):
+			return &model.Source{
+				Type: model.SourceContainer,
+				Name: "podman",
+			}
+		case strings.Contains(content, "kubepods"):
+			return &model.Source{
+				Type: model.SourceContainer,
+				Name: "kubernetes",
+			}
+		case strings.Contains(content, "colima"):
+			return &model.Source{
+				Type: model.SourceContainer,
+				Name: "colima",
+			}
+		case strings.Contains(content, "containerd"):
+			// Only match containerd if not already matched by docker/kubernetes/colima
+			return &model.Source{
+				Type: model.SourceContainer,
+				Name: "containerd",
 			}
 		}
 	}

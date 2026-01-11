@@ -112,8 +112,7 @@ func findServiceByPID(pid int) (string, string) {
 	}
 
 	pidStr := strconv.Itoa(pid)
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
+	for line := range strings.Lines(string(out)) {
 		fields := strings.Fields(line)
 		if len(fields) >= 3 && fields[0] == pidStr {
 			label := fields[2]

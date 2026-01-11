@@ -24,8 +24,7 @@ func GetSocketStates(port int) ([]model.SocketInfo, error) {
 	portSuffix := fmt.Sprintf(".%d", port)
 	portColonSuffix := fmt.Sprintf(":%d", port)
 
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
+	for line := range strings.Lines(string(out)) {
 		fields := strings.Fields(line)
 		if len(fields) < 6 {
 			continue

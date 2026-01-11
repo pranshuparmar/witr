@@ -18,16 +18,9 @@ env:
   PROJECT_NAME: witr
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ github.ref_name }}
-      COMMIT: ${{ github.sha }}
-    strategy:
-      matrix:
-        os: [ linux, darwin ]
-        arch: [ amd64, arm64 ]
+  release:
 
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -39,57 +32,11 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Build binary
-        run: |
-          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          BIN="${PROJECT_NAME}-${{ matrix.os }}-${{ matrix.arch }}"
-          mkdir -p dist
-          CGO_ENABLED=0 \
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
-          go build -trimpath -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X 'main.buildDate=${DATE}'" -o dist/${BIN} ./cmd/witr
-
-      - name: Strip linux binary for smaller size
-        if: matrix.os == 'linux'
-        run: |
-          BIN="${PROJECT_NAME}-${{ matrix.os }}-${{ matrix.arch }}"
-          strip dist/${BIN} || true
-
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v6
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
         with:
-          name: ${{ env.PROJECT_NAME }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/${{ env.PROJECT_NAME }}-${{ matrix.os }}-${{ matrix.arch }}
-
-  publish:
-    name: Publish Release
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout docs only
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            docs/*
-          sparse-checkout-cone-mode: false
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v7
-        with:
-          path: artifacts
-          pattern: ${{ env.PROJECT_NAME }}-*
-          merge-multiple: true
-
-      - name: Create checksums
-        run: |
-          sha256sum artifacts/* > SHA256SUMS
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: |
-            artifacts/*
-            docs/*
+          version: latest
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}

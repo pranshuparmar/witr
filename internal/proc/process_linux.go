@@ -12,7 +12,45 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
+// isValidSymlinkTarget validates that a symlink target is safe and reasonable
+func isValidSymlinkTarget(target string) bool {
+	if target == "" {
+		return false
+	}
+
+	// Reject absolute paths that seem suspicious
+	if strings.HasPrefix(target, "/") {
+		// Allow normal absolute paths but reject system-critical ones
+		suspiciousPaths := []string{"/proc", "/sys", "/dev", "/boot", "/root"}
+		for _, suspicious := range suspiciousPaths {
+			if strings.HasPrefix(target, suspicious) {
+				return false
+			}
+		}
+	}
+
+	// Reject relative paths that could escape
+	if strings.Contains(target, "../") {
+		return false
+	}
+
+	return true
+}
+
 func ReadProcess(pid int) (model.Process, error) {
+	// Verify process still exists before reading
+	if _, err := os.Stat(fmt.Sprintf("/proc/%d", pid)); os.IsNotExist(err) {
+		return model.Process{}, fmt.Errorf("process %d does not exist", pid)
+	}
+
+	// Read all proc files in a logical order to minimize TOCTOU issues
+	// Start with stat file which is most likely to fail if process disappears
+	statPath := fmt.Sprintf("/proc/%d/stat", pid)
+	stat, err := os.ReadFile(statPath)
+	if err != nil {
+		return model.Process{}, fmt.Errorf("process %d disappeared during read", pid)
+	}
+
 	// Read environment variables
 	env := []string{}
 	envBytes, errEnv := os.ReadFile(fmt.Sprintf("/proc/%d/environ", pid))
@@ -28,22 +66,32 @@ func ReadProcess(pid int) (model.Process, error) {
 	forked := "unknown"
 
 	// Working directory
-	var cwd, err = os.Readlink(fmt.Sprintf("/proc/%d/cwd", pid))
-	if err != nil {
+	var cwd, cwdErr = os.Readlink(fmt.Sprintf("/proc/%d/cwd", pid))
+	if cwdErr != nil {
 		cwd = "unknown"
+	} else {
+		// Validate symlink target is reasonable
+		if !isValidSymlinkTarget(cwd) {
+			cwd = "invalid"
+		}
 	}
 
-	// Container detection (simple: look for docker/containerd/kubepods in cgroup)
+	// Container detection
 	container := ""
 	cgroupFile := fmt.Sprintf("/proc/%d/cgroup", pid)
 	if cgroupData, err := os.ReadFile(cgroupFile); err == nil {
 		cgroupStr := string(cgroupData)
-		if strings.Contains(cgroupStr, "docker") {
+		switch {
+		case strings.Contains(cgroupStr, "docker"):
 			container = "docker"
-		} else if strings.Contains(cgroupStr, "containerd") {
-			container = "containerd"
-		} else if strings.Contains(cgroupStr, "kubepods") {
+		case strings.Contains(cgroupStr, "podman"), strings.Contains(cgroupStr, "libpod"):
+			container = "podman"
+		case strings.Contains(cgroupStr, "kubepods"):
 			container = "kubernetes"
+		case strings.Contains(cgroupStr, "colima"):
+			container = "colima"
+		case strings.Contains(cgroupStr, "containerd"):
+			container = "containerd"
 		}
 	}
 
@@ -52,8 +100,7 @@ func ReadProcess(pid int) (model.Process, error) {
 	svcOut, err := executor.Run("systemctl", "status", fmt.Sprintf("%d", pid))
 	if err == nil && strings.Contains(string(svcOut), "Loaded: loaded") {
 		// Try to extract service name from output
-		lines := strings.Split(string(svcOut), "\n")
-		for _, line := range lines {
+		for line := range strings.Lines(string(svcOut)) {
 			if strings.HasPrefix(line, "Loaded:") && strings.Contains(line, ".service") {
 				parts := strings.Fields(line)
 				for _, part := range parts {
@@ -97,11 +144,6 @@ func ReadProcess(pid int) (model.Process, error) {
 			searchDir = searchDir[:idx]
 		}
 	}
-	statPath := fmt.Sprintf("/proc/%d/stat", pid)
-	stat, err := os.ReadFile(statPath)
-	if err != nil {
-		return model.Process{}, err
-	}
 
 	// stat format is evil, command is inside ()
 	raw := string(stat)
@@ -115,7 +157,7 @@ func ReadProcess(pid int) (model.Process, error) {
 	fields := strings.Fields(raw[close+2:])
 
 	ppid, _ := strconv.Atoi(fields[1])
-	state := fields[2]
+	state := processState(fields)
 	startTicks, _ := strconv.ParseInt(fields[19], 10, 64)
 
 	// Fork detection: if ppid != 1 and not systemd, likely forked; also check for vfork/fork/clone flags if possible
@@ -173,6 +215,10 @@ func ReadProcess(pid int) (model.Process, error) {
 		cmdline = strings.TrimSpace(cmd)
 	}
 
+	if comm == "docker-proxy" && container == "" {
+		container = resolveDockerProxyContainer(cmdline)
+	}
+
 	return model.Process{
 		PID:            pid,
 		PPID:           ppid,
@@ -191,4 +237,52 @@ func ReadProcess(pid int) (model.Process, error) {
 		Forked:         forked,
 		Env:            env,
 	}, nil
+}
+
+func resolveDockerProxyContainer(cmdline string) string {
+	var containerIP string
+	parts := strings.Fields(cmdline)
+	for i, part := range parts {
+		if part == "-container-ip" && i+1 < len(parts) {
+			containerIP = parts[i+1]
+			break
+		}
+	}
+	if containerIP == "" {
+		return ""
+	}
+
+	out, err := exec.Command("docker", "network", "inspect", "bridge",
+		"--format", "{{range .Containers}}{{.Name}}:{{.IPv4Address}}{{\"\\n\"}}{{end}}").Output()
+	if err != nil {
+		return ""
+	}
+
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+		colonIdx := strings.Index(line, ":")
+		if colonIdx == -1 {
+			continue
+		}
+		name := line[:colonIdx]
+		ip := strings.Split(line[colonIdx+1:], "/")[0]
+		if ip == containerIP {
+			return "target: " + name
+		}
+	}
+	return ""
+}
+
+// The kernel emits the state immediately after the command, so fields[0] always carries it.
+func processState(fields []string) string {
+	if len(fields) == 0 {
+		return ""
+	}
+	state := fields[0]
+	if len(state) == 0 {
+		return ""
+	}
+	return state[:1]
 }

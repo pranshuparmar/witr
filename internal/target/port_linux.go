@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -35,6 +36,11 @@ func findSocketInodes(port int) (map[string]bool, error) {
 				continue
 			}
 
+			state := fields[3]
+			if state != "0A" { // 0A is the linux /proc/net/tcp* code for TCP_LISTEN, so we only report actual listeners for --port
+				continue
+			}
+
 			if parts[1] == targetHex {
 				inodes[fields[9]] = true
 			}
@@ -54,7 +60,7 @@ func ResolvePort(port int) ([]int, error) {
 		return nil, err
 	}
 
-	// Map inode to PID that owns the LISTEN socket
+	// collect all owning pids so callers can handle multi-owner sockets.
 	pidSet := make(map[int]bool)
 	procEntries, _ := os.ReadDir("/proc")
 	for _, entry := range procEntries {
@@ -75,27 +81,20 @@ func ResolvePort(port int) ([]int, error) {
 				continue
 			}
 
-			if strings.HasPrefix(link, "socket:[") {
-				inode := strings.TrimSuffix(strings.TrimPrefix(link, "socket:["), "]")
-				if inodes[inode] {
-					// Only add the first PID that owns the LISTEN socket
+			if rest, ok := strings.CutPrefix(link, "socket:["); ok {
+				inode, ok := strings.CutSuffix(rest, "]")
+				if ok && inodes[inode] {
 					pidSet[pid] = true
 				}
 			}
 		}
 	}
 
-	// Only return the lowest PID (the main listener, not forked children)
-	var result []int
-	minPID := 0
+	result := make([]int, 0, len(pidSet))
 	for pid := range pidSet {
-		if minPID == 0 || pid < minPID {
-			minPID = pid
-		}
+		result = append(result, pid)
 	}
-	if minPID > 0 {
-		result = append(result, minPID)
-	}
+	sort.Ints(result)
 
 	if len(result) == 0 {
 		return nil, fmt.Errorf("socket found but owning process not detected")

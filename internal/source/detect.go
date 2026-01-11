@@ -1,17 +1,41 @@
 package source
 
 import (
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-func Detect(ancestry []model.Process) model.Source {
-	// Prefer supervisor over systemd/launchd if both are present
-	if src := detectContainer(ancestry); src != nil {
-		return *src
+type envSuspiciousRule struct {
+	pattern     string
+	match       func(key, pattern string) bool
+	warning     string
+	includeKeys bool
+}
+
+var (
+	envVarRules = []envSuspiciousRule{
+		{
+			pattern: "LD_PRELOAD",
+			match:   func(key, pattern string) bool { return key == pattern },
+			warning: "Process sets LD_PRELOAD (potential library injection)",
+		},
+
+		{
+			pattern:     "DYLD_",
+			match:       strings.HasPrefix,
+			warning:     "Process sets DYLD_* variables (potential library injection)",
+			includeKeys: true,
+		},
 	}
-	if src := detectSupervisor(ancestry); src != nil {
+)
+
+func Detect(ancestry []model.Process) model.Source {
+	// Detection order prioritizes platform-specific init systems
+	// over generic supervisor detection to avoid false positives
+	if src := detectContainer(ancestry); src != nil {
 		return *src
 	}
 	if src := detectSystemd(ancestry); src != nil {
@@ -20,7 +44,19 @@ func Detect(ancestry []model.Process) model.Source {
 	if src := detectLaunchd(ancestry); src != nil {
 		return *src
 	}
+	if src := detectBsdRc(ancestry); src != nil {
+		return *src
+	}
+	if src := detectSupervisor(ancestry); src != nil {
+		return *src
+	}
 	if src := detectCron(ancestry); src != nil {
+		return *src
+	}
+	if src := detectWindowsService(ancestry); src != nil {
+		return *src
+	}
+	if src := detectInit(ancestry); src != nil {
 		return *src
 	}
 	if src := detectShell(ancestry); src != nil {
@@ -28,9 +64,63 @@ func Detect(ancestry []model.Process) model.Source {
 	}
 
 	return model.Source{
-		Type:       model.SourceUnknown,
-		Confidence: 0.2,
+		Type: model.SourceUnknown,
 	}
+}
+
+// env suspicious warnings returns warnings for known env based library injection patterns
+func envSuspiciousWarnings(env []string) []string {
+	matched := make([]bool, len(envVarRules))
+	matchedKeys := make([]map[string]struct{}, len(envVarRules))
+
+	// init per rule key capture only for rules that include keys
+	for i, rule := range envVarRules {
+		if rule.includeKeys {
+			matchedKeys[i] = map[string]struct{}{}
+		}
+	}
+
+	// scan env entries and record which rules match
+	for _, entry := range env {
+		key, value, ok := strings.Cut(entry, "=")
+		if !ok || value == "" {
+			continue
+		}
+
+		// check this key against each configured rule
+		for i, rule := range envVarRules {
+			if !rule.match(key, rule.pattern) {
+				continue
+			}
+			matched[i] = true
+			if rule.includeKeys {
+				matchedKeys[i][key] = struct{}{}
+			}
+		}
+	}
+
+	var warnings []string
+
+	// emit warnings in the same order as envVarRules
+	for i, rule := range envVarRules {
+		if !matched[i] {
+			continue
+		}
+		if !rule.includeKeys {
+			warnings = append(warnings, rule.warning)
+			continue
+		}
+
+		keys := make([]string, 0, len(matchedKeys[i]))
+		// collect all matched keys for this rule
+		for key := range matchedKeys[i] {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		warnings = append(warnings, rule.warning+": "+strings.Join(keys, ", "))
+	}
+
+	return warnings
 }
 
 func Warnings(p []model.Process) []string {
@@ -95,6 +185,9 @@ func Warnings(p []model.Process) []string {
 	if last.Service != "" && last.Command != "" && last.Service != last.Command {
 		w = append(w, "Service name and process name do not match")
 	}
+
+	// Include warnings based on suspicious env variables
+	w = append(w, envSuspiciousWarnings(last.Env)...)
 
 	return w
 }

@@ -5,6 +5,8 @@ package target
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -52,66 +54,37 @@ func ResolveName(name string) ([]int, error) {
 			cmd := strings.ReplaceAll(string(cmdline), "\x00", " ")
 			// Exclude self, parent, and grep
 			if strings.Contains(strings.ToLower(cmd), lowerName) &&
-				!strings.Contains(strings.ToLower(cmd), "grep") &&
-				!strings.Contains(strings.ToLower(cmd), "witr") {
+				!strings.Contains(strings.ToLower(cmd), "grep") {
 				procPIDs = append(procPIDs, pid)
 			}
 		}
 	}
 
-	// If all matches are filtered out, treat as no result
-	if len(procPIDs) == 0 {
-		return nil, fmt.Errorf("no running process or service named %q", name)
-	}
-
 	// Service detection (systemd)
-	servicePID, serviceErr := resolveSystemdServiceMainPID(name)
+	servicePID, _ := resolveSystemdServiceMainPID(name)
 
-	// Ambiguity: both process and service, but only if there are at least two unique PIDs
-	uniquePIDs := map[int]bool{}
-	if servicePID > 0 {
-		uniquePIDs[servicePID] = true
-	}
+	// Merge and dedupe matches, keeping service PID first.
+	seen := map[int]bool{}
+	var procUnique []int
 	for _, pid := range procPIDs {
-		uniquePIDs[pid] = true
-	}
-	if len(uniquePIDs) > 1 {
-		fmt.Printf("Ambiguous target: \"%s\"\n\n", name)
-		fmt.Println("The name matches multiple entities:")
-		fmt.Println()
-		// Service entry first
-		fmt.Printf("[1] PID %d   %s: master process   (service)\n", servicePID, name)
-		// Process entries (skip if PID matches servicePID)
-		idx := 2
-		for _, pid := range procPIDs {
-			if pid == servicePID {
-				continue
-			}
-			fmt.Printf("[%d] PID %d   %s: worker process   (manual)\n", idx, pid, name)
-			idx++
+		if pid == servicePID || seen[pid] {
+			continue
 		}
-		fmt.Println()
-		fmt.Println("witr cannot determine intent safely.")
-		fmt.Println("Please re-run with an explicit PID:")
-		fmt.Println("  witr --pid <pid>")
-		os.Exit(1)
+		seen[pid] = true
+		procUnique = append(procUnique, pid)
 	}
+	sort.Ints(procUnique)
 
-	// Service only
+	var pids []int
 	if servicePID > 0 {
-		return []int{servicePID}, nil
+		pids = append(pids, servicePID)
 	}
+	pids = append(pids, procUnique...)
 
-	// Process only
-	if len(procPIDs) > 0 {
-		return procPIDs, nil
-	}
-
-	// Neither found
-	if serviceErr != nil {
+	if len(pids) == 0 {
 		return nil, fmt.Errorf("no running process or service named %q", name)
 	}
-	return nil, fmt.Errorf("no running process or service named %q", name)
+	return pids, nil
 }
 
 // resolveSystemdServiceMainPID tries to resolve a systemd service and returns its MainPID if running.
@@ -121,7 +94,7 @@ func resolveSystemdServiceMainPID(name string) (int, error) {
 	if !strings.HasSuffix(svcName, ".service") {
 		svcName += ".service"
 	}
-	out, err := proc.Run("systemctl", "show", svcName, "-p", "MainPID", "--value")
+	out, err := exec.Command("systemctl", "show", "-p", "MainPID", "--value", "--", svcName).Output()
 	if err != nil {
 		return 0, err
 	}

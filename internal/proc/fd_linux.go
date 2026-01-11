@@ -11,6 +11,7 @@ import (
 
 func socketsForPID(pid int) []string {
 	var inodes []string
+	seen := make(map[string]bool)
 	fdPath := "/proc/" + strconv.Itoa(pid) + "/fd"
 
 	entries, err := os.ReadDir(fdPath)
@@ -26,7 +27,10 @@ func socketsForPID(pid int) []string {
 
 		if strings.HasPrefix(link, "socket:[") {
 			inode := strings.TrimSuffix(strings.TrimPrefix(link, "socket:["), "]")
-			inodes = append(inodes, inode)
+			if !seen[inode] {
+				seen[inode] = true
+				inodes = append(inodes, inode)
+			}
 		}
 	}
 

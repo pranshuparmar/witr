@@ -49,9 +49,8 @@ func getOpenFileCount(pid int) (int, int) {
 	}
 
 	// Count lines (subtract 1 for header)
-	lines := strings.Split(string(out), "\n")
 	openFiles := 0
-	for _, line := range lines {
+	for line := range strings.Lines(string(out)) {
 		if strings.TrimSpace(line) != "" {
 			openFiles++
 		}
@@ -105,8 +104,7 @@ func getLockedFiles(pid int) []string {
 	// f = file descriptor info
 	// n = file name
 	var currentFD string
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
+	for line := range strings.Lines(string(out)) {
 		if len(line) == 0 {
 			continue
 		}
@@ -131,8 +129,7 @@ func getLockedFiles(pid int) []string {
 	// Also check for actual fcntl/flock locks using lsof -F with lock info
 	out2, err := executor.Run("lsof", "-p", strconv.Itoa(pid))
 	if err == nil {
-		lines := strings.Split(string(out2), "\n")
-		for _, line := range lines {
+		for line := range strings.Lines(string(out2)) {
 			fields := strings.Fields(line)
 			// Look for lock type indicators (varies by lsof version)
 			// Typically shows "r" for read lock, "w" for write lock, "R" for read lock on entire file
