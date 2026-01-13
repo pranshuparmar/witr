@@ -4,7 +4,6 @@ package proc
 
 import (
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -13,8 +12,7 @@ import (
 
 func GetResourceContext(pid int) *model.ResourceContext {
 	// wmic path Win32_PerfFormattedData_PerfProc_Process where IDProcess=PID get PercentProcessorTime,WorkingSetPrivate /format:list
-	cmd := exec.Command("wmic", "path", "Win32_PerfFormattedData_PerfProc_Process", "where", fmt.Sprintf("IDProcess=%d", pid), "get", "PercentProcessorTime,WorkingSetPrivate", "/format:list")
-	out, err := cmd.Output()
+	out, err := executor.Run("wmic", "path", "Win32_PerfFormattedData_PerfProc_Process", "where", fmt.Sprintf("IDProcess=%d", pid), "get", "PercentProcessorTime,WorkingSetPrivate", "/format:list")
 	if err != nil {
 		return nil
 	}

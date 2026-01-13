@@ -8,9 +8,12 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
+// procPath is a variable to allow testing
+var procPath = "/proc"
+
 func detectContainer(ancestry []model.Process) *model.Source {
 	for _, p := range ancestry {
-		data, err := os.ReadFile("/proc/" + itoa(p.PID) + "/cgroup")
+		data, err := os.ReadFile(procPath + "/" + itoa(p.PID) + "/cgroup")
 		if err != nil {
 			continue
 		}

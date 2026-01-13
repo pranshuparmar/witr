@@ -4,7 +4,6 @@ package proc
 
 import (
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -14,8 +13,7 @@ import (
 
 func ReadProcess(pid int) (model.Process, error) {
 	// Check if process exists using tasklist
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
-	out, err := cmd.Output()
+	out, err := executor.Run("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
 	if err != nil {
 		return model.Process{}, err
 	}
@@ -34,8 +32,7 @@ func ReadProcess(pid int) (model.Process, error) {
 
 	// Get more info via wmic
 	// wmic process where processid=PID get CommandLine,CreationDate,ExecutablePath,ParentProcessId /format:list
-	wmicCmd := exec.Command("wmic", "process", "where", fmt.Sprintf("processid=%d", pid), "get", "CommandLine,CreationDate,ExecutablePath,ParentProcessId,Status", "/format:list")
-	wmicOut, _ := wmicCmd.Output()
+	wmicOut, _ := executor.Run("wmic", "process", "where", fmt.Sprintf("processid=%d", pid), "get", "CommandLine,CreationDate,ExecutablePath,ParentProcessId,Status", "/format:list")
 
 	var cmdline, exe string
 	var ppid int

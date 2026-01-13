@@ -9,8 +9,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/pranshuparmar/witr/internal/proc"
 )
 
 func ResolveName(name string) ([]int, error) {

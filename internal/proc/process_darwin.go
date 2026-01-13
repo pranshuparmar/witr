@@ -5,7 +5,6 @@ package proc
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -432,8 +431,8 @@ func resolveDockerProxyContainer(cmdline string) string {
 		return ""
 	}
 
-	out, err := exec.Command("docker", "network", "inspect", "bridge",
-		"--format", "{{range .Containers}}{{.Name}}:{{.IPv4Address}}{{\"\\n\"}}{{end}}").Output()
+	out, err := executor.Run("docker", "network", "inspect", "bridge",
+		"--format", "{{range .Containers}}{{.Name}}:{{.IPv4Address}}{{\"\\n\"}}{{end}}")
 	if err != nil {
 		return ""
 	}

@@ -4,7 +4,6 @@ package target
 
 import (
 	"fmt"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"

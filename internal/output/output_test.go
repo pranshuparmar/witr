@@ -89,22 +89,22 @@ func TestFormatDetailLabel(t *testing.T) {
 }
 
 func TestRenderWarnings(t *testing.T) {
-	out := captureOutput(t, func() { RenderWarnings(nil, false) })
+	out := captureOutput(t, func() { RenderWarnings(os.Stdout, nil, false) })
 	if !strings.Contains(out, "No warnings.") {
 		t.Fatalf("RenderWarnings(nil,false) = %q", out)
 	}
 
-	out = captureOutput(t, func() { RenderWarnings([]string{}, true) })
+	out = captureOutput(t, func() { RenderWarnings(os.Stdout, []string{}, true) })
 	if !strings.Contains(out, "No warnings.") {
 		t.Fatalf("RenderWarnings(empty,true) = %q", out)
 	}
 
-	out = captureOutput(t, func() { RenderWarnings([]string{"warning1"}, false) })
+	out = captureOutput(t, func() { RenderWarnings(os.Stdout, []string{"warning1"}, false) })
 	if !strings.Contains(out, "Warnings:") || !strings.Contains(out, "warning1") {
 		t.Fatalf("RenderWarnings(single,false) = %q", out)
 	}
 
-	out = captureOutput(t, func() { RenderWarnings([]string{"warning1", "warning2"}, true) })
+	out = captureOutput(t, func() { RenderWarnings(os.Stdout, []string{"warning1", "warning2"}, true) })
 	if !strings.Contains(out, "Warnings") || !strings.Contains(out, "warning2") {
 		t.Fatalf("RenderWarnings(multi,true) = %q", out)
 	}
@@ -112,17 +112,17 @@ func TestRenderWarnings(t *testing.T) {
 
 func TestRenderEnvOnly(t *testing.T) {
 	proc := model.Process{Cmdline: "test --flag", Env: []string{"VAR=val", "PATH=/bin"}}
-	out := captureOutput(t, func() { RenderEnvOnly(proc, false) })
+	out := captureOutput(t, func() { RenderEnvOnly(os.Stdout, proc, false) })
 	if !strings.Contains(out, "Command     : test --flag") || !strings.Contains(out, "VAR=val") {
 		t.Fatalf("RenderEnvOnly(false) = %q", out)
 	}
 
-	out = captureOutput(t, func() { RenderEnvOnly(proc, true) })
+	out = captureOutput(t, func() { RenderEnvOnly(os.Stdout, proc, true) })
 	if !strings.Contains(out, "Command") || !strings.Contains(out, "PATH=/bin") {
 		t.Fatalf("RenderEnvOnly(true) = %q", out)
 	}
 
-	out = captureOutput(t, func() { RenderEnvOnly(model.Process{Cmdline: "test"}, true) })
+	out = captureOutput(t, func() { RenderEnvOnly(os.Stdout, model.Process{Cmdline: "test"}, true) })
 	if !strings.Contains(out, "No environment variables found.") {
 		t.Fatalf("RenderEnvOnly(no env) = %q", out)
 	}
@@ -134,11 +134,11 @@ func TestRenderShort(t *testing.T) {
 		{PID: 100, Command: "bash"},
 		{PID: 200, Command: "test"},
 	}}
-	out := captureOutput(t, func() { RenderShort(result, false) })
+	out := captureOutput(t, func() { RenderShort(os.Stdout, result, false) })
 	if strings.TrimSpace(out) != "init (pid 1) → bash (pid 100) → test (pid 200)" {
 		t.Fatalf("RenderShort(false) = %q", out)
 	}
-	out = captureOutput(t, func() { RenderShort(result, true) })
+	out = captureOutput(t, func() { RenderShort(os.Stdout, result, true) })
 	if strings.TrimSpace(out) == "" {
 		t.Fatal("RenderShort(true) produced empty output")
 	}
@@ -150,15 +150,15 @@ func TestPrintTree(t *testing.T) {
 		{PID: 100, Command: "bash"},
 		{PID: 200, Command: "test"},
 	}
-	out := captureOutput(t, func() { PrintTree(chain, false) })
+	out := captureOutput(t, func() { PrintTree(os.Stdout, chain, nil, false) })
 	if !strings.Contains(out, "init (pid 1)") || !strings.Contains(out, "└─ bash (pid 100)") {
 		t.Fatalf("PrintTree(false) = %q", out)
 	}
-	out = captureOutput(t, func() { PrintTree(chain, true) })
+	out = captureOutput(t, func() { PrintTree(os.Stdout, chain, nil, true) })
 	if !strings.Contains(out, "└─") {
 		t.Fatalf("PrintTree(true) = %q", out)
 	}
-	out = captureOutput(t, func() { PrintTree([]model.Process{{PID: 1}}, true) })
+	out = captureOutput(t, func() { PrintTree(os.Stdout, []model.Process{{PID: 1}}, nil, true) })
 	if !strings.Contains(out, "pid 1") {
 		t.Fatalf("PrintTree(single) = %q", out)
 	}
@@ -178,7 +178,7 @@ func TestRenderStandard(t *testing.T) {
 		},
 		Warnings: []string{"warning1", "warning2"},
 	}
-	out := captureOutput(t, func() { RenderStandard(result, false) })
+	out := captureOutput(t, func() { RenderStandard(os.Stdout, result, false, false) })
 	if !strings.Contains(out, "Target      : test") || !strings.Contains(out, "Process     : test (pid 200)") {
 		t.Fatalf("RenderStandard(false) = %q", out)
 	}
@@ -186,7 +186,7 @@ func TestRenderStandard(t *testing.T) {
 		t.Fatalf("RenderStandard(false) missing sections: %q", out)
 	}
 
-	out = captureOutput(t, func() { RenderStandard(result, true) })
+	out = captureOutput(t, func() { RenderStandard(os.Stdout, result, true, false) })
 	if !strings.Contains(out, "Process") {
 		t.Fatalf("RenderStandard(true) = %q", out)
 	}
@@ -204,7 +204,7 @@ func TestRenderStandard(t *testing.T) {
 			},
 		},
 	}
-	out = captureOutput(t, func() { RenderStandard(launchdResult, false) })
+	out = captureOutput(t, func() { RenderStandard(os.Stdout, launchdResult, false, false) })
 	if !strings.Contains(out, "Source      : com.test.service (launchd)") {
 		t.Fatalf("RenderStandard(launchd) = %q", out)
 	}
@@ -216,5 +216,6 @@ func TestRenderStandardEmpty(t *testing.T) {
 			t.Errorf("RenderStandard panics with empty Result: %v", r)
 		}
 	}()
-	RenderStandard(model.Result{}, false)
+	// Use minimal valid result (must have ancestry) to avoid panic
+	RenderStandard(os.Stdout, model.Result{Ancestry: []model.Process{{PID: 1}}}, false, false)
 }

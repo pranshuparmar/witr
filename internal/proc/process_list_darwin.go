@@ -4,7 +4,6 @@ package proc
 
 import (
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 // for child/descendant discovery. We avoid full ReadProcess calls to keep
 // this path fast and to reduce permission-sensitive reads.
 func listProcessSnapshot() ([]model.Process, error) {
-	out, err := exec.Command("ps", "-axo", "pid=,ppid=,comm=").Output()
+	out, err := executor.Run("ps", "-axo", "pid=,ppid=,comm=")
 	if err != nil {
 		return nil, fmt.Errorf("ps process list: %w", err)
 	}

@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -50,7 +49,8 @@ func getOpenFileCount(pid int) (int, int) {
 
 	// Count lines (subtract 1 for header)
 	openFiles := 0
-	for line := range strings.Lines(string(out)) {
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
 		if strings.TrimSpace(line) != "" {
 			openFiles++
 		}
@@ -104,7 +104,8 @@ func getLockedFiles(pid int) []string {
 	// f = file descriptor info
 	// n = file name
 	var currentFD string
-	for line := range strings.Lines(string(out)) {
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
 		if len(line) == 0 {
 			continue
 		}

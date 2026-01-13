@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -14,7 +13,7 @@ func GetListeningPortsForPID(pid int) ([]int, []string) {
 	// Better: netstat -ano
 	// Parse output.
 
-	out, err := exec.Command("netstat", "-ano").Output()
+	out, err := executor.Run("netstat", "-ano")
 	if err != nil {
 		return nil, nil
 	}

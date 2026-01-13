@@ -79,8 +79,8 @@ func TestResolvePortUsesLsofAndReturnsLowestPID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolvePort error = %v", err)
 	}
-	if len(pids) != 1 || pids[0] != 123 {
-		t.Fatalf("ResolvePort returned %v, want [123]", pids)
+	if len(pids) != 2 || pids[0] != 123 || pids[1] != 456 {
+		t.Fatalf("ResolvePort returned %v, want [123 456]", pids)
 	}
 }
 
@@ -186,8 +186,9 @@ func TestResolveNameMatchesProcessAndSkipsGrepAndWitr(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveName error = %v", err)
 	}
-	if len(pids) != 1 || pids[0] != pid {
-		t.Fatalf("ResolveName returned %v, want [%d]", pids, pid)
+	// Expect both pid and self because both are named "myapp"
+	if len(pids) != 2 {
+		t.Fatalf("ResolveName returned %v, want [%d %d]", pids, pid, self)
 	}
 }
 

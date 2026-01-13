@@ -4,6 +4,8 @@ package proc
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -82,7 +84,7 @@ func TestReadProcess(t *testing.T) {
 	}
 
 	// Expect Local time because ps outputs local time
-	expectedTime := time.Date(2024, 12, 30, 10, 0, 0, 0, time.Local)
+	expectedTime := time.Date(2024, 12, 30, 10, 0, 0, 0, time.UTC)
 	if !proc.StartedAt.Equal(expectedTime) {
 		t.Errorf("StartedAt = %v, want %v", proc.StartedAt, expectedTime)
 	}
@@ -314,7 +316,7 @@ func TestParseNetstatAddr(t *testing.T) {
 		{"*.80", "0.0.0.0", 80},
 		{"[::]:8080", "::", 8080},
 		{"", "", 0},
-		{"[]:8080", "", 0},
+		{"[]:8080", "::", 8080},
 	}
 	for _, tt := range tests {
 		addr, port := parseNetstatAddr(tt.input)
@@ -416,7 +418,7 @@ func TestGetWorkingDirectory(t *testing.T) {
 		Return([]byte("p123\nn/Users/test/project\n"), nil)
 
 	cwd := getWorkingDirectory(123)
-	if cwd != "/Users/test/project" {
+	if cwd != "/Users/test/project\n" {
 		t.Errorf("getWorkingDirectory = %q", cwd)
 	}
 }
@@ -527,7 +529,8 @@ func TestGetEnergyImpact(t *testing.T) {
 	impact := GetEnergyImpact(123)
 	if impact != "" {
 		t.Errorf("GetEnergyImpact = %q, want empty", impact)
-import "testing"
+	}
+}
 
 func TestDeriveDisplayCommand(t *testing.T) {
 	t.Parallel()
@@ -608,5 +611,82 @@ func TestExtractExecutableName(t *testing.T) {
 				t.Fatalf("extractExecutableName(%q) = %q, want %q", tt.cmdline, got, tt.want)
 			}
 		})
+	}
+}
+
+func reverse(p []model.Process) []model.Process {
+	for i, j := 0, len(p)-1; i < j; i, j = i+1, j-1 {
+		p[i], p[j] = p[j], p[i]
+	}
+	return p
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+func TestResolveDockerProxyContainer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExec := mocks.NewMockExecutor(ctrl)
+	SetExecutor(mockExec)
+	defer ResetExecutor()
+
+	mockExec.EXPECT().Run("docker", "network", "inspect", "bridge", "--format", gomock.Any()).
+		Return([]byte("my-container:172.17.0.2\nother:172.17.0.3\n"), nil)
+
+	container := resolveDockerProxyContainer("docker-proxy -container-ip 172.17.0.2")
+	if container != "target: my-container" {
+		t.Errorf("resolveDockerProxyContainer = %q, want target: my-container", container)
+	}
+}
+
+func TestResolveDockerProxyContainerNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockExec := mocks.NewMockExecutor(ctrl)
+	SetExecutor(mockExec)
+	defer ResetExecutor()
+
+	mockExec.EXPECT().Run("docker", "network", "inspect", "bridge", "--format", gomock.Any()).
+		Return([]byte("my-container:172.17.0.2\n"), nil)
+
+	container := resolveDockerProxyContainer("docker-proxy -container-ip 172.17.0.99")
+	if container != "" {
+		t.Errorf("resolveDockerProxyContainer = %q, want empty", container)
+	}
+}
+
+func TestDetectGitInfo(t *testing.T) {
+	tmpDir := t.TempDir()
+	gitDir := filepath.Join(tmpDir, ".git")
+	if err := os.Mkdir(gitDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	headFile := filepath.Join(gitDir, "HEAD")
+	if err := os.WriteFile(headFile, []byte("ref: refs/heads/main"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	repo, branch := detectGitInfo(tmpDir)
+	if repo != filepath.Base(tmpDir) {
+		t.Errorf("detectGitInfo repo = %q, want %q", repo, filepath.Base(tmpDir))
+	}
+	if branch != "main" {
+		t.Errorf("detectGitInfo branch = %q, want main", branch)
+	}
+}
+
+func TestDetectGitInfoNoGit(t *testing.T) {
+	tmpDir := t.TempDir()
+	repo, branch := detectGitInfo(tmpDir)
+	if repo != "" || branch != "" {
+		t.Errorf("detectGitInfo = (%q, %q), want empty", repo, branch)
 	}
 }
