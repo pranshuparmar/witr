@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
@@ -43,14 +42,15 @@ func GetFileContext(pid int) *model.FileContext {
 func getOpenFileCount(pid int) (int, int) {
 	// Use lsof to count open files
 	// lsof -p <pid> returns all open files
-	out, err := exec.Command("lsof", "-p", strconv.Itoa(pid)).Output()
+	out, err := executor.Run("lsof", "-p", strconv.Itoa(pid))
 	if err != nil {
 		return 0, 0
 	}
 
 	// Count lines (subtract 1 for header)
 	openFiles := 0
-	for line := range strings.Lines(string(out)) {
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
 		if strings.TrimSpace(line) != "" {
 			openFiles++
 		}
@@ -72,7 +72,7 @@ func getFileLimit(pid int) int {
 	// Default to common macOS limits
 
 	// Try launchctl limit (system-wide soft limit)
-	out, err := exec.Command("launchctl", "limit", "maxfiles").Output()
+	out, err := executor.Run("launchctl", "limit", "maxfiles")
 	if err == nil {
 		// Format: maxfiles    256            unlimited
 		fields := strings.Fields(string(out))
@@ -95,7 +95,7 @@ func getLockedFiles(pid int) []string {
 	// Use lsof to find locked files
 	// -p <pid> for specific process
 	// Look for lock indicators in the output
-	out, err := exec.Command("lsof", "-p", strconv.Itoa(pid), "-F", "fn").Output()
+	out, err := executor.Run("lsof", "-p", strconv.Itoa(pid), "-F", "fn")
 	if err != nil {
 		return locked
 	}
@@ -104,7 +104,8 @@ func getLockedFiles(pid int) []string {
 	// f = file descriptor info
 	// n = file name
 	var currentFD string
-	for line := range strings.Lines(string(out)) {
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
 		if len(line) == 0 {
 			continue
 		}
@@ -127,7 +128,7 @@ func getLockedFiles(pid int) []string {
 	}
 
 	// Also check for actual fcntl/flock locks using lsof -F with lock info
-	out2, err := exec.Command("lsof", "-p", strconv.Itoa(pid)).Output()
+	out2, err := executor.Run("lsof", "-p", strconv.Itoa(pid))
 	if err == nil {
 		for line := range strings.Lines(string(out2)) {
 			fields := strings.Fields(line)

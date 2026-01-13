@@ -4,7 +4,6 @@ package proc
 
 import (
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -14,8 +13,7 @@ import (
 
 func ReadProcess(pid int) (model.Process, error) {
 	// Check if process exists using tasklist
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
-	out, err := cmd.Output()
+	out, err := executor.Run("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
 	if err != nil {
 		return model.Process{}, err
 	}
@@ -32,7 +30,8 @@ func ReadProcess(pid int) (model.Process, error) {
 		name = strings.Trim(parts[0], "\"")
 	}
 
-	// Get more info via powershell
+	// Get more info via wmic
+
 	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ProcessId=%d\" | ForEach-Object { \"CommandLine=$($_.CommandLine)\"; \"CreationDate=$($_.CreationDate.ToUniversalTime().ToString('yyyyMMddHHmmss'))\"; \"ExecutablePath=$($_.ExecutablePath)\"; \"ParentProcessId=$($_.ParentProcessId)\"; \"Status=$($_.Status)\" }", pid)
 	psCmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript)
 	psOut, _ := psCmd.Output()

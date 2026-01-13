@@ -4,7 +4,6 @@ package proc
 
 import (
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 

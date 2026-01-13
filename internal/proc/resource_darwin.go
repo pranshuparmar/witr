@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -37,7 +36,7 @@ func GetResourceContext(pid int) *model.ResourceContext {
 // checkPreventsSleep checks if a process has sleep prevention assertions
 func checkPreventsSleep(pid int) bool {
 	// pmset -g assertions shows all power assertions
-	out, err := exec.Command("pmset", "-g", "assertions").Output()
+	out, err := executor.Run("pmset", "-g", "assertions")
 	if err != nil {
 		return false
 	}
@@ -46,7 +45,10 @@ func checkPreventsSleep(pid int) bool {
 
 	// Look for lines containing our PID in assertion listings
 	// Format varies but typically includes "pid <pid>" or "(<pid>)"
-	for line := range strings.Lines(string(out)) {
+	// Look for lines containing our PID in assertion listings
+	// Format varies but typically includes "pid <pid>" or "(<pid>)"
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
 		// Check if this line references our PID and is a sleep prevention assertion
 		if strings.Contains(line, pidStr) {
 			lower := strings.ToLower(line)
@@ -65,7 +67,7 @@ func checkPreventsSleep(pid int) bool {
 // getThermalState returns the current thermal pressure state
 func getThermalState() string {
 	// pmset -g therm shows thermal conditions
-	out, err := exec.Command("pmset", "-g", "therm").Output()
+	out, err := executor.Run("pmset", "-g", "therm")
 	if err != nil {
 		return ""
 	}
@@ -76,7 +78,8 @@ func getThermalState() string {
 	// Look for "CPU_Speed_Limit" or thermal pressure indicators
 	if strings.Contains(output, "CPU_Speed_Limit") {
 		// Extract the speed limit percentage
-		for line := range strings.Lines(output) {
+		lines := strings.Split(output, "\n")
+		for _, line := range lines {
 			if strings.Contains(line, "CPU_Speed_Limit") {
 				// Format: CPU_Speed_Limit = 100
 				parts := strings.Split(line, "=")
@@ -99,7 +102,8 @@ func getThermalState() string {
 
 	// Check for thermal pressure level
 	if strings.Contains(output, "Thermal_Level") {
-		for line := range strings.Lines(output) {
+		lines := strings.Split(output, "\n")
+		for _, line := range lines {
 			if strings.Contains(line, "Thermal_Level") {
 				parts := strings.Split(line, "=")
 				if len(parts) >= 2 {
@@ -135,7 +139,7 @@ func GetEnergyImpact(pid int) string {
 
 func getCPUAndMemoryUsage(pid int) (float64, uint64, error) {
 	// Construct the command to execute
-	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "%cpu=,rss=").Output()
+	out, err := executor.Run("ps", "-p", strconv.Itoa(pid), "-o", "%cpu=,rss=")
 
 	if err != nil {
 		return 0, 0, err

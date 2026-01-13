@@ -4,7 +4,6 @@ package proc
 
 import (
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -17,7 +16,7 @@ func GetSocketStates(port int) ([]model.SocketInfo, error) {
 
 	// Use netstat to get all socket states (not just LISTEN)
 	// netstat -an -p tcp shows all TCP connections with states
-	out, err := exec.Command("netstat", "-an", "-p", "tcp").Output()
+	out, err := executor.Run("netstat", "-an", "-p", "tcp")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get socket states: %w", err)
 	}
@@ -158,7 +157,7 @@ func CountSocketsByState(port int) map[string]int {
 // This determines TIME_WAIT duration (2 * MSL)
 func GetMSLDuration() int {
 	// Try to read from sysctl
-	out, err := exec.Command("sysctl", "-n", "net.inet.tcp.msl").Output()
+	out, err := executor.Run("sysctl", "-n", "net.inet.tcp.msl")
 	if err != nil {
 		return 30000 // Default 30 seconds in milliseconds
 	}

@@ -3,7 +3,6 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -11,7 +10,7 @@ import (
 
 func bootTime() time.Time {
 	// Use sysctl kern.boottime on macOS
-	out, err := exec.Command("sysctl", "-n", "kern.boottime").Output()
+	out, err := executor.Run("sysctl", "-n", "kern.boottime")
 	if err != nil {
 		return time.Now()
 	}
