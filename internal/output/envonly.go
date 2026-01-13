@@ -15,10 +15,10 @@ func RenderEnvOnly(w io.Writer, proc model.Process, colorEnabled bool) {
 	colorRedEnv := ansiString("")
 	colorGreenEnv := ansiString("")
 	if colorEnabled {
-		colorResetEnv = ansiString("\033[0m")
-		colorBlueEnv = ansiString("\033[34m")
-		colorRedEnv = ansiString("\033[31m")
-		colorGreenEnv = ansiString("\033[32m")
+		colorResetEnv = ColorReset
+		colorBlueEnv = ColorBlue
+		colorRedEnv = ColorRed
+		colorGreenEnv = ColorGreen
 	}
 
 	p.Printf("%sCommand%s     : %s\n", colorGreenEnv, colorResetEnv, proc.Cmdline)

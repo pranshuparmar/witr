@@ -7,13 +7,6 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-var (
-	colorResetTree   = ansiString("\033[0m")
-	colorMagentaTree = ansiString("\033[35m")
-	colorGreenTree   = ansiString("\033[32m")
-	colorBoldTree    = ansiString("\033[2m")
-)
-
 func PrintTree(w io.Writer, chain []model.Process, children []model.Process, colorEnabled bool) {
 	p := NewPrinter(w)
 
@@ -21,7 +14,7 @@ func PrintTree(w io.Writer, chain []model.Process, children []model.Process, col
 		indent := strings.Repeat("  ", i)
 		if i > 0 {
 			if colorEnabled {
-				p.Printf("%s%s└─ %s", indent, colorMagentaTree, colorResetTree)
+				p.Printf("%s%s└─ %s", indent, ColorMagenta, ColorReset)
 			} else {
 				p.Printf("%s└─ ", indent)
 			}
@@ -30,9 +23,9 @@ func PrintTree(w io.Writer, chain []model.Process, children []model.Process, col
 		if colorEnabled {
 			cmdColor := ansiString("")
 			if i == len(chain)-1 {
-				cmdColor = colorGreenTree
+				cmdColor = ColorGreen
 			}
-			p.Printf("%s%s%s (%spid %d%s)\n", cmdColor, proc.Command, colorResetTree, colorBoldTree, proc.PID, colorResetTree)
+			p.Printf("%s%s%s (%spid %d%s)\n", cmdColor, proc.Command, ColorReset, ColorBold, proc.PID, ColorReset)
 		} else {
 			p.Printf("%s (pid %d)\n", proc.Command, proc.PID)
 		}
@@ -50,7 +43,7 @@ func PrintTree(w io.Writer, chain []model.Process, children []model.Process, col
 		if i >= limit {
 			remaining := count - limit
 			if colorEnabled {
-				p.Printf("%s%s└─ %s... and %d more\n", baseIndent, colorMagentaTree, colorResetTree, remaining)
+				p.Printf("%s%s└─ %s... and %d more\n", baseIndent, ColorMagenta, ColorReset, remaining)
 			} else {
 				p.Printf("%s└─ ... and %d more\n", baseIndent, remaining)
 			}
@@ -64,7 +57,7 @@ func PrintTree(w io.Writer, chain []model.Process, children []model.Process, col
 		}
 
 		if colorEnabled {
-			p.Printf("%s%s%s%s%s (%spid %d%s)\n", baseIndent, colorMagentaTree, connector, colorResetTree, child.Command, colorBoldTree, child.PID, colorResetTree)
+			p.Printf("%s%s%s%s%s (%spid %d%s)\n", baseIndent, ColorMagenta, connector, ColorReset, child.Command, ColorBold, child.PID, ColorReset)
 		} else {
 			p.Printf("%s%s%s (pid %d)\n", baseIndent, connector, child.Command, child.PID)
 		}

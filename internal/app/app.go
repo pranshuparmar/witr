@@ -155,8 +155,23 @@ func runApp(cmd *cobra.Command, args []string) error {
 			cmd.SilenceErrors = true
 			outp.Print("Multiple matching processes found:\n\n")
 			for i, pid := range pids {
-				cmdline := procpkg.GetCmdline(pid)
-				outp.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
+				proc, err := procpkg.ReadProcess(pid)
+				var command, cmdline string
+				if err != nil {
+					command = "unknown"
+					cmdline = procpkg.GetCmdline(pid)
+				} else {
+					command = proc.Command
+					cmdline = proc.Cmdline
+				}
+				if !noColorFlag {
+					outp.Printf("[%d] %s%s%s (%spid %d%s)\n    %s\n",
+						i+1, output.ColorGreen, command, output.ColorReset,
+						output.ColorBold, pid, output.ColorReset,
+						cmdline)
+				} else {
+					outp.Printf("[%d] %s (pid %d)\n    %s\n", i+1, command, pid, cmdline)
+				}
 			}
 			outp.Println("\nRe-run with:")
 			outp.Println("  witr --pid <pid> --env")
@@ -216,11 +231,30 @@ func runApp(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		outp.Print("Multiple matching processes found:\n\n")
 		for i, pid := range pids {
-			cmdline := procpkg.GetCmdline(pid)
-			outp.Printf("[%d] PID %d   %s\n", i+1, pid, cmdline)
+			proc, err := procpkg.ReadProcess(pid)
+			var command, cmdline string
+			if err != nil {
+				command = "unknown"
+				cmdline = procpkg.GetCmdline(pid)
+			} else {
+				command = proc.Command
+				cmdline = proc.Cmdline
+			}
+			if !noColorFlag {
+				outp.Printf("[%d] %s%s%s (%spid %d%s)\n    %s\n",
+					i+1, output.ColorGreen, command, output.ColorReset,
+					output.ColorBold, pid, output.ColorReset,
+					cmdline)
+			} else {
+				outp.Printf("[%d] %s (pid %d)\n    %s\n", i+1, command, pid, cmdline)
+			}
 		}
 		outp.Println("\nRe-run with:")
-		outp.Println("  witr --pid <pid>")
+		if envFlag {
+			outp.Println("  witr --pid <pid> --env")
+		} else {
+			outp.Println("  witr --pid <pid>")
+		}
 		return fmt.Errorf("multiple processes found")
 	}
 

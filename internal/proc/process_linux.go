@@ -64,7 +64,6 @@ func ReadProcess(pid int) (model.Process, error) {
 	}
 	// Health status
 	health := "healthy"
-	forked := "unknown"
 
 	// Working directory
 	var cwd, cwdErr = os.Readlink(fmt.Sprintf("/proc/%d/cwd", pid))
@@ -162,6 +161,7 @@ func ReadProcess(pid int) (model.Process, error) {
 	startTicks, _ := strconv.ParseInt(fields[19], 10, 64)
 
 	// Fork detection: if ppid != 1 and not systemd, likely forked; also check for vfork/fork/clone flags if possible
+	var forked string
 	if ppid != 1 && comm != "systemd" {
 		forked = "forked"
 	} else {

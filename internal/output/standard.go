@@ -4,21 +4,12 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pranshuparmar/witr/pkg/model"
-)
-
-var (
-	colorReset     = ansiString("\033[0m")
-	colorRed       = ansiString("\033[31m")
-	colorGreen     = ansiString("\033[32m")
-	colorBlue      = ansiString("\033[34m")
-	colorCyan      = ansiString("\033[36m")
-	colorMagenta   = ansiString("\033[35m")
-	colorBold      = ansiString("\033[2m")
-	colorDimYellow = ansiString("\033[2;33m")
 )
 
 // formatDetailLabel formats a detail key into a padded label for display
@@ -40,14 +31,14 @@ func RenderWarnings(w io.Writer, warnings []string, colorEnabled bool) {
 	out := NewPrinter(w)
 	if len(warnings) == 0 {
 		if colorEnabled {
-			out.Printf("%sNo warnings.%s\n", colorGreen, colorReset)
+			out.Printf("%sNo warnings.%s\n", ColorGreen, ColorReset)
 		} else {
 			out.Println("No warnings.")
 		}
 		return
 	}
 	if colorEnabled {
-		out.Printf("%sWarnings%s:\n", colorRed, colorReset)
+		out.Printf("%sWarnings%s:\n", ColorRed, ColorReset)
 		for _, w := range warnings {
 			out.Printf("  • %s\n", SanitizeTerminal(w))
 		}
@@ -67,7 +58,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 		target = SanitizeTerminal(r.Ancestry[len(r.Ancestry)-1].Command)
 	}
 	if colorEnabled {
-		out.Printf("%sTarget%s      : %s\n\n", colorBlue, colorReset, target)
+		out.Printf("%sTarget%s      : %s\n\n", ColorBlue, ColorReset, target)
 	} else {
 		out.Printf("Target      : %s\n\n", target)
 	}
@@ -83,25 +74,25 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	proc.GitRepo = SanitizeTerminal(proc.GitRepo)
 	proc.GitBranch = SanitizeTerminal(proc.GitBranch)
 	if colorEnabled {
-		out.Printf("%sProcess%s     : %s%s%s (%spid %d%s)", colorBlue, colorReset, colorGreen, proc.Command, colorReset, colorBold, proc.PID, colorReset)
+		out.Printf("%sProcess%s     : %s%s%s (%spid %d%s)", ColorBlue, ColorReset, ColorGreen, proc.Command, ColorReset, ColorBold, proc.PID, ColorReset)
 	} else {
 		out.Printf("Process     : %s (pid %d)", proc.Command, proc.PID)
 	}
 	// Health status
 	if proc.Health != "" && proc.Health != "healthy" {
 		health := SanitizeTerminal(proc.Health)
-		healthColor := colorRed
+		healthColor := ColorRed
 		if colorEnabled {
-			out.Printf(" %s[%s]%s", healthColor, health, colorReset)
+			out.Printf(" %s[%s]%s", healthColor, health, ColorReset)
 		} else {
 			out.Printf(" [%s]", health)
 		}
 	}
 	// Forked status: only display if forked
 	if proc.Forked == "forked" {
-		forkColor := colorDimYellow
+		forkColor := ColorDimYellow
 		if colorEnabled {
-			out.Printf(" %s{forked}%s", forkColor, colorReset)
+			out.Printf(" %s{forked}%s", forkColor, ColorReset)
 		} else {
 			out.Printf(" {forked}")
 		}
@@ -109,7 +100,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	out.Println("")
 	if proc.User != "" && proc.User != "unknown" {
 		if colorEnabled {
-			out.Printf("%sUser%s        : %s\n", colorCyan, colorReset, proc.User)
+			out.Printf("%sUser%s        : %s\n", ColorCyan, ColorReset, proc.User)
 		} else {
 			out.Printf("User        : %s\n", proc.User)
 		}
@@ -118,7 +109,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	// Container
 	if proc.Container != "" {
 		if colorEnabled {
-			out.Printf("%sContainer%s   : %s\n", colorBlue, colorReset, proc.Container)
+			out.Printf("%sContainer%s   : %s\n", ColorBlue, ColorReset, proc.Container)
 		} else {
 			out.Printf("Container   : %s\n", proc.Container)
 		}
@@ -126,7 +117,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	// Service
 	if proc.Service != "" {
 		if colorEnabled {
-			out.Printf("%sService%s     : %s\n", colorBlue, colorReset, proc.Service)
+			out.Printf("%sService%s     : %s\n", ColorBlue, ColorReset, proc.Service)
 		} else {
 			out.Printf("Service     : %s\n", proc.Service)
 		}
@@ -134,13 +125,13 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 	if proc.Cmdline != "" {
 		if colorEnabled {
-			out.Printf("%sCommand%s     : %s\n", colorGreen, colorReset, proc.Cmdline)
+			out.Printf("%sCommand%s     : %s\n", ColorGreen, ColorReset, proc.Cmdline)
 		} else {
 			out.Printf("Command     : %s\n", proc.Cmdline)
 		}
 	} else {
 		if colorEnabled {
-			out.Printf("%sCommand%s     : %s\n", colorGreen, colorReset, proc.Command)
+			out.Printf("%sCommand%s     : %s\n", ColorGreen, ColorReset, proc.Command)
 		} else {
 			out.Printf("Command     : %s\n", proc.Command)
 		}
@@ -171,7 +162,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	}
 	dtStr := startedAt.Format("Mon 2006-01-02 15:04:05 -07:00")
 	if colorEnabled {
-		out.Printf("%sStarted%s     : %s (%s)\n", colorMagenta, colorReset, rel, dtStr)
+		out.Printf("%sStarted%s     : %s (%s)\n", ColorMagenta, ColorReset, rel, dtStr)
 	} else {
 		out.Printf("Started     : %s (%s)\n", rel, dtStr)
 	}
@@ -179,7 +170,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	// Restart count
 	if r.RestartCount > 0 {
 		if colorEnabled {
-			out.Printf("%sRestarts%s    : %d\n", colorDimYellow, colorReset, r.RestartCount)
+			out.Printf("%sRestarts%s    : %d\n", ColorDimYellow, ColorReset, r.RestartCount)
 		} else {
 			out.Printf("Restarts    : %d\n", r.RestartCount)
 		}
@@ -187,7 +178,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 	// Why It Exists (short chain)
 	if colorEnabled {
-		out.Printf("\n%sWhy It Exists%s :\n  ", colorMagenta, colorReset)
+		out.Printf("\n%sWhy It Exists%s :\n  ", ColorMagenta, ColorReset)
 		for i, p := range r.Ancestry {
 			name := p.Command
 			if name == "" && p.Cmdline != "" {
@@ -197,11 +188,11 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 			nameColor := ansiString("")
 			if i == len(r.Ancestry)-1 {
-				nameColor = colorGreen
+				nameColor = ColorGreen
 			}
-			out.Printf("%s%s%s (%spid %d%s)", nameColor, name, colorReset, colorBold, p.PID, colorReset)
+			out.Printf("%s%s%s (%spid %d%s)", nameColor, name, ColorReset, ColorBold, p.PID, ColorReset)
 			if i < len(r.Ancestry)-1 {
-				out.Printf(" %s\u2192%s ", colorMagenta, colorReset)
+				out.Printf(" %s\u2192%s ", ColorMagenta, ColorReset)
 			}
 		}
 		out.Print("\n\n")
@@ -226,9 +217,9 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	sourceName := SanitizeTerminal(r.Source.Name)
 	if colorEnabled {
 		if r.Source.Name != "" && r.Source.Name != sourceLabel {
-			out.Printf("%sSource%s      : %s (%s)\n", colorCyan, colorReset, sourceName, sourceLabel)
+			out.Printf("%sSource%s      : %s (%s)\n", ColorCyan, ColorReset, sourceName, sourceLabel)
 		} else {
-			out.Printf("%sSource%s      : %s\n", colorCyan, colorReset, sourceLabel)
+			out.Printf("%sSource%s      : %s\n", ColorCyan, ColorReset, sourceLabel)
 		}
 	} else {
 		if r.Source.Name != "" && r.Source.Name != sourceLabel {
@@ -246,7 +237,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 			if val, ok := r.Source.Details[key]; ok {
 				label := formatDetailLabel(key)
 				if colorEnabled {
-					out.Printf("%s%s%s : %s\n", colorBold, label, colorReset, SanitizeTerminal(val))
+					out.Printf("%s%s%s : %s\n", ColorBold, label, ColorReset, SanitizeTerminal(val))
 				} else {
 					out.Printf("%s : %s\n", label, SanitizeTerminal(val))
 				}
@@ -257,13 +248,13 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	// Context group
 	if colorEnabled {
 		if proc.WorkingDir != "" && proc.WorkingDir != "unknown" {
-			out.Printf("\n%sWorking Dir%s : %s\n", colorGreen, colorReset, proc.WorkingDir)
+			out.Printf("\n%sWorking Dir%s : %s\n", ColorGreen, ColorReset, proc.WorkingDir)
 		}
 		if proc.GitRepo != "" {
 			if proc.GitBranch != "" {
-				out.Printf("%sGit Repo%s    : %s (%s)\n", colorCyan, colorReset, proc.GitRepo, proc.GitBranch)
+				out.Printf("%sGit Repo%s    : %s (%s)\n", ColorCyan, ColorReset, proc.GitRepo, proc.GitBranch)
 			} else {
-				out.Printf("%sGit Repo%s    : %s\n", colorCyan, colorReset, proc.GitRepo)
+				out.Printf("%sGit Repo%s    : %s\n", ColorCyan, ColorReset, proc.GitRepo)
 			}
 		}
 	} else {
@@ -289,7 +280,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 				safeHostPort := SanitizeTerminal(hostPort)
 				if colorEnabled {
 					if i == 0 {
-						out.Printf("%sListening%s   : %s\n", colorGreen, colorReset, safeHostPort)
+						out.Printf("%sListening%s   : %s\n", ColorGreen, ColorReset, safeHostPort)
 					} else {
 						out.Printf("              %s\n", safeHostPort)
 					}
@@ -308,7 +299,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	// Warnings
 	if len(r.Warnings) > 0 {
 		if colorEnabled {
-			out.Printf("\n%sWarnings%s    :\n", colorRed, colorReset)
+			out.Printf("\n%sWarnings%s    :\n", ColorRed, ColorReset)
 			for _, w := range r.Warnings {
 				out.Printf("  • %s\n", SanitizeTerminal(w))
 			}
@@ -322,20 +313,15 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 	// Extended information for verbose mode
 	if verbose {
-		if colorEnabled {
-			out.Printf("\n%sExtended Information%s:\n", colorMagenta, colorReset)
-		} else {
-			out.Println("\nExtended Information:")
-		}
-
+		out.Println()
 		// Resource context (thermal state, sleep prevention, CPU)
 		if r.ResourceContext != nil {
 			if r.ResourceContext.CPUUsage > 0 {
 				if colorEnabled {
 					if r.ResourceContext.CPUUsage > 70 {
-						out.Printf("%sCPU%s         : %s%.1f%%%s\n", colorRed, colorReset, colorDimYellow, r.ResourceContext.CPUUsage, colorReset)
+						out.Printf("%sCPU%s         : %s%.1f%%%s\n", ColorRed, ColorReset, ColorDimYellow, r.ResourceContext.CPUUsage, ColorReset)
 					} else {
-						out.Printf("%sCPU%s         : %.1f%%\n", colorGreen, colorReset, r.ResourceContext.CPUUsage)
+						out.Printf("%sCPU%s         : %.1f%%\n", ColorGreen, ColorReset, r.ResourceContext.CPUUsage)
 					}
 				} else {
 					out.Printf("CPU         : %.1f%%\n", r.ResourceContext.CPUUsage)
@@ -344,7 +330,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 			if r.ResourceContext.PreventsSleep {
 				if colorEnabled {
-					out.Printf("%sEnergy%s      : %sPreventing system sleep%s\n", colorRed, colorReset, colorDimYellow, colorReset)
+					out.Printf("%sEnergy%s      : %sPreventing system sleep%s\n", ColorRed, ColorReset, ColorDimYellow, ColorReset)
 				} else {
 					out.Printf("Energy      : Preventing system sleep\n")
 				}
@@ -353,7 +339,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 			if r.ResourceContext.ThermalState != "" {
 				thermalState := SanitizeTerminal(r.ResourceContext.ThermalState)
 				if colorEnabled {
-					out.Printf("%sThermal%s     : %s%s%s\n", colorRed, colorReset, colorDimYellow, thermalState, colorReset)
+					out.Printf("%sThermal%s     : %s%s%s\n", ColorRed, ColorReset, ColorDimYellow, thermalState, ColorReset)
 				} else {
 					out.Printf("Thermal     : %s\n", thermalState)
 				}
@@ -363,7 +349,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 		// Memory information
 		if proc.Memory.VMS > 0 {
 			if colorEnabled {
-				out.Printf("\n%sMemory%s:\n", colorGreen, colorReset)
+				out.Printf("\n%sMemory%s:\n", ColorGreen, ColorReset)
 				out.Printf("  Virtual  : %.1f MB\n", proc.Memory.VMSMB)
 				out.Printf("  Resident : %.1f MB\n", proc.Memory.RSSMB)
 				if r.ResourceContext != nil && r.ResourceContext.MemoryUsage > 0 {
@@ -388,7 +374,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 		// I/O statistics
 		if proc.IO.ReadBytes > 0 || proc.IO.WriteBytes > 0 {
 			if colorEnabled {
-				out.Printf("\n%sI/O Statistics%s:\n", colorGreen, colorReset)
+				out.Printf("\n%sI/O Statistics%s:\n", ColorGreen, ColorReset)
 				if proc.IO.ReadBytes > 0 {
 					out.Printf("  Read  : %.1f MB (%d ops)\n", float64(proc.IO.ReadBytes)/(1024*1024), proc.IO.ReadOps)
 				}
@@ -412,9 +398,9 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 				usagePercent := float64(r.FileContext.OpenFiles) / float64(r.FileContext.FileLimit) * 100
 				if colorEnabled {
 					if usagePercent > 80 {
-						out.Printf("%sOpen Files%s  : %s%d of %d (%.0f%%)%s\n", colorRed, colorReset, colorDimYellow, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent, colorReset)
+						out.Printf("%sOpen Files%s  : %s%d of %d (%.0f%%)%s\n", ColorRed, ColorReset, ColorDimYellow, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent, ColorReset)
 					} else {
-						out.Printf("%sOpen Files%s  : %d of %d (%.0f%%)\n", colorGreen, colorReset, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent)
+						out.Printf("%sOpen Files%s  : %d of %d (%.0f%%)\n", ColorGreen, ColorReset, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent)
 					}
 				} else {
 					out.Printf("Open Files  : %d of %d (%.0f%%)\n", r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent)
@@ -423,7 +409,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 			if len(r.FileContext.LockedFiles) > 0 {
 				firstLocked := SanitizeTerminal(r.FileContext.LockedFiles[0])
 				if colorEnabled {
-					out.Printf("%sLocks%s       : %s\n", colorCyan, colorReset, firstLocked)
+					out.Printf("%sLocks%s       : %s\n", ColorCyan, ColorReset, firstLocked)
 					for _, f := range r.FileContext.LockedFiles[1:] {
 						out.Printf("              %s\n", SanitizeTerminal(f))
 					}
@@ -438,20 +424,44 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 		// File descriptors
 		if proc.FDCount > 0 {
+			// Sort file descriptors numerically
+			sort.Slice(proc.FileDescs, func(i, j int) bool {
+				fdI := proc.FileDescs[i]
+				fdJ := proc.FileDescs[j]
+				idxI := strings.Index(fdI, " ")
+				idxJ := strings.Index(fdJ, " ")
+
+				if idxI == -1 || idxJ == -1 {
+					return fdI < fdJ
+				}
+
+				numI, errI := strconv.Atoi(fdI[:idxI])
+				numJ, errJ := strconv.Atoi(fdJ[:idxJ])
+
+				if errI == nil && errJ == nil {
+					return numI < numJ
+				}
+				return fdI < fdJ
+			})
+
 			if colorEnabled {
 				if proc.FDLimit == 0 {
-					out.Printf("\n%sFile Descriptors%s: %d/unlimited\n", colorGreen, colorReset, proc.FDCount)
+					out.Printf("\n%sFile Descriptors%s: %d/unlimited\n", ColorGreen, ColorReset, proc.FDCount)
 				} else {
-					out.Printf("\n%sFile Descriptors%s: %d/%d\n", colorGreen, colorReset, proc.FDCount, proc.FDLimit)
+					out.Printf("\n%sFile Descriptors%s: %d/%d\n", ColorGreen, ColorReset, proc.FDCount, proc.FDLimit)
 				}
 				if len(proc.FileDescs) > 0 && len(proc.FileDescs) <= 10 {
 					for _, fd := range proc.FileDescs {
-						out.Printf("  %s\n", SanitizeTerminal(fd))
+						safeFd := SanitizeTerminal(fd)
+						safeFd = strings.Replace(safeFd, "->", string(ColorMagenta)+"->"+string(ColorReset), 1)
+						out.Printf("  %s\n", ansiString(safeFd))
 					}
 				} else if len(proc.FileDescs) > 10 {
 					out.Printf("  Showing first 10 of %d descriptors:\n", len(proc.FileDescs))
 					for i := 0; i < 10; i++ {
-						out.Printf("  %s\n", SanitizeTerminal(proc.FileDescs[i]))
+						safeFd := SanitizeTerminal(proc.FileDescs[i])
+						safeFd = strings.Replace(safeFd, "->", string(ColorMagenta)+"->"+string(ColorReset), 1)
+						out.Printf("  %s\n", ansiString(safeFd))
 					}
 					out.Printf("  ... and %d more\n", len(proc.FileDescs)-10)
 				}
@@ -481,12 +491,12 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 			explanation := SanitizeTerminal(r.SocketInfo.Explanation)
 			workaround := SanitizeTerminal(r.SocketInfo.Workaround)
 			if colorEnabled {
-				out.Printf("%sSocket%s      : %s\n", colorCyan, colorReset, state)
+				out.Printf("%sSocket%s      : %s\n", ColorCyan, ColorReset, state)
 				if explanation != "" {
 					out.Printf("              %s\n", explanation)
 				}
 				if workaround != "" {
-					out.Printf("              %s%s%s\n", colorDimYellow, workaround, colorReset)
+					out.Printf("              %s%s%s\n", ColorDimYellow, workaround, ColorReset)
 				}
 			} else {
 				out.Printf("Socket      : %s\n", state)
@@ -502,7 +512,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 		// Threads
 		if proc.ThreadCount > 1 {
 			if colorEnabled {
-				out.Printf("\n%sThreads%s: %d\n", colorGreen, colorReset, proc.ThreadCount)
+				out.Printf("\n%sThreads%s: %d\n", ColorGreen, ColorReset, proc.ThreadCount)
 			} else {
 				out.Printf("\nThreads: %d\n", proc.ThreadCount)
 			}

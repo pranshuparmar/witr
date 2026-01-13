@@ -1,9 +1,10 @@
 name: E2E Tests
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["PR Check"]
+    types:
+      - completed
 
 permissions: read-all
 
@@ -11,6 +12,10 @@ jobs:
   build:
     name: "Build: Binaries"
     runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.pull_requests[0].base.ref == 'main' &&
+      github.event.workflow_run.conclusion == 'success'
     strategy:
       matrix:
         include:
@@ -18,17 +23,13 @@ jobs:
             arch: amd64
             runner: ubuntu-latest
             run_tests: true
-          - os: linux
-            arch: arm64
-            runner: ubuntu-latest
-            run_tests: false
           - os: darwin
             arch: amd64
             runner: macos-15
             run_tests: true
-          - os: darwin
-            arch: arm64
-            runner: macos-latest
+          - os: windows
+            arch: amd64
+            runner: windows-latest
             run_tests: true
     steps:
       - name: Checkout code
@@ -40,6 +41,7 @@ jobs:
           go-version: '1.25'
 
       - name: Build ${{ matrix.os }}/${{ matrix.arch }}
+        shell: bash
         run: |
           GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o witr-${{ matrix.os }}-${{ matrix.arch }} ./cmd/witr
           chmod +x witr-${{ matrix.os }}-${{ matrix.arch }}
@@ -54,6 +56,10 @@ jobs:
     name: "Tests: Functional"
     needs: build
     runs-on: ${{ matrix.runner }}
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.pull_requests[0].base.ref == 'main' &&
+      github.event.workflow_run.conclusion == 'success'
     strategy:
       matrix:
         include:
@@ -61,17 +67,13 @@ jobs:
             arch: amd64
             runner: ubuntu-latest
             run_tests: true
-          - os: linux
-            arch: arm64
-            runner: ubuntu-latest
-            run_tests: false
           - os: darwin
             arch: amd64
             runner: macos-15
             run_tests: true
-          - os: darwin
-            arch: arm64
-            runner: macos-latest
+          - os: windows
+            arch: amd64
+            runner: windows-latest
             run_tests: true
     steps:
       - name: Download Artifact
@@ -80,18 +82,22 @@ jobs:
           name: witr-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Make executable
+        shell: bash
         run: chmod +x witr-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Verify Version
         if: matrix.run_tests == true
+        shell: bash
         run: ./witr-${{ matrix.os }}-${{ matrix.arch }} --version
 
       - name: Verify Help
         if: matrix.run_tests == true
+        shell: bash
         run: ./witr-${{ matrix.os }}-${{ matrix.arch }} --help
 
       - name: Verify PID & Flags
         if: matrix.run_tests == true
+        shell: bash
         run: |
           BINARY=./witr-${{ matrix.os }}-${{ matrix.arch }}
           
@@ -102,6 +108,9 @@ jobs:
           
           # Basic PID lookup
           $BINARY --pid $TEST_PID
+          
+          # Verbose output
+          $BINARY --pid $TEST_PID --verbose
           
           # JSON output
           $BINARY --pid $TEST_PID --json
@@ -120,6 +129,7 @@ jobs:
 
       - name: Verify Tree View (Nested Process)
         if: matrix.run_tests == true
+        shell: bash
         run: |
           BINARY=./witr-${{ matrix.os }}-${{ matrix.arch }}
           

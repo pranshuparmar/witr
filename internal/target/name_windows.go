@@ -10,8 +10,8 @@ import (
 )
 
 func ResolveName(name string) ([]int, error) {
-	// wmic process get ProcessId,Name,CommandLine /format:list
-	out, err := exec.Command("wmic", "process", "get", "ProcessId,Name,CommandLine", "/format:list").Output()
+	// powershell Get-CimInstance Win32_Process
+	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", "Get-CimInstance -ClassName Win32_Process | ForEach-Object { 'Name=' + $_.Name; 'CommandLine=' + $_.CommandLine; 'ProcessId=' + $_.ProcessId }").Output()
 	if err != nil {
 		return nil, err
 	}

@@ -9,8 +9,9 @@ import (
 )
 
 func readUser(pid int) string {
-	// wmic process where processid=PID call getowner
-	out, err := exec.Command("wmic", "process", "where", fmt.Sprintf("processid=%d", pid), "call", "getowner").Output()
+	// powershell Get-CimInstance Win32_Process GetOwner
+	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ProcessId=%d\" | Invoke-CimMethod -MethodName GetOwner | ForEach-Object { 'User=' + $_.User; 'Domain=' + $_.Domain }", pid)
+	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript).Output()
 	if err != nil {
 		return "unknown"
 	}
@@ -20,19 +21,13 @@ func readUser(pid int) string {
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "User =") {
-			val := strings.TrimPrefix(line, "User =")
-			val = strings.TrimSpace(val)
-			val = strings.Trim(val, ";")
-			val = strings.Trim(val, "\"")
-			user = val
+		if strings.HasPrefix(line, "User=") {
+			val := strings.TrimPrefix(line, "User=")
+			user = strings.TrimSpace(val)
 		}
-		if strings.HasPrefix(line, "Domain =") {
-			val := strings.TrimPrefix(line, "Domain =")
-			val = strings.TrimSpace(val)
-			val = strings.Trim(val, ";")
-			val = strings.Trim(val, "\"")
-			domain = val
+		if strings.HasPrefix(line, "Domain=") {
+			val := strings.TrimPrefix(line, "Domain=")
+			domain = strings.TrimSpace(val)
 		}
 	}
 

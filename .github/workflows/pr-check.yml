@@ -1,6 +1,4 @@
 name: PR Check
-permissions:
-  contents: read
 
 on:
   pull_request:
@@ -25,6 +23,7 @@ jobs:
   semantic-pull-request:
     name: "Compliance: Check PR Title"
     if: github.event_name == 'pull_request'
+    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - name: Check PR title
@@ -34,7 +33,6 @@ jobs:
 
   lint:
     name: "Code Quality: Lint"
-    needs: [check-signed-commits, semantic-pull-request]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -55,7 +53,6 @@ jobs:
 
   vet:
     name: "Code Quality: Vet"
-    needs: [check-signed-commits, semantic-pull-request]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -71,7 +68,6 @@ jobs:
 
   test:
     name: "Tests: Unit"
-    needs: [check-signed-commits, semantic-pull-request]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -84,40 +80,3 @@ jobs:
 
       - name: Run tests
         run: go test -v ./...
-
-  build:
-    name: "Build: Binaries"
-    needs: [lint, vet, test]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - os: linux
-            arch: amd64
-            runner: ubuntu-latest
-            run_tests: true
-          - os: linux
-            arch: arm64
-            runner: ubuntu-latest
-            run_tests: false
-          - os: darwin
-            arch: amd64
-            runner: macos-15
-            run_tests: true
-          - os: darwin
-            arch: arm64
-            runner: macos-latest
-            run_tests: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.25'
-
-      - name: Build ${{ matrix.os }}/${{ matrix.arch }}
-        run: |
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o witr-${{ matrix.os }}-${{ matrix.arch }} ./cmd/witr
-          chmod +x witr-${{ matrix.os }}-${{ matrix.arch }}

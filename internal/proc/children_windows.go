@@ -11,7 +11,7 @@ import (
 )
 
 // ResolveChildren returns the direct child processes for the provided PID.
-// Windows implementation using direct wmic query instead of global snapshot.
+// Windows implementation using direct powershell query instead of global snapshot.
 func ResolveChildren(pid int) ([]model.Process, error) {
 	if pid <= 0 {
 		return nil, fmt.Errorf("invalid pid")
@@ -19,34 +19,30 @@ func ResolveChildren(pid int) ([]model.Process, error) {
 
 	children := make([]model.Process, 0)
 
-	// wmic process where ParentProcessId=PID get ProcessId,Name /format:csv
-	cmd := exec.Command("wmic", "process", "where", fmt.Sprintf("ParentProcessId=%d", pid), "get", "ProcessId,Name", "/format:csv")
+	// powershell Get-CimInstance Win32_Process
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ParentProcessId=%d\" | Select-Object Name,ProcessId | ConvertTo-Csv -NoTypeInformation", pid))
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("wmic child query: %w", err)
+		return nil, fmt.Errorf("powershell child query: %w", err)
 	}
 
-	// Parse CSV output manually to be robust against empty lines/CRLF
-	// Output format:
-	// Node,Name,ProcessId
-	// MYPC,chrome.exe,1234
+	// Parse CSV output cleanly
+	// "Name","ProcessId"
+	// "chrome.exe","1234"
 	lines := strings.Split(string(out), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "Node") {
+		if line == "" || strings.HasPrefix(line, "\"Name\"") {
 			continue
 		}
 
 		parts := strings.Split(line, ",")
-		// Expecting at least 3 parts: Node, Name, ProcessId (or just Name, ProcessId if Node omitted?)
-		// standard wmic /format:csv includes Node.
-		// "MYPC","chrome.exe","1234"
+		// "chrome.exe","1234"
 		if len(parts) >= 2 {
-			// ProcessId is typically the last column
-			pidStr := parts[len(parts)-1]
-			name := parts[len(parts)-2]
+			pidStr := strings.Trim(parts[len(parts)-1], "\"")
+			name := strings.Trim(parts[len(parts)-2], "\"")
 
-			cpid, err := strconv.Atoi(strings.TrimSpace(pidStr))
+			cpid, err := strconv.Atoi(pidStr)
 			if err != nil {
 				continue
 			}
@@ -54,7 +50,7 @@ func ResolveChildren(pid int) ([]model.Process, error) {
 			children = append(children, model.Process{
 				PID:     cpid,
 				PPID:    pid,
-				Command: strings.TrimSpace(name),
+				Command: name,
 			})
 		}
 	}

@@ -15,16 +15,16 @@ import (
 // listProcessSnapshot collects a lightweight view of running processes
 // for child/descendant discovery.
 func listProcessSnapshot() ([]model.Process, error) {
-	cmd := exec.Command("wmic", "process", "get", "Name,ParentProcessId,ProcessId", "/format:csv")
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "Get-CimInstance -ClassName Win32_Process | Select-Object Name,ParentProcessId,ProcessId | ConvertTo-Csv -NoTypeInformation")
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("wmic process list: %w", err)
+		return nil, fmt.Errorf("powershell process list: %w", err)
 	}
 
 	r := csv.NewReader(strings.NewReader(string(out)))
 	records, err := r.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("parse wmic output: %w", err)
+		return nil, fmt.Errorf("parse powershell output: %w", err)
 	}
 
 	if len(records) < 2 {
@@ -49,7 +49,7 @@ func listProcessSnapshot() ([]model.Process, error) {
 
 	if nameIdx == -1 || ppidIdx == -1 || pidIdx == -1 {
 		// Fallback to hardcoded indices if header parsing fails or is unexpected
-		return nil, fmt.Errorf("invalid wmic output headers: %v", headers)
+		return nil, fmt.Errorf("invalid powershell output headers: %v", headers)
 	}
 
 	processes := make([]model.Process, 0, len(records)-1)

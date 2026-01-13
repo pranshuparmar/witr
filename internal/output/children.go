@@ -18,14 +18,14 @@ func PrintChildren(w io.Writer, root model.Process, children []model.Process, co
 	}
 
 	if colorEnabled {
-		p.Printf("%sChildren%s of %s (%spid %d%s):\n", colorMagentaTree, colorResetTree, rootName, colorBoldTree, root.PID, colorResetTree)
+		p.Printf("%sChildren%s of %s (%spid %d%s):\n", ColorGreen, ColorReset, rootName, ColorBold, root.PID, ColorReset)
 	} else {
 		p.Printf("Children of %s (pid %d):\n", rootName, root.PID)
 	}
 
 	if len(children) == 0 {
 		if colorEnabled {
-			p.Printf("%sNo child processes found.%s\n", colorGreen, colorReset)
+			p.Printf("%sNo child processes found.%s\n", ColorGreen, ColorReset)
 		} else {
 			p.Println("No child processes found.")
 		}
@@ -38,7 +38,7 @@ func PrintChildren(w io.Writer, root model.Process, children []model.Process, co
 		if i >= limit {
 			remaining := count - limit
 			if colorEnabled {
-				p.Printf("  %s└─ %s... and %d more\n", colorMagentaTree, colorResetTree, remaining)
+				p.Printf("  %s└─ %s... and %d more\n", ColorMagenta, ColorReset, remaining)
 			} else {
 				p.Printf("  └─ ... and %d more\n", remaining)
 			}
@@ -60,7 +60,7 @@ func PrintChildren(w io.Writer, root model.Process, children []model.Process, co
 		}
 
 		if colorEnabled {
-			p.Printf("  %s%s%s%s (%spid %d%s)\n", colorMagentaTree, connector, colorResetTree, childName, colorBoldTree, child.PID, colorResetTree)
+			p.Printf("  %s%s%s%s (%spid %d%s)\n", ColorMagenta, connector, ColorReset, childName, ColorBold, child.PID, ColorReset)
 		} else {
 			p.Printf("  %s%s (pid %d)\n", connector, childName, child.PID)
 		}

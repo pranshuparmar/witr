@@ -27,6 +27,10 @@ func ResolvePort(port int) ([]int, error) {
 			if len(fields) < 5 {
 				continue
 			}
+			state := fields[3]
+			if state != "LISTENING" {
+				continue
+			}
 			// Proto Local Address Foreign Address State PID
 			localAddr := fields[1]
 			if strings.HasSuffix(localAddr, portStr) {
