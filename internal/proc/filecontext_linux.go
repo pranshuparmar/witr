@@ -51,6 +51,9 @@ func getFileLimit(pid int) int {
 
 		// Data in format: "Max open files $SOFT_LOCK_NUMBER $HARD_LOCK_NUMBER files"
 		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			return linuxDefaultMaxOpenFile
+		}
 		softLimitString := fields[3]
 
 		if softLimitString == "unlimited" {

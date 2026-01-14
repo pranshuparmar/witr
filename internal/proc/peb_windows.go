@@ -3,7 +3,9 @@
 package proc
 
 import (
+	"fmt"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -14,18 +16,20 @@ const (
 )
 
 var (
-	modntdll           = syscall.NewLazyDLL("ntdll.dll")
-	procNtQueryInfo    = modntdll.NewProc("NtQueryInformationProcess")
-	modkernel32        = syscall.NewLazyDLL("kernel32.dll")
-	procReadProcessMem = modkernel32.NewProc("ReadProcessMemory")
+	modntdll            = syscall.NewLazyDLL("ntdll.dll")
+	procNtQueryInfo     = modntdll.NewProc("NtQueryInformationProcess")
+	modkernel32         = syscall.NewLazyDLL("kernel32.dll")
+	procReadProcessMem  = modkernel32.NewProc("ReadProcessMemory")
+	procGetProcessTimes = modkernel32.NewProc("GetProcessTimes")
 )
 
 type processBasicInformation struct {
-	Reserved1       uintptr
-	PebBaseAddress  uintptr
-	Reserved2       [2]uintptr
-	UniqueProcessId uintptr
-	Reserved3       uintptr
+	ExitStatus                   uintptr
+	PebBaseAddress               uintptr
+	AffinityMask                 uintptr
+	BasePriority                 uintptr
+	UniqueProcessId              uintptr
+	InheritedFromUniqueProcessId uintptr
 }
 
 type unicodeString struct {
@@ -37,7 +41,7 @@ type unicodeString struct {
 // Partial RTL_USER_PROCESS_PARAMETERS
 type rtlUserProcessParameters struct {
 	Reserved1              [16]byte
-	Reserved2              [10]uintptr
+	Reserved2              [5]uintptr
 	CurrentDirectoryPath   unicodeString
 	CurrentDirectoryHandle uintptr
 	DllPath                unicodeString
@@ -46,12 +50,25 @@ type rtlUserProcessParameters struct {
 	Environment            uintptr
 }
 
-func readPEBData(pid int) (string, []string) {
+type Win32ProcessInfo struct {
+	PPID        int
+	CommandLine string
+	Exe         string
+	Cwd         string
+	Env         []string
+	StartedAt   time.Time
+}
+
+func GetProcessDetailedInfo(pid int) (Win32ProcessInfo, error) {
+	var info Win32ProcessInfo
 	handle, err := syscall.OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, false, uint32(pid))
 	if err != nil {
-		return "unknown", []string{}
+		return info, err
 	}
 	defer syscall.CloseHandle(handle)
+
+	// Get Start Time
+	info.StartedAt = getProcessStartTime(handle)
 
 	var pbi processBasicInformation
 	var returnLength uint32
@@ -63,33 +80,42 @@ func readPEBData(pid int) (string, []string) {
 		uintptr(unsafe.Pointer(&returnLength)),
 	)
 
-	if status != 0 || pbi.PebBaseAddress == 0 {
-		return "unknown", []string{}
+	if status != 0 {
+		return info, fmt.Errorf("NtQueryInformationProcess failed with status %x", status)
+	}
+
+	info.PPID = int(pbi.InheritedFromUniqueProcessId)
+
+	if pbi.PebBaseAddress == 0 {
+		return info, fmt.Errorf("PEB Base Address is 0")
 	}
 
 	// Read PEB
 	var pebPtr uintptr
 	// PebBaseAddress + offset to ProcessParameters (0x20 on x64, 0x10 on x86)
-	// For simplicity and 64-bit focus:
 	paramsOffset := uintptr(0x20)
 	if unsafe.Sizeof(uintptr(0)) == 4 {
 		paramsOffset = 0x10
 	}
 
 	if !readProcessMemory(handle, pbi.PebBaseAddress+paramsOffset, unsafe.Pointer(&pebPtr), unsafe.Sizeof(pebPtr)) {
-		return "unknown", []string{}
+		return info, fmt.Errorf("failed to read PEB ProcessParameters address")
 	}
 
 	var params rtlUserProcessParameters
 	if !readProcessMemory(handle, pebPtr, unsafe.Pointer(&params), unsafe.Sizeof(params)) {
-		return "unknown", []string{}
+		return info, fmt.Errorf("failed to read ProcessParameters struct")
 	}
 
-	wd := readUnicodeString(handle, params.CurrentDirectoryPath)
-	// Environment is more complex to read as it's a block of null-terminated strings
-	// For now we'll return the WD. Env reading involves scanning until double null.
+	info.Cwd = readUnicodeString(handle, params.CurrentDirectoryPath)
+	info.CommandLine = readUnicodeString(handle, params.CommandLine)
+	info.Exe = readUnicodeString(handle, params.ImagePathName)
 
-	return wd, []string{}
+	// Environment is complex to read remotely (block of null-terminated strings)
+	// Leaving empty for now as requested, matching previous behavior/capability level.
+	info.Env = []string{}
+
+	return info, nil
 }
 
 func readProcessMemory(handle syscall.Handle, addr uintptr, dest unsafe.Pointer, size uintptr) bool {
@@ -113,4 +139,19 @@ func readUnicodeString(handle syscall.Handle, us unicodeString) string {
 		return ""
 	}
 	return syscall.UTF16ToString(buf)
+}
+
+func getProcessStartTime(handle syscall.Handle) time.Time {
+	var creation, exit, kernel, user syscall.Filetime
+	ret, _, _ := procGetProcessTimes.Call(
+		uintptr(handle),
+		uintptr(unsafe.Pointer(&creation)),
+		uintptr(unsafe.Pointer(&exit)),
+		uintptr(unsafe.Pointer(&kernel)),
+		uintptr(unsafe.Pointer(&user)),
+	)
+	if ret == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, creation.Nanoseconds())
 }
