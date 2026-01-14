@@ -176,3 +176,39 @@ func FuzzWarningsNoPanic(f *testing.F) {
 		_ = Warnings(p)
 	})
 }
+
+func TestWarningsDetectsDeletedExecutable(t *testing.T) {
+	p := []model.Process{
+		{
+			PID:        123,
+			Command:    "nginx",
+			StartedAt:  time.Now(),
+			ExeDeleted: true,
+		},
+	}
+
+	warnings := Warnings(p)
+	want := "Process is running from a deleted binary (potential library injection or pending update)"
+	if !slices.Contains(warnings, want) {
+		t.Fatalf("expected deleted binary warning, got: %v", warnings)
+	}
+}
+
+func TestEnrichSocketInfo(t *testing.T) {
+	tests := []struct {
+		state           string
+		wantExplanation string
+	}{
+		{"TIME_WAIT", "The local OS is holding the port in a protocol-wait state to ensure all packets are received."},
+		{"CLOSE_WAIT", "The remote end has closed the connection, but the local application hasn't responded."},
+		{"LISTEN", "The process is actively waiting for incoming connections."},
+	}
+
+	for _, tt := range tests {
+		si := &model.SocketInfo{State: tt.state}
+		EnrichSocketInfo(si)
+		if si.Explanation != tt.wantExplanation {
+			t.Errorf("state %s: got explanation %q, want %q", tt.state, si.Explanation, tt.wantExplanation)
+		}
+	}
+}

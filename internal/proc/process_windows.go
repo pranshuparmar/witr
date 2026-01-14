@@ -4,89 +4,64 @@ package proc
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
-	"strconv"
+	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
 func ReadProcess(pid int) (model.Process, error) {
-	// Check if process exists using tasklist
-	cmd := exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH")
-	out, err := cmd.Output()
+	info, err := GetProcessDetailedInfo(pid)
 	if err != nil {
 		return model.Process{}, err
 	}
-	output := string(out)
-	if strings.Contains(output, "No tasks are running") {
-		return model.Process{}, fmt.Errorf("process %d not found", pid)
-	}
 
-	// Parse basic info from tasklist
-	// "Image Name","PID","Session Name","Session#","Mem Usage"
-	parts := strings.Split(output, "\",\"")
 	name := ""
-	if len(parts) >= 1 {
-		name = strings.Trim(parts[0], "\"")
-	}
-
-	// Get more info via powershell
-	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ProcessId=%d\" | ForEach-Object { \"CommandLine=$($_.CommandLine)\"; \"CreationDate=$($_.CreationDate.ToUniversalTime().ToString('yyyyMMddHHmmss'))\"; \"ExecutablePath=$($_.ExecutablePath)\"; \"ParentProcessId=$($_.ParentProcessId)\"; \"Status=$($_.Status)\" }", pid)
-	psCmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript)
-	psOut, _ := psCmd.Output()
-
-	var cmdline, exe string
-	var ppid int
-	var startedAt time.Time
-	health := "healthy"
-
-	lines := strings.Split(string(psOut), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		if strings.HasPrefix(line, "CommandLine=") {
-			cmdline = strings.TrimPrefix(line, "CommandLine=")
-		} else if strings.HasPrefix(line, "CreationDate=") {
-			val := strings.TrimPrefix(line, "CreationDate=")
-			// Format: YYYYMMDDHHMMSS (UTC)
-			if len(val) >= 14 {
-				t, err := time.Parse("20060102150405", val[:14])
-				if err == nil {
-					startedAt = t
-				}
-			}
-		} else if strings.HasPrefix(line, "ExecutablePath=") {
-			exe = strings.TrimPrefix(line, "ExecutablePath=")
-		} else if strings.HasPrefix(line, "ParentProcessId=") {
-			val := strings.TrimPrefix(line, "ParentProcessId=")
-			ppid, _ = strconv.Atoi(val)
-		} else if strings.HasPrefix(line, "Status=") {
-			val := strings.TrimPrefix(line, "Status=")
-			if val != "" {
-				health = strings.ToLower(val)
-			}
-		}
+	if info.Exe != "" {
+		name = filepath.Base(info.Exe)
 	}
 
 	ports, addrs := GetListeningPortsForPID(pid)
+	serviceName := detectWindowsServiceSource(pid)
 
 	return model.Process{
 		PID:            pid,
-		PPID:           ppid,
+		PPID:           info.PPID,
 		Command:        name,
-		Cmdline:        cmdline,
-		Exe:            exe,
-		StartedAt:      startedAt,
+		Cmdline:        info.CommandLine,
+		Exe:            info.Exe,
+		StartedAt:      info.StartedAt,
 		User:           readUser(pid),
-		WorkingDir:     "unknown", // Hard to get on Windows without injection
+		WorkingDir:     info.Cwd,
 		ListeningPorts: ports,
 		BindAddresses:  addrs,
-		Health:         health,
+		Health:         "healthy",
 		Forked:         "unknown",
-		Env:            []string{}, // Hard to get on Windows
+		Env:            info.Env,
+		Service:        serviceName,
+		ExeDeleted:     isWindowsBinaryDeleted(info.Exe),
 	}, nil
+}
+
+func isWindowsBinaryDeleted(path string) bool {
+	if path == "" {
+		return false
+	}
+	_, err := os.Stat(path)
+	return os.IsNotExist(err)
+}
+
+// detectWindowsServiceSource checks if a PID belongs to a Windows Service via Get-CimInstance.
+// Keeping this as a fallback/auxiliary check for now.
+func detectWindowsServiceSource(pid int) string {
+	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Service -Filter \"ProcessId=%d\" | Select-Object -ExpandProperty Name", pid)
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(string(out))
 }

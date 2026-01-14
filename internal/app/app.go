@@ -335,6 +335,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 		fmt.Sscanf(t.Value, "%d", &portNum)
 		if portNum > 0 {
 			res.SocketInfo = procpkg.GetSocketStateForPort(portNum)
+			source.EnrichSocketInfo(res.SocketInfo)
 		}
 	}
 

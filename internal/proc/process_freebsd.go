@@ -135,7 +135,32 @@ func ReadProcess(pid int) (model.Process, error) {
 		Health:         health,
 		Forked:         forked,
 		Env:            env,
+		ExeDeleted:     isBinaryDeleted(pid),
 	}, nil
+}
+
+func isBinaryDeleted(pid int) bool {
+	// Use procstat -f to get the executable path (text)
+	out, err := exec.Command("procstat", "-f", strconv.Itoa(pid)).Output()
+	if err != nil {
+		return false
+	}
+
+	path := ""
+	for line := range strings.Lines(string(out)) {
+		fields := strings.Fields(line)
+		if len(fields) >= 4 && fields[2] == "text" {
+			path = fields[len(fields)-1]
+			break
+		}
+	}
+
+	if path == "" {
+		return false
+	}
+
+	_, err = os.Stat(path)
+	return os.IsNotExist(err)
 }
 
 func getProcessStartTime(pid int) time.Time {

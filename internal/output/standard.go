@@ -12,6 +12,9 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
+// Maximum number of items to display in any list before truncating
+const MaxDisplayItems = 10
+
 // formatDetailLabel formats a detail key into a padded label for display
 func formatDetailLabel(key string) string {
 	labels := map[string]string{
@@ -272,7 +275,18 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 	// Listening section (address:port)
 	if len(proc.ListeningPorts) > 0 && len(proc.BindAddresses) == len(proc.ListeningPorts) {
+		count := len(proc.ListeningPorts)
+		displayed := 0
 		for i := range proc.ListeningPorts {
+			if displayed >= MaxDisplayItems {
+				remaining := count - displayed
+				if colorEnabled {
+					out.Printf("              ... and %d more\n", remaining)
+				} else {
+					out.Printf("              ... and %d more\n", remaining)
+				}
+				break
+			}
 			addr := proc.BindAddresses[i]
 			port := proc.ListeningPorts[i]
 			if addr != "" && port > 0 {
@@ -291,7 +305,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 						out.Printf("              %s\n", safeHostPort)
 					}
 				}
-
+				displayed++
 			}
 		}
 	}
@@ -394,30 +408,42 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 
 		// File context (open files, locks)
 		if r.FileContext != nil {
+			if r.FileContext.OpenFiles > 0 && r.FileContext.FileLimit == 0 {
+				if colorEnabled {
+					out.Printf("\n%sOpen Files%s  : %d of unlimited\n", ColorCyan, ColorReset, r.FileContext.OpenFiles)
+				} else {
+					out.Printf("\nOpen Files  : %d of unlimited\n", r.FileContext.OpenFiles)
+				}
+			}
 			if r.FileContext.OpenFiles > 0 && r.FileContext.FileLimit > 0 {
 				usagePercent := float64(r.FileContext.OpenFiles) / float64(r.FileContext.FileLimit) * 100
 				if colorEnabled {
 					if usagePercent > 80 {
-						out.Printf("%sOpen Files%s  : %s%d of %d (%.0f%%)%s\n", ColorRed, ColorReset, ColorDimYellow, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent, ColorReset)
+						out.Printf("\n%sOpen Files%s  : %s%d of %d (%.0f%%)%s\n", ColorRed, ColorReset, ColorDimYellow, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent, ColorReset)
 					} else {
-						out.Printf("%sOpen Files%s  : %d of %d (%.0f%%)\n", ColorGreen, ColorReset, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent)
+						out.Printf("\n%sOpen Files%s  : %d of %d (%.0f%%)\n", ColorGreen, ColorReset, r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent)
 					}
 				} else {
-					out.Printf("Open Files  : %d of %d (%.0f%%)\n", r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent)
+					out.Printf("\nOpen Files  : %d of %d (%.0f%%)\n", r.FileContext.OpenFiles, r.FileContext.FileLimit, usagePercent)
 				}
 			}
 			if len(r.FileContext.LockedFiles) > 0 {
+				count := len(r.FileContext.LockedFiles)
 				firstLocked := SanitizeTerminal(r.FileContext.LockedFiles[0])
+
 				if colorEnabled {
 					out.Printf("%sLocks%s       : %s\n", ColorCyan, ColorReset, firstLocked)
-					for _, f := range r.FileContext.LockedFiles[1:] {
-						out.Printf("              %s\n", SanitizeTerminal(f))
-					}
 				} else {
 					out.Printf("Locks       : %s\n", firstLocked)
-					for _, f := range r.FileContext.LockedFiles[1:] {
-						out.Printf("              %s\n", SanitizeTerminal(f))
+				}
+
+				for i, f := range r.FileContext.LockedFiles[1:] {
+					if 1+i >= MaxDisplayItems {
+						remaining := count - (1 + i)
+						out.Printf("              ... and %d more\n", remaining)
+						break
 					}
+					out.Printf("              %s\n", SanitizeTerminal(f))
 				}
 			}
 		}
@@ -450,20 +476,20 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 				} else {
 					out.Printf("\n%sFile Descriptors%s: %d/%d\n", ColorGreen, ColorReset, proc.FDCount, proc.FDLimit)
 				}
-				if len(proc.FileDescs) > 0 && len(proc.FileDescs) <= 10 {
+				if len(proc.FileDescs) > 0 && len(proc.FileDescs) <= MaxDisplayItems {
 					for _, fd := range proc.FileDescs {
 						safeFd := SanitizeTerminal(fd)
 						safeFd = strings.Replace(safeFd, "->", string(ColorMagenta)+"->"+string(ColorReset), 1)
 						out.Printf("  %s\n", ansiString(safeFd))
 					}
-				} else if len(proc.FileDescs) > 10 {
-					out.Printf("  Showing first 10 of %d descriptors:\n", len(proc.FileDescs))
-					for i := 0; i < 10; i++ {
+				} else if len(proc.FileDescs) > MaxDisplayItems {
+					out.Printf("  Showing first %d of %d descriptors:\n", MaxDisplayItems, len(proc.FileDescs))
+					for i := 0; i < MaxDisplayItems; i++ {
 						safeFd := SanitizeTerminal(proc.FileDescs[i])
 						safeFd = strings.Replace(safeFd, "->", string(ColorMagenta)+"->"+string(ColorReset), 1)
 						out.Printf("  %s\n", ansiString(safeFd))
 					}
-					out.Printf("  ... and %d more\n", len(proc.FileDescs)-10)
+					out.Printf("  ... and %d more\n", len(proc.FileDescs)-MaxDisplayItems)
 				}
 			} else {
 				if proc.FDLimit == 0 {
@@ -471,16 +497,16 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 				} else {
 					out.Printf("\nFile Descriptors: %d/%d\n", proc.FDCount, proc.FDLimit)
 				}
-				if len(proc.FileDescs) > 0 && len(proc.FileDescs) <= 10 {
+				if len(proc.FileDescs) > 0 && len(proc.FileDescs) <= MaxDisplayItems {
 					for _, fd := range proc.FileDescs {
 						out.Printf("  %s\n", SanitizeTerminal(fd))
 					}
-				} else if len(proc.FileDescs) > 10 {
-					out.Printf("  Showing first 10 of %d descriptors:\n", len(proc.FileDescs))
-					for i := 0; i < 10; i++ {
+				} else if len(proc.FileDescs) > MaxDisplayItems {
+					out.Printf("  Showing first %d of %d descriptors:\n", MaxDisplayItems, len(proc.FileDescs))
+					for i := 0; i < MaxDisplayItems; i++ {
 						out.Printf("  %s\n", SanitizeTerminal(proc.FileDescs[i]))
 					}
-					out.Printf("  ... and %d more\n", len(proc.FileDescs)-10)
+					out.Printf("  ... and %d more\n", len(proc.FileDescs)-MaxDisplayItems)
 				}
 			}
 		}

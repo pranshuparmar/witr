@@ -9,10 +9,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-func readListeningSockets() (map[string]Socket, error) {
-	sockets := make(map[string]Socket)
+func readListeningSockets() (map[string]model.Socket, error) {
+	sockets := make(map[string]model.Socket)
 
 	parse := func(path string, ipv6 bool) {
 		f, err := os.Open(path)
@@ -40,7 +42,7 @@ func readListeningSockets() (map[string]Socket, error) {
 			}
 
 			addr, port := parseAddr(local, ipv6)
-			sockets[inode] = Socket{
+			sockets[inode] = model.Socket{
 				Inode:   inode,
 				Port:    port,
 				Address: addr,

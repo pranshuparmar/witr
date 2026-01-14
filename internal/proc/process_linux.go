@@ -237,7 +237,16 @@ func ReadProcess(pid int) (model.Process, error) {
 		Health:         health,
 		Forked:         forked,
 		Env:            env,
+		ExeDeleted:     isBinaryDeleted(pid),
 	}, nil
+}
+
+func isBinaryDeleted(pid int) bool {
+	exePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
+	if err != nil {
+		return false
+	}
+	return strings.HasSuffix(exePath, " (deleted)")
 }
 
 func resolveDockerProxyContainer(cmdline string) string {

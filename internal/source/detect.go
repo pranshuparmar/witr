@@ -186,8 +186,35 @@ func Warnings(p []model.Process) []string {
 		w = append(w, "Service name and process name do not match")
 	}
 
+	// Warn if binary is deleted
+	if last.ExeDeleted {
+		w = append(w, "Process is running from a deleted binary (potential library injection or pending update)")
+	}
+
 	// Include warnings based on suspicious env variables
 	w = append(w, envSuspiciousWarnings(last.Env)...)
 
 	return w
+}
+
+// EnrichSocketInfo provides human-readable explanations and workarounds for socket states
+func EnrichSocketInfo(si *model.SocketInfo) {
+	if si == nil {
+		return
+	}
+
+	switch si.State {
+	case "TIME_WAIT":
+		si.Explanation = "The local OS is holding the port in a protocol-wait state to ensure all packets are received."
+		si.Workaround = "Wait ~60s for the OS to release it, or enable SO_REUSEADDR in your code."
+	case "CLOSE_WAIT":
+		si.Explanation = "The remote end has closed the connection, but the local application hasn't responded."
+		si.Workaround = "This usually indicates a resource leak in the application. Restart the process."
+	case "FIN_WAIT_1", "FIN_WAIT_2":
+		si.Explanation = "The connection is in the process of being closed."
+	case "ESTABLISHED":
+		si.Explanation = "The connection is active and data can be transferred."
+	case "LISTEN":
+		si.Explanation = "The process is actively waiting for incoming connections."
+	}
 }

@@ -4,9 +4,8 @@
 
 ### Why is this running?
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/pranshuparmar/witr?style=flat-square)](https://github.com/pranshuparmar/witr/blob/main/go.mod) [![Go Report Card](https://goreportcard.com/badge/github.com/pranshuparmar/witr?style=flat-square)](https://goreportcard.com/report/github.com/pranshuparmar/witr) [![Build Status](https://img.shields.io/github/actions/workflow/status/pranshuparmar/witr/pr-check.yml?branch=main&style=flat-square&label=build)](https://github.com/pranshuparmar/witr/actions/workflows/pr-check.yml) [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows%20%7C%20freebsd-blue?style=flat-square)](https://github.com/pranshuparmar/witr) <br>
-[![Latest Release](https://img.shields.io/github/v/release/pranshuparmar/witr?label=Latest%20Release&style=flat-square)](https://github.com/pranshuparmar/witr/releases/latest) [![Homebrew](https://img.shields.io/homebrew/v/witr?style=flat-square)](https://formulae.brew.sh/formula/witr) [![Conda](https://img.shields.io/conda/vn/conda-forge/witr?style=flat-square)](https://anaconda.org/conda-forge/witr) [![AUR](https://img.shields.io/aur/version/witr-bin?style=flat-square)](https://aur.archlinux.org/packages/witr-bin) <br>
-[![FreeBSD Port](https://repology.org/badge/version-for-repo/freebsd/witr.svg?style=flat-square)](https://www.freshports.org/sysutils/witr/) [![AOSC OS](https://repology.org/badge/version-for-repo/aosc/witr.svg?style=flat-square)](https://packages.aosc.io/packages/witr) [![GNU Guix package](https://repology.org/badge/version-for-repo/gnuguix/witr.svg?style=flat-square)](https://packages.guix.gnu.org/packages/witr/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/pranshuparmar/witr?style=flat-square)](https://github.com/pranshuparmar/witr/blob/main/go.mod) [![Go Report Card](https://goreportcard.com/badge/github.com/pranshuparmar/witr?style=flat-square)](https://goreportcard.com/report/github.com/pranshuparmar/witr) [![Build Status](https://img.shields.io/github/actions/workflow/status/pranshuparmar/witr/pr-check.yml?branch=main&style=flat-square&label=build)](https://github.com/pranshuparmar/witr/actions/workflows/pr-check.yml) [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows%20%7C%20freebsd-blue?style=flat-square)](https://github.com/pranshuparmar/witr) [![Latest Release](https://img.shields.io/github/v/release/pranshuparmar/witr?label=Latest%20Release&style=flat-square)](https://github.com/pranshuparmar/witr/releases/latest) <br>
+[![Homebrew](https://img.shields.io/homebrew/v/witr?style=flat-square)](https://formulae.brew.sh/formula/witr) [![Conda](https://img.shields.io/conda/vn/conda-forge/witr?style=flat-square)](https://anaconda.org/conda-forge/witr) [![AUR](https://img.shields.io/aur/version/witr-bin?style=flat-square)](https://aur.archlinux.org/packages/witr-bin) [![FreeBSD Port](https://repology.org/badge/version-for-repo/freebsd/witr.svg?style=flat-square)](https://www.freshports.org/sysutils/witr/) [![AOSC OS](https://repology.org/badge/version-for-repo/aosc/witr.svg?style=flat-square)](https://packages.aosc.io/packages/witr) [![GNU Guix package](https://repology.org/badge/version-for-repo/gnuguix/witr.svg?style=flat-square)](https://packages.guix.gnu.org/packages/witr/)
 
 <img width="1232" height="693" alt="witr_banner" src="https://github.com/user-attachments/assets/e9c19ef0-1391-4a5f-a015-f4003d3697a9" />
 
@@ -611,8 +610,8 @@ Re-run with:
 | Basic process info (PID, PPID, user, command) | ✅ | ✅ | ✅ | ✅ | |
 | Full command line | ✅ | ✅ | ✅ | ✅ | |
 | Process start time | ✅ | ✅ | ✅ | ✅ | |
-| Working directory | ✅ | ✅ | ❌ | ✅ | Windows: hard to get without injection |
-| Environment variables | ✅ | ⚠️ | ❌ | ✅ | Windows: not supported. macOS: partial. |
+| Working directory | ✅ | ✅ | ✅ | ✅ | |
+| Environment variables | ✅ | ⚠️ | ❌ | ✅ | |
 | **Network** |
 | Listening ports | ✅ | ✅ | ✅ | ✅ | |
 | Bind addresses | ✅ | ✅ | ✅ | ✅ | |
@@ -620,16 +619,17 @@ Re-run with:
 | **Service Detection** |
 | systemd | ✅ | ❌ | ❌ | ❌ | Linux only |
 | launchd | ❌ | ✅ | ❌ | ❌ | macOS only |
+| Windows Services | ❌ | ❌ | ✅ | ❌ | Windows only |
 | rc.d | ❌ | ❌ | ❌ | ✅ | FreeBSD only |
 | Supervisor | ✅ | ✅ | ✅ | ✅ | |
 | Containers | ✅ | ⚠️ | ❌ | ✅ | Windows/macOS: Docker detects VM context. FreeBSD: Jails. |
 | **Health & Diagnostics** |
 | CPU usage detection | ✅ | ✅ | ✅ | ✅ | |
 | Memory usage detection | ✅ | ✅ | ✅ | ✅ | |
-| Health status detection | ✅ | ✅ | ✅ | ✅ | Windows checks process Status (WMI). |
-| Open Files / Handles | ✅ | ✅ | ✅ | ✅ | Verbose mode only. |
+| Health status detection | ✅ | ✅ | ✅ | ✅ | |
+| Open Files / Handles | ✅ | ✅ | ⚠️ | ✅ | Windows: count only. |
 | **Context** |
-| Git repo/branch detection | ✅ | ✅ | ❌ | ✅ | Requires working directory |
+| Git repo/branch detection | ✅ | ✅ | ❌ | ✅ | |
 
 **Legend:** ✅ Full support | ⚠️ Partial/limited support | ❌ Not available
 

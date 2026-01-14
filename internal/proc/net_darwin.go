@@ -6,13 +6,15 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/pkg/model"
 )
 
 // readListeningSockets returns a map of pseudo-inodes to sockets
 // On macOS, we use lsof to get listening sockets
 // We use a combination of PID:port as the "inode" since macOS doesn't expose inodes like Linux
-func readListeningSockets() (map[string]Socket, error) {
-	sockets := make(map[string]Socket)
+func readListeningSockets() (map[string]model.Socket, error) {
+	sockets := make(map[string]model.Socket)
 
 	// Use lsof to get listening TCP sockets
 	// -i TCP = only TCP sockets
@@ -43,7 +45,7 @@ func readListeningSockets() (map[string]Socket, error) {
 			if port > 0 {
 				// Use PID:port as pseudo-inode
 				inode := currentPID + ":" + strconv.Itoa(port)
-				sockets[inode] = Socket{
+				sockets[inode] = model.Socket{
 					Inode:   inode,
 					Port:    port,
 					Address: address,
@@ -55,8 +57,8 @@ func readListeningSockets() (map[string]Socket, error) {
 	return sockets, nil
 }
 
-func readListeningSocketsNetstat() (map[string]Socket, error) {
-	sockets := make(map[string]Socket)
+func readListeningSocketsNetstat() (map[string]model.Socket, error) {
+	sockets := make(map[string]model.Socket)
 
 	// Use netstat as fallback
 	out, err := exec.Command("netstat", "-an", "-p", "tcp").Output()
@@ -78,7 +80,7 @@ func readListeningSocketsNetstat() (map[string]Socket, error) {
 		if port > 0 {
 			// Generate a unique key
 			inode := "netstat:" + localAddr
-			sockets[inode] = Socket{
+			sockets[inode] = model.Socket{
 				Inode:   inode,
 				Port:    port,
 				Address: address,
