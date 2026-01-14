@@ -1,4 +1,4 @@
-//go:build !linux && !darwin
+//go:build !linux && !darwin && !freebsd && !windows
 
 package main
 
@@ -10,7 +10,7 @@ import (
 func main() {
 	fmt.Fprintln(
 		os.Stderr,
-		"witr is only supported on Linux and macOS.\n\nIf you are seeing this message, you are attempting to build or run witr on an unsupported platform (such as Windows).\n\nPlease use Linux or macOS to build and run witr.",
+		"witr is only supported on Linux, macOS, Windows, and FreeBSD.\n\nIf you are seeing this message, you are attempting to build or run witr on an unsupported platform.\n\nPlease use Linux, macOS, Windows, or FreeBSD to build and run witr.",
 	)
 	os.Exit(1)
 }

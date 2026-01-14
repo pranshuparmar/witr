@@ -1,31 +1,32 @@
 package output
 
 import (
-	"fmt"
+	"io"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-var (
-	colorResetShort   = "\033[0m"
-	colorMagentaShort = "\033[35m"
-	colorBoldShort    = "\033[2m"
-)
+func RenderShort(w io.Writer, r model.Result, colorEnabled bool) {
+	p := NewPrinter(w)
 
-func RenderShort(r model.Result, colorEnabled bool) {
-	for i, p := range r.Ancestry {
+	for i, proc := range r.Ancestry {
 		if i > 0 {
 			if colorEnabled {
-				fmt.Print(colorMagentaShort + " → " + colorResetShort)
+				p.Printf("%s → %s", ColorMagenta, ColorReset)
 			} else {
-				fmt.Print(" → ")
+				p.Print(" → ")
 			}
 		}
+
 		if colorEnabled {
-			fmt.Printf("%s (%spid %d%s)", p.Command, colorBoldShort, p.PID, colorResetShort)
+			nameColor := ansiString("")
+			if i == len(r.Ancestry)-1 {
+				nameColor = ColorGreen
+			}
+			p.Printf("%s%s%s (%spid %d%s)", nameColor, proc.Command, ColorReset, ColorBold, proc.PID, ColorReset)
 		} else {
-			fmt.Printf("%s (pid %d)", p.Command, p.PID)
+			p.Printf("%s (pid %d)", proc.Command, proc.PID)
 		}
 	}
-	fmt.Println()
+	p.Println()
 }

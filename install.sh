@@ -22,6 +22,9 @@ case "$OS" in
     darwin)
         OS=darwin
         ;;
+    freebsd)
+        OS=freebsd
+        ;;
     *)
         echo "Unsupported OS: $OS" >&2
         exit 1
@@ -89,14 +92,25 @@ fi
 
 SUDO=()
 if [[ "$need_sudo" == "1" ]]; then
-    SUDO=(sudo)
+    # checking for sudo because alpine using doas and people like me started to use run0
+    if command -v sudo >/dev/null 2>&1; then
+        # echo "sudo is available"
+        SUDO=(sudo)
+    elif command -v doas >/dev/null 2>&1; then
+        # echo "doas is available"
+        SUDO=(doas)
+    elif command -v run0 >/dev/null 2>&1; then
+        # echo "run0 is available"
+        SUDO=(run0)
+    fi
+
 fi
 
 # Install
-"${SUDO[@]}" install -m 755 "$TMP" "$INSTALL_PATH"
+${SUDO[@]+"${SUDO[@]}"} install -m 755 "$TMP" "$INSTALL_PATH"
 
 # Install man page
-"${SUDO[@]}" mkdir -p "$INSTALL_MAN_DIR"
-"${SUDO[@]}" install -m 644 "$MAN_TMP" "$MAN_PATH"
+${SUDO[@]+"${SUDO[@]}"} mkdir -p "$INSTALL_MAN_DIR"
+${SUDO[@]+"${SUDO[@]}"} install -m 644 "$MAN_TMP" "$MAN_PATH"
 echo "witr installed successfully to $INSTALL_PATH (version: $LATEST, os: $OS, arch: $ARCH)"
 echo "Man page installed to $MAN_PATH"

@@ -25,6 +25,7 @@ func socketsForPID(pid int) []string {
 	}
 
 	// Parse lsof output
+	seen := make(map[string]bool)
 	for line := range strings.Lines(string(out)) {
 		if len(line) == 0 {
 			continue
@@ -36,7 +37,10 @@ func socketsForPID(pid int) []string {
 			if port > 0 {
 				// Create pseudo-inode matching the format in readListeningSockets
 				inode := strconv.Itoa(pid) + ":" + strconv.Itoa(port)
-				inodes = append(inodes, inode)
+				if !seen[inode] {
+					seen[inode] = true
+					inodes = append(inodes, inode)
+				}
 			}
 		}
 	}

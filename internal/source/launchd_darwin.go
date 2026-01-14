@@ -34,18 +34,16 @@ func detectLaunchd(ancestry []model.Process) *model.Source {
 	if err != nil {
 		// Fall back to basic launchd detection
 		return &model.Source{
-			Type:       model.SourceLaunchd,
-			Name:       "launchd",
-			Confidence: 0.8,
+			Type: model.SourceLaunchd,
+			Name: "launchd",
 		}
 	}
 
 	// Build the source with details
 	source := &model.Source{
-		Type:       model.SourceLaunchd,
-		Name:       info.Label,
-		Confidence: 0.95,
-		Details:    make(map[string]string),
+		Type:    model.SourceLaunchd,
+		Name:    info.Label,
+		Details: make(map[string]string),
 	}
 
 	// Add domain description (Launch Agent vs Launch Daemon)

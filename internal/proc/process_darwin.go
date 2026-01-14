@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
@@ -52,7 +54,8 @@ func ReadProcess(pid int) (model.Process, error) {
 	}
 
 	// Get full command line
-	cmdline := getCommandLine(pid)
+	rawCmdline := getCommandLine(pid)
+	cmdline := rawCmdline
 	if cmdline == "" {
 		cmdline = comm
 	}
@@ -114,10 +117,15 @@ func ReadProcess(pid int) (model.Process, error) {
 	// Check for high resource usage
 	health = checkResourceUsage(pid, health)
 
+	displayName := deriveDisplayCommand(comm, rawCmdline)
+	if displayName == "" {
+		displayName = comm
+	}
+
 	return model.Process{
 		PID:            pid,
 		PPID:           ppid,
-		Command:        comm,
+		Command:        displayName,
 		Cmdline:        cmdline,
 		StartedAt:      startedAt,
 		User:           user,
@@ -132,6 +140,84 @@ func ReadProcess(pid int) (model.Process, error) {
 		Forked:         forked,
 		Env:            env,
 	}, nil
+}
+
+// deriveDisplayCommand returns a human-readable command name that avoids macOS
+// ps(1)"ucomm" truncation by falling back to the executable extracted from the
+// full command line when the short name looks clipped.
+func deriveDisplayCommand(comm, cmdline string) string {
+	trimmedComm := strings.TrimSpace(comm)
+	exe := extractExecutableName(cmdline)
+	if trimmedComm == "" {
+		return exe
+	}
+	if exe == "" {
+		return trimmedComm
+	}
+	if strings.HasPrefix(exe, trimmedComm) && len(trimmedComm) < len(exe) {
+		return exe
+	}
+	return trimmedComm
+}
+
+func extractExecutableName(cmdline string) string {
+	args := splitCmdline(cmdline)
+	for _, arg := range args {
+		if arg == "" {
+			continue
+		}
+		if strings.Contains(arg, "=") && !strings.Contains(arg, "/") {
+			// Skip leading environment assignments.
+			continue
+		}
+		clean := strings.Trim(arg, "\"'")
+		if clean == "" {
+			continue
+		}
+		base := filepath.Base(clean)
+		if base == "." || base == "" || base == "/" {
+			continue
+		}
+		return base
+	}
+	return ""
+}
+
+func splitCmdline(cmdline string) []string {
+	var args []string
+	var current strings.Builder
+	var quote rune
+	escaped := false
+	for _, r := range cmdline {
+		switch {
+		case escaped:
+			current.WriteRune(r)
+			escaped = false
+		case r == '\\':
+			escaped = true
+		case r == '"' || r == '\'':
+			if quote == 0 {
+				quote = r
+				continue
+			}
+			if quote == r {
+				quote = 0
+				continue
+			}
+			current.WriteRune(r)
+		case unicode.IsSpace(r) && quote == 0:
+			if current.Len() > 0 {
+				args = append(args, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		args = append(args, current.String())
+	}
+	return args
 }
 
 func getCommandLine(pid int) string {

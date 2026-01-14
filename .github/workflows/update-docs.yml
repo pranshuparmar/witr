@@ -1,0 +1,67 @@
+name: Update Documentation
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+
+
+permissions:
+  contents: write
+
+
+
+
+concurrency:
+  group: ${{github.workflow}}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.25'
+  PROJECT_NAME: witr
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Create man.1 documentation
+        run: |
+          go run internal/tools/docgen/main.go -out ./docs/cli -format man
+
+      - name: Create markdown documentation
+        run: |
+          go run internal/tools/docgen/main.go -out ./docs/cli -format markdown
+
+      - name: Commit and push documentation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add docs/cli
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "docs: update CLI documentation"
+
+      - name: Push documentation
+        run: |
+          git push origin ${{ github.ref }}
+
+
+

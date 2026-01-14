@@ -9,6 +9,8 @@ builds:
     goos:
       - linux
       - darwin
+      - freebsd
+      - windows
     goarch:
       - amd64
       - arm64
@@ -24,6 +26,9 @@ archives:
   - id: binaries
     formats:
       - binary
+    format_overrides:
+      - goos: windows
+        formats: [ 'zip' ]
     ids:
       - witr
     name_template: "witr-{{ .Os }}-{{ .Arch }}"
@@ -50,9 +55,11 @@ nfpms:
         file_info:
           mode: 0644
 
+changelog:
+  sort: asc
+  use: github-native
+
 release:
-  github:
-    owner: pranshuparmar
-    name: witr
   extra_files:
     - glob: docs/cli/witr.1
+
