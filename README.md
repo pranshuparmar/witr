@@ -4,8 +4,8 @@
 
 ### Why is this running?
 
-[![Go Version](https://img.shields.io/github/go-mod/go-version/pranshuparmar/witr?style=flat-square)](https://github.com/pranshuparmar/witr/blob/main/go.mod) [![Go Report Card](https://goreportcard.com/badge/github.com/pranshuparmar/witr?style=flat-square)](https://goreportcard.com/report/github.com/pranshuparmar/witr) [![Build Status](https://img.shields.io/github/actions/workflow/status/pranshuparmar/witr/pr-check.yml?branch=main&style=flat-square&label=build)](https://github.com/pranshuparmar/witr/actions/workflows/pr-check.yml) [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows%20%7C%20freebsd-blue?style=flat-square)](https://github.com/pranshuparmar/witr) [![Latest Release](https://img.shields.io/github/v/release/pranshuparmar/witr?label=Latest%20Release&style=flat-square)](https://github.com/pranshuparmar/witr/releases/latest) <br>
-[![Homebrew](https://img.shields.io/homebrew/v/witr?style=flat-square)](https://formulae.brew.sh/formula/witr) [![Conda](https://img.shields.io/conda/vn/conda-forge/witr?style=flat-square)](https://anaconda.org/conda-forge/witr) [![AUR](https://img.shields.io/aur/version/witr-bin?style=flat-square)](https://aur.archlinux.org/packages/witr-bin) [![FreeBSD Port](https://repology.org/badge/version-for-repo/freebsd/witr.svg?style=flat-square)](https://www.freshports.org/sysutils/witr/) [![AOSC OS](https://repology.org/badge/version-for-repo/aosc/witr.svg?style=flat-square)](https://packages.aosc.io/packages/witr) [![GNU Guix package](https://repology.org/badge/version-for-repo/gnuguix/witr.svg?style=flat-square)](https://packages.guix.gnu.org/packages/witr/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/pranshuparmar/witr?style=flat-square)](https://github.com/pranshuparmar/witr/blob/main/go.mod) [![Go Report Card](https://goreportcard.com/badge/github.com/pranshuparmar/witr?style=flat-square)](https://goreportcard.com/report/github.com/pranshuparmar/witr) [![Build Status](https://img.shields.io/github/actions/workflow/status/pranshuparmar/witr/pr-check.yml?branch=main&style=flat-square&label=build)](https://github.com/pranshuparmar/witr/actions/workflows/pr-check.yml) [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows%20%7C%20freebsd-blue?style=flat-square)](https://github.com/pranshuparmar/witr) <br>
+[![Latest Release](https://img.shields.io/github/v/release/pranshuparmar/witr?label=Latest%20Release&style=flat-square)](https://github.com/pranshuparmar/witr/releases/latest) [![Package Managers](https://img.shields.io/badge/Package%20Managers-brew%20|%20conda%20|%20aur%20|%20winget%20|%20ports%20|%20aosc%20|%20guix-blue?style=flat-square)](https://repology.org/project/witr/versions)
 
 <img width="1232" height="693" alt="witr_banner" src="https://github.com/user-attachments/assets/e9c19ef0-1391-4a5f-a015-f4003d3697a9" />
 
@@ -94,8 +94,9 @@ The script will:
 ### 2.2 Package Managers
 
 <details>
-<summary><strong>Homebrew (macOS & Linux)</strong></summary>
+<summary><strong>Homebrew (macOS & Linux)</strong> <img src="https://img.shields.io/homebrew/v/witr?style=flat-square" alt="Homebrew"></summary>
 <br>
+
 
 You can install **witr** using [Homebrew](https://brew.sh/) on macOS or Linux:
 
@@ -107,8 +108,9 @@ See the [Homebrew Formula page](https://formulae.brew.sh/formula/witr#default) f
 </details>
 
 <details>
-<summary><strong>Conda (macOS, Linux & Windows)</strong></summary>
+<summary><strong>Conda (macOS, Linux & Windows)</strong> <img src="https://img.shields.io/conda/vn/conda-forge/witr?style=flat-square" alt="Conda"></summary>
 <br>
+
 
 You can install **witr** using [conda](https://docs.conda.io/en/latest/), [mamba](https://mamba.readthedocs.io/en/latest/), or [pixi](https://pixi.prefix.dev/latest/) on macOS, Linux, and Windows:
 
@@ -122,8 +124,9 @@ pixi global install witr
 </details>
 
 <details>
-<summary><strong>Arch Linux (AUR)</strong></summary>
+<summary><strong>Arch Linux (AUR)</strong> <img src="https://img.shields.io/aur/version/witr-bin?style=flat-square" alt="AUR"></summary>
 <br>
+
 
 On Arch Linux and derivatives, install from the [AUR package](https://aur.archlinux.org/packages/witr-bin):
 
@@ -136,8 +139,21 @@ paru -S witr-bin
 </details>
 
 <details>
-<summary><strong>FreeBSD Ports</strong></summary>
+<summary><strong>Winget (Windows)</strong> <img src="https://img.shields.io/winget/v/PranshuParmar.witr?style=flat-square" alt="Winget"></summary>
 <br>
+
+
+You can install **witr** via [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+
+```powershell
+winget install -e --id PranshuParmar.witr
+```
+</details>
+
+<details>
+<summary><strong>FreeBSD Ports</strong> <img src="https://repology.org/badge/version-for-repo/freebsd/witr.svg?style=flat-square" alt="FreeBSD Port"></summary>
+<br>
+
 
 You can install **witr** on FreeBSD from the [FreshPorts port](https://www.freshports.org/sysutils/witr/):
 
@@ -156,8 +172,9 @@ make install clean
 </details>
 
 <details>
-<summary><strong>AOSC OS</strong></summary>
+<summary><strong>AOSC OS</strong> <img src="https://repology.org/badge/version-for-repo/aosc/witr.svg?style=flat-square" alt="AOSC OS"></summary>
 <br>
+
 
 You can install **witr** from the [AOSC OS repository](https://packages.aosc.io/packages/witr):
 
@@ -167,8 +184,9 @@ oma install witr
 </details>
 
 <details>
-<summary><strong>GNU Guix</strong></summary>
+<summary><strong>GNU Guix</strong> <img src="https://repology.org/badge/version-for-repo/gnuguix/witr.svg?style=flat-square" alt="GNU Guix"></summary>
 <br>
+
 
 You can install **witr** from the [GNU Guix repository](https://packages.guix.gnu.org/packages/witr/):
 
@@ -316,7 +334,9 @@ man witr
 <summary><strong>Uninstallation</strong></summary>
 <br>
 
-To completely remove **witr**:
+If you installed via a package manager (Homebrew, Conda, etc.), please use the respective uninstall command (e.g., `brew uninstall witr`).
+
+To completely remove script/manual installation of **witr**:
 
 **Unix (Linux, macOS, FreeBSD)**
 
@@ -324,8 +344,6 @@ To completely remove **witr**:
 sudo rm -f /usr/local/bin/witr
 sudo rm -f /usr/local/share/man/man1/witr.1
 ```
-
-If you installed via a package manager (Homebrew, Conda, etc.), please use the respective uninstall command (e.g., `brew uninstall witr`).
 
 **Windows**
 
@@ -491,17 +509,18 @@ Non‑blocking observations such as:
 ## 7. Flags & Options
 
 ```
---pid <n>         Explain a specific PID
---port <n>        Explain port usage
---exact           Use exact name matching (no substring search)
---short           One-line summary
---tree            Show ancestry tree with child processes
---json            Output result as JSON
---warnings        Show only warnings
---no-color        Disable colorized output
---env             Show only environment variables for the process
---help            Show this help message
---verbose         Show extended process information
+      --env           show environment variables for the process
+      --exact         use exact name matching (no substring search)
+  -h, --help          help for witr
+      --json          show result as JSON
+      --no-color      disable colorized output
+  -p, --pid string    pid to look up
+  -o, --port string   port to look up
+  -s, --short         show only ancestry
+  -t, --tree          show only ancestry as a tree
+      --verbose       show extended process information
+  -v, --version       version for witr
+      --warnings      show only warnings
 ```
 
 A single positional argument (without flags) is treated as a process or service name. By default, name matching uses substring matching (fuzzy search). Use `--exact` to match only processes with the exact name.
@@ -618,16 +637,13 @@ witr nginx --exact
 | Full command line | ✅ | ✅ | ✅ | ✅ | |
 | Process start time | ✅ | ✅ | ✅ | ✅ | |
 | Working directory | ✅ | ✅ | ✅ | ✅ | |
-| Environment variables | ✅ | ⚠️ | ❌ | ✅ | |
+| Environment variables | ✅ | ⚠️ | ❌ | ✅ | macOS: Partial support due to SIP restrictions. |
 | **Network** |
 | Listening ports | ✅ | ✅ | ✅ | ✅ | |
 | Bind addresses | ✅ | ✅ | ✅ | ✅ | |
 | Port → PID resolution | ✅ | ✅ | ✅ | ✅ | |
 | **Service Detection** |
-| systemd | ✅ | ❌ | ❌ | ❌ | Linux only |
-| launchd | ❌ | ✅ | ❌ | ❌ | macOS only |
-| Windows Services | ❌ | ❌ | ✅ | ❌ | Windows only |
-| rc.d | ❌ | ❌ | ❌ | ✅ | FreeBSD only |
+| Service Manager | ✅ | ✅ | ✅ | ✅ | Linux: systemd, macOS: launchd, Windows: Services, FreeBSD: rc.d |
 | Supervisor | ✅ | ✅ | ✅ | ✅ | |
 | Containers | ✅ | ✅ | ✅ | ✅ | Docker (plus Compose mappings), Podman, K8s (Kubepods), Containerd. Colima on macOS/Linux. Jails on FreeBSD. |
 | **Health & Diagnostics** |
