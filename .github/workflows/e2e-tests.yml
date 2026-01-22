@@ -47,7 +47,7 @@ jobs:
           chmod +x witr-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: witr-${{ matrix.os }}-${{ matrix.arch }}
           path: witr-${{ matrix.os }}-${{ matrix.arch }}
@@ -77,7 +77,7 @@ jobs:
             run_tests: true
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: witr-${{ matrix.os }}-${{ matrix.arch }}
 
