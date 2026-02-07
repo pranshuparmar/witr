@@ -100,17 +100,15 @@ func ReadProcess(pid int) (model.Process, error) {
 	gitRepo, gitBranch := detectGitInfo(cwd)
 
 	// Get listening ports for this process
-	sockets, _ := readListeningSockets()
 	inodes := socketsForPID(pid)
-
 	var ports []int
 	var addrs []string
 
 	for _, inode := range inodes {
-		if s, ok := sockets[inode]; ok {
-			ports = append(ports, s.Port)
-			addrs = append(addrs, s.Address)
-		}
+		var addrPort = strings.Split(inode, ":")
+		var port, _ = strconv.Atoi(addrPort[1])
+		ports = append(ports, port)
+		addrs = append(addrs, addrPort[0])
 	}
 
 	// Check for high resource usage

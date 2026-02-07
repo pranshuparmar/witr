@@ -3,93 +3,9 @@
 package proc
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
-
-	"github.com/pranshuparmar/witr/pkg/model"
 )
-
-// readListeningSockets returns a map of pseudo-inodes to sockets
-// On macOS, we use lsof to get listening sockets
-// We use a combination of PID:port as the "inode" since macOS doesn't expose inodes like Linux
-func readListeningSockets() (map[string]model.Socket, error) {
-	sockets := make(map[string]model.Socket)
-
-	// Use lsof to get listening TCP sockets
-	// -i TCP = only TCP sockets
-	// -s TCP:LISTEN = only in LISTEN state
-	// -n = don't resolve hostnames
-	// -P = don't resolve port names
-	out, err := exec.Command("lsof", "-i", "TCP", "-s", "TCP:LISTEN", "-n", "-P", "-F", "pn").Output()
-	if err != nil {
-		// lsof might fail without root, try netstat as fallback
-		return readListeningSocketsNetstat()
-	}
-
-	// Parse lsof -F output format
-	// p<pid>
-	// n<address>
-	var currentPID string
-	for line := range strings.Lines(string(out)) {
-		if len(line) == 0 {
-			continue
-		}
-		switch line[0] {
-		case 'p':
-			currentPID = strings.TrimSpace(line[1:])
-		case 'n':
-			// Format: n*:8080 or n127.0.0.1:8080 or n[::1]:8080
-			addr := strings.TrimSpace(line[1:])
-			address, port := parseNetstatAddr(addr)
-			if port > 0 {
-				// Use PID:port as pseudo-inode
-				inode := currentPID + ":" + strconv.Itoa(port)
-				sockets[inode] = model.Socket{
-					Inode:   inode,
-					Port:    port,
-					Address: address,
-				}
-			}
-		}
-	}
-
-	return sockets, nil
-}
-
-func readListeningSocketsNetstat() (map[string]model.Socket, error) {
-	sockets := make(map[string]model.Socket)
-
-	// Use netstat as fallback
-	out, err := exec.Command("netstat", "-an", "-p", "tcp").Output()
-	if err != nil {
-		return sockets, nil
-	}
-
-	for line := range strings.Lines(string(out)) {
-		if !strings.Contains(line, "LISTEN") {
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			continue
-		}
-		// Local address is typically field 3 (0-indexed)
-		localAddr := fields[3]
-		address, port := parseNetstatAddr(localAddr)
-		if port > 0 {
-			// Generate a unique key
-			inode := "netstat:" + localAddr
-			sockets[inode] = model.Socket{
-				Inode:   inode,
-				Port:    port,
-				Address: address,
-			}
-		}
-	}
-
-	return sockets, nil
-}
 
 // parseNetstatAddr parses addresses like "*.8080", "127.0.0.1.8080", "[::1].8080"
 func parseNetstatAddr(addr string) (string, int) {
