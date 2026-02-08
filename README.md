@@ -587,6 +587,7 @@ Non‑blocking observations such as:
 ```
       --env           show environment variables for the process
   -x, --exact         use exact name matching (no substring search)
+  -f, --file string   file path to find process for
   -h, --help          help for witr
       --json          show result as JSON
       --no-color      disable colorized output
