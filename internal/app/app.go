@@ -10,9 +10,11 @@ import (
 	"strings"
 
 	"github.com/pranshuparmar/witr/internal/output"
+	"github.com/pranshuparmar/witr/internal/pipeline"
 	procpkg "github.com/pranshuparmar/witr/internal/proc"
 	"github.com/pranshuparmar/witr/internal/source"
 	"github.com/pranshuparmar/witr/internal/target"
+	"github.com/pranshuparmar/witr/internal/tui"
 	"github.com/pranshuparmar/witr/pkg/model"
 	"github.com/spf13/cobra"
 )
@@ -120,10 +122,16 @@ func init() {
 	rootCmd.Flags().Bool("env", false, "show environment variables for the process")
 	rootCmd.Flags().Bool("verbose", false, "show extended process information")
 	rootCmd.Flags().BoolP("exact", "x", false, "use exact name matching (no substring search)")
+	rootCmd.Flags().BoolP("interactive", "i", false, "interactive mode (TUI)")
 
 }
 
 func runApp(cmd *cobra.Command, args []string) error {
+	interactiveFlag, _ := cmd.Flags().GetBool("interactive")
+	if interactiveFlag {
+		return runInteractive()
+	}
+
 	envFlag, _ := cmd.Flags().GetBool("env")
 	pidFlag, _ := cmd.Flags().GetString("pid")
 	portFlag, _ := cmd.Flags().GetString("port")
@@ -285,74 +293,23 @@ func runApp(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	ancestry, err := procpkg.ResolveAncestry(pid)
+	// Refactored to use shared pipeline.AnalyzePID
+	res, err := pipeline.AnalyzePID(pipeline.AnalyzeConfig{
+		PID:     pid,
+		Verbose: verboseFlag,
+		Tree:    treeFlag,
+		Target:  t,
+	})
+
 	if err != nil {
 		errStr := err.Error()
 		errorMsg := fmt.Sprintf("%s\n\nNo matching process or service found. Please check your query or try a different name/port/PID.\nFor usage and options, run: witr --help", errStr)
 		return errors.New(errorMsg)
 	}
 
-	src := source.Detect(ancestry)
-
-	var proc model.Process
-	resolvedTarget := "unknown"
-	if len(ancestry) > 0 {
-		proc = ancestry[len(ancestry)-1]
-		resolvedTarget = proc.Command
-		if systemdService != "" {
-			resolvedTarget = strings.TrimSuffix(systemdService, ".service")
-		}
-	}
-
-	if verboseFlag && len(ancestry) > 0 {
-		memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, err := procpkg.ReadExtendedInfo(pid)
-		if err == nil {
-			proc.Memory = memInfo
-			proc.IO = ioStats
-			proc.FileDescs = fileDescs
-			proc.FDCount = fdCount
-			proc.FDLimit = fdLimit
-			proc.Children = children
-			proc.ThreadCount = threadCount
-			ancestry[len(ancestry)-1] = proc
-		}
-	}
-
-	var resCtx *model.ResourceContext
-	var fileCtx *model.FileContext
-	if verboseFlag {
-		resCtx = procpkg.GetResourceContext(pid)
-		fileCtx = procpkg.GetFileContext(pid)
-	}
-
-	var childProcesses []model.Process
-	if (verboseFlag || treeFlag) && proc.PID > 0 {
-		if children, err := procpkg.ResolveChildren(proc.PID); err == nil {
-			childProcesses = children
-		}
-	}
-
-	// Calculate restart count
-	restartCount := 0
-	if src.Type == model.SourceSystemd && src.Name != "" {
-		if count, err := procpkg.GetSystemdRestartCount(src.Name); err == nil {
-			restartCount = count
-		}
-	}
-
-	res := model.Result{
-		Target:          t,
-		ResolvedTarget:  resolvedTarget,
-		Process:         proc,
-		RestartCount:    restartCount,
-		Ancestry:        ancestry,
-		Source:          src,
-		Warnings:        source.Warnings(ancestry),
-		ResourceContext: resCtx,
-		FileContext:     fileCtx,
-	}
-	if len(childProcesses) > 0 {
-		res.Children = childProcesses
+	// Apply systemd service override if resolved locally
+	if systemdService != "" {
+		res.ResolvedTarget = strings.TrimSuffix(systemdService, ".service")
 	}
 
 	// Add socket state info for port queries
@@ -396,6 +353,10 @@ func runApp(cmd *cobra.Command, args []string) error {
 }
 
 func Root() *cobra.Command { return rootCmd }
+
+func runInteractive() error {
+	return tui.Start()
+}
 
 func SetVersionBuildCommitString(Version string, Commit string, BuildDate string) {
 	version = Version

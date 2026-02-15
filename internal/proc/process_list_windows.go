@@ -12,6 +12,13 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
+// ListProcesses returns a list of all running processes with basic details (PID, Command, State).
+// This is used by the TUI to display the process list.
+func ListProcesses() ([]model.Process, error) {
+	// TODO: Enrich this with more data (User, Memory, CPU) for the TUI
+	return listProcessSnapshot()
+}
+
 // listProcessSnapshot collects a lightweight view of running processes
 // for child/descendant discovery.
 func listProcessSnapshot() ([]model.Process, error) {
