@@ -380,16 +380,14 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 		out.Println()
 		// Resource context (thermal state, sleep prevention, CPU)
 		if r.ResourceContext != nil {
-			if r.ResourceContext.CPUUsage > 0 {
-				if colorEnabled {
-					if r.ResourceContext.CPUUsage > 70 {
-						out.Printf("%sCPU%s         : %s%.1f%%%s\n", ColorRed, ColorReset, ColorDimYellow, r.ResourceContext.CPUUsage, ColorReset)
-					} else {
-						out.Printf("%sCPU%s         : %.1f%%\n", ColorGreen, ColorReset, r.ResourceContext.CPUUsage)
-					}
+			if colorEnabled {
+				if r.ResourceContext.CPUUsage > 70 {
+					out.Printf("%sCPU%s         : %s%.1f%%%s\n", ColorRed, ColorReset, ColorDimYellow, r.ResourceContext.CPUUsage, ColorReset)
 				} else {
-					out.Printf("CPU         : %.1f%%\n", r.ResourceContext.CPUUsage)
+					out.Printf("%sCPU%s         : %.1f%%\n", ColorGreen, ColorReset, r.ResourceContext.CPUUsage)
 				}
+			} else {
+				out.Printf("CPU         : %.1f%%\n", r.ResourceContext.CPUUsage)
 			}
 
 			if r.ResourceContext.PreventsSleep {

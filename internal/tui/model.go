@@ -86,9 +86,11 @@ type MainModel struct {
 
 	sortCol  string // "pid", "name", "user", "cpu", "mem", "time"
 	sortDesc bool
+
+	version string
 }
 
-func InitialModel() MainModel {
+func InitialModel(version string) MainModel {
 	columns := []table.Column{
 		{Title: "PID", Width: 8},
 		{Title: "Name", Width: 20},
@@ -106,7 +108,7 @@ func InitialModel() MainModel {
 	)
 
 	s := table.DefaultStyles()
-	s.Header = tableHeaderStyle
+	s.Header = tableHeaderStyle.BorderForeground(lipgloss.Color("240")) // Dark Gray
 	s.Selected = s.Selected.
 		Foreground(lipgloss.Color("229")). // Light Yellow
 		Background(lipgloss.Color("56")).  // Purple
@@ -141,11 +143,12 @@ func InitialModel() MainModel {
 		listFocus:    focusMain,
 		sortCol:      "mem",
 		sortDesc:     true,
+		version:      version,
 	}
 }
 
-func Start() error {
-	p := tea.NewProgram(InitialModel(), tea.WithAltScreen())
+func Start(version string) error {
+	p := tea.NewProgram(InitialModel(version), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("error running tui: %w", err)
 	}
@@ -800,10 +803,23 @@ func (m MainModel) View() string {
 			treeHeader += " ↓"
 		}
 
-		treeHeaderStyle := tableHeaderStyle.Copy().
+		treeHeaderStyle := tableHeaderStyle.
 			Width(m.treeViewport.Width).
 			Foreground(treeHeaderColor).
 			BorderForeground(treeBorderColor)
+
+		// Reconstruct table styles to update focus colors
+		s := table.DefaultStyles()
+		if m.listFocus == focusMain {
+			s.Header = tableHeaderStyle.BorderForeground(activeBorderColor)
+		} else {
+			s.Header = tableHeaderStyle.BorderForeground(dimBorderColor)
+		}
+		s.Selected = s.Selected.
+			Foreground(lipgloss.Color("229")). // Light Yellow
+			Background(lipgloss.Color("56")).  // Purple
+			Bold(false)
+		m.table.SetStyles(s)
 
 		mainContent := lipgloss.JoinHorizontal(lipgloss.Top,
 			m.table.View(),
@@ -815,6 +831,15 @@ func (m MainModel) View() string {
 			),
 		)
 
+		helpText := fmt.Sprintf("Total: %d | Enter: Detail | Sort: p/n/u/c/m/t | Esc/q: Quit | Tab: Focus | Up/Down: Scroll", len(m.filtered))
+		footerContent := helpText
+		if m.version != "" {
+			gap := m.width - 6 - lipgloss.Width(helpText) - lipgloss.Width(m.version)
+			if gap > 0 {
+				footerContent = helpText + strings.Repeat(" ", gap) + m.version
+			}
+		}
+
 		return outerStyle.Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				titleStyle.MarginBottom(1).Render("witr"),
@@ -822,20 +847,29 @@ func (m MainModel) View() string {
 				lipgloss.NewStyle().MarginBottom(1).PaddingLeft(1).Render(m.input.View()),
 				mainContent,
 				lipgloss.NewStyle().Height(1).Render(""),
-				footerStyle.Width(m.width-4).Render(fmt.Sprintf("Total: %d | Sort: p/n/u/c/m/t | Tab: Focus | Up/Down: Scroll | Esc/q: Quit | Enter: Detail", len(m.filtered))),
+				footerStyle.Width(m.width-4).Render(footerContent),
 			),
 		)
 	}
 
 	if m.state == stateDetail {
 		if m.selectedDetail == nil {
+			helpText := "Esc/q: Back"
+			footerContent := helpText
+			if m.version != "" {
+				gap := m.width - 6 - lipgloss.Width(helpText) - lipgloss.Width(m.version)
+				if gap > 0 {
+					footerContent = helpText + strings.Repeat(" ", gap) + m.version
+				}
+			}
+
 			return outerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					lipgloss.JoinHorizontal(lipgloss.Center, titleStyle.Render("witr")),
 					lipgloss.NewStyle().Height(1).Render(""),
 					lipgloss.NewStyle().Width(m.width-4).Height(m.height-7).Render("Loading details..."),
 					lipgloss.NewStyle().Height(1).Render(""),
-					footerStyle.Width(m.width-4).Render("Esc/q: Back"),
+					footerStyle.Width(m.width-4).Render(footerContent),
 				),
 			)
 		}
@@ -853,8 +887,8 @@ func (m MainModel) View() string {
 			Width(envWidth).
 			Height(m.viewport.Height + 2)
 
-		detailHeader := tableHeaderStyle.Copy()
-		envHeader := tableHeaderStyle.Copy()
+		detailHeader := tableHeaderStyle
+		envHeader := tableHeaderStyle
 
 		activeBorderColor := lipgloss.Color("62") // Purple
 		dimColor := lipgloss.Color("250")         // Lighter Gray
@@ -916,13 +950,22 @@ func (m MainModel) View() string {
 			headerComponents = append(headerComponents, pidStyle.Render(fmt.Sprintf("PID %d", m.selectedDetail.Process.PID)))
 		}
 
+		helpText := "Esc/q: Back | Tab: Focus | Up/Down: Scroll"
+		footerContent := helpText
+		if m.version != "" {
+			gap := m.width - 6 - lipgloss.Width(helpText) - lipgloss.Width(m.version)
+			if gap > 0 {
+				footerContent = helpText + strings.Repeat(" ", gap) + m.version
+			}
+		}
+
 		return outerStyle.Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				lipgloss.JoinHorizontal(lipgloss.Center, headerComponents...),
 				lipgloss.NewStyle().Height(1).Render(""),
 				splitContent,
 				lipgloss.NewStyle().Height(1).Render(""),
-				footerStyle.Width(m.width-4).Render("Esc/q: Back | Tab: Focus | Up/Down: Scroll"),
+				footerStyle.Width(m.width-4).Render(footerContent),
 			),
 		)
 	}

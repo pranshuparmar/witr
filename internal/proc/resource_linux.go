@@ -20,6 +20,11 @@ func GetResourceContext(pid int) *model.ResourceContext {
 	ctx.PreventsSleep = checkPreventsSleep(pid)
 	ctx.ThermalState = getThermalState()
 	ctx.AppNapped = getAppNapped(pid)
+
+	if cpu, err := GetCPUPercent(pid, true); err == nil {
+		ctx.CPUUsage = cpu
+	}
+
 	ctx.EnergyImpact = GetEnergyImpact(pid)
 	return ctx
 }
@@ -105,8 +110,29 @@ func getAppNapped(pid int) bool {
 	return state == "T" || state == "t"
 }
 
-// GetEnergyImpact attempts to get energy impact for a process
 func GetEnergyImpact(pid int, usePs ...bool) string {
+	cpu, err := GetCPUPercent(pid, usePs...)
+	if err != nil {
+		return ""
+	}
+
+	switch {
+	case cpu > 50:
+		return "Very High"
+	case cpu > 25:
+		return "High"
+	case cpu > 10:
+		return "Medium"
+	case cpu > 2:
+		return "Low"
+	case cpu > 0:
+		return "Very Low"
+	default:
+		return ""
+	}
+}
+
+func GetCPUPercent(pid int, usePs ...bool) (float64, error) {
 	var cpu float64
 
 	shouldUsePs := len(usePs) > 0 && usePs[0]
@@ -117,17 +143,17 @@ func GetEnergyImpact(pid int, usePs ...bool) string {
 
 		out, err := exec.CommandContext(ctx, "ps", "-p", strconv.Itoa(pid), "-o", "pcpu=").Output()
 		if err != nil {
-			return ""
+			return 0, err
 		}
 
 		cpuStr := strings.TrimSpace(string(out))
 		if cpuStr == "" {
-			return ""
+			return 0, fmt.Errorf("empty ps output")
 		}
 
 		cpu, err = strconv.ParseFloat(cpuStr, 64)
 		if err != nil {
-			return ""
+			return 0, err
 		}
 	} else {
 		// Use top (default)
@@ -136,7 +162,7 @@ func GetEnergyImpact(pid int, usePs ...bool) string {
 
 		out, err := exec.CommandContext(ctx, "top", "-b", "-n", "1", "-p", strconv.Itoa(pid)).Output()
 		if err != nil {
-			return ""
+			return 0, err
 		}
 
 		lines := strings.Split(string(out), "\n")
@@ -159,22 +185,9 @@ func GetEnergyImpact(pid int, usePs ...bool) string {
 		}
 
 		if !found {
-			return ""
+			return 0, fmt.Errorf("process not found in top output")
 		}
 	}
 
-	switch {
-	case cpu > 50:
-		return "Very High"
-	case cpu > 25:
-		return "High"
-	case cpu > 10:
-		return "Medium"
-	case cpu > 2:
-		return "Low"
-	case cpu > 0:
-		return "Very Low"
-	default:
-		return ""
-	}
+	return cpu, nil
 }

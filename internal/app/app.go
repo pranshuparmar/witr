@@ -136,10 +136,9 @@ func runApp(cmd *cobra.Command, args []string) error {
 	pidFlag, _ := cmd.Flags().GetString("pid")
 	portFlag, _ := cmd.Flags().GetString("port")
 	fileFlag, _ := cmd.Flags().GetString("file")
-	// Show help if no arguments or relevant flags are provided
+	// Default to interactive mode if no arguments or relevant flags are provided
 	if !envFlag && pidFlag == "" && portFlag == "" && fileFlag == "" && len(args) == 0 {
-		cmd.Help()
-		return nil
+		return runInteractive()
 	}
 	shortFlag, _ := cmd.Flags().GetBool("short")
 	treeFlag, _ := cmd.Flags().GetBool("tree")
@@ -355,7 +354,11 @@ func runApp(cmd *cobra.Command, args []string) error {
 func Root() *cobra.Command { return rootCmd }
 
 func runInteractive() error {
-	return tui.Start()
+	v := version
+	if v == "v0.0.0-dev" {
+		v = ""
+	}
+	return tui.Start(v)
 }
 
 func SetVersionBuildCommitString(Version string, Commit string, BuildDate string) {
