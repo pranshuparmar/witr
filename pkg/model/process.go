@@ -3,13 +3,16 @@ package model
 import "time"
 
 type Process struct {
-	PID       int
-	PPID      int
-	Command   string
-	Cmdline   string
-	Exe       string
-	StartedAt time.Time
-	User      string
+	PID           int
+	PPID          int
+	Command       string
+	Cmdline       string
+	Exe           string
+	StartedAt     time.Time
+	User          string
+	CPUPercent    float64
+	MemoryRSS     uint64 // In bytes
+	MemoryPercent float64
 
 	WorkingDir string
 	GitRepo    string

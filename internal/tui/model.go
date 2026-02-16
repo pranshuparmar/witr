@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -21,48 +22,32 @@ import (
 var (
 	baseStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240"))
+			BorderForeground(lipgloss.Color("240")) // Dark Gray
+
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#FAFAFA")).
-			Background(lipgloss.Color("#7D56F4")).
+			Foreground(lipgloss.Color("#FAFAFA")). // White
+			Background(lipgloss.Color("#7D56F4")). // Purple
 			Padding(0, 1)
 
-	// Detail view styles
-	detailHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("229")).
-				Bold(true).
-				MarginBottom(1)
-
-	labelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("243")).
-			Width(15)
-
-	flagStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205")).
-			Bold(true)
-
-	// New styles for visual refinement
 	tableHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("62")). // Softer Blue/Purple
+				Foreground(lipgloss.Color("62")). // Purple/Blue
 				Bold(true).
-				Border(lipgloss.NormalBorder(), false, false, true, false). // Bottom border only
-				BorderForeground(lipgloss.Color("240")).
-				Padding(0, 1) // Keep padding for text spacing
+				Border(lipgloss.NormalBorder(), false, false, true, false).
+				BorderForeground(lipgloss.Color("240")). // Dark Gray
+				Padding(0, 1)
 
 	promptStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("62")). // Match header color
+			Foreground(lipgloss.Color("62")). // Purple/Blue
 			Bold(true)
 
 	footerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("243")).                          // Dimmed gray
-			Border(lipgloss.NormalBorder(), true, false, false, false). // Top border only
-			BorderForeground(lipgloss.Color("240")).
+			Foreground(lipgloss.Color("243")). // Dimmed Gray
+			Border(lipgloss.NormalBorder(), true, false, false, false).
+			BorderForeground(lipgloss.Color("240")). // Dark Gray
 			Padding(0, 1).
-			Width(100) // Will be updated dynamically in View/Update if needed, or rely on container
+			Width(100)
 )
-
-type tickMsg time.Time
 
 type modelState int
 
@@ -76,39 +61,42 @@ type focusState int
 const (
 	focusDetail focusState = iota
 	focusEnv
+	focusMain
+	focusSide
 )
 
 type MainModel struct {
 	state          modelState
 	table          table.Model
 	input          textinput.Model
-	viewport       viewport.Model // For full detail view
-	treeViewport   viewport.Model // For split view (30%)
-	envViewport    viewport.Model // For detail split view (30% Env)
+	viewport       viewport.Model
+	treeViewport   viewport.Model
+	envViewport    viewport.Model
 	processes      []model.Process
 	filtered       []model.Process
 	selectedDetail *model.Result
-	detailFocus    focusState // Track which pane is focused in detail view
+	detailFocus    focusState
+	listFocus      focusState
 	err            error
 	width          int
 	height         int
 	quitting       bool
 
-	// Flags
-	flagExact    bool
-	flagTree     bool
-	flagWarnings bool
-	flagVerbose  bool // Always true for detail fetch currently
+	selectionID int
+
+	sortCol  string // "pid", "name", "user", "cpu", "mem", "time"
+	sortDesc bool
 }
 
 func InitialModel() MainModel {
-	// Initialize table
 	columns := []table.Column{
 		{Title: "PID", Width: 8},
-		{Title: "Process", Width: 15},
-		{Title: "User", Width: 10},
-		{Title: "Started", Width: 20},
-		{Title: "Command", Width: 40},
+		{Title: "Name", Width: 20},
+		{Title: "User", Width: 12},
+		{Title: "CPU%", Width: 6},
+		{Title: "Mem", Width: 16},
+		{Title: "Started", Width: 19},
+		{Title: "Command", Width: 50},
 	}
 
 	t := table.New(
@@ -118,29 +106,28 @@ func InitialModel() MainModel {
 	)
 
 	s := table.DefaultStyles()
-	s.Header = tableHeaderStyle // Use new header style
+	s.Header = tableHeaderStyle
 	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
+		Foreground(lipgloss.Color("229")). // Light Yellow
+		Background(lipgloss.Color("56")).  // Purple
 		Bold(false)
 	t.SetStyles(s)
 
-	// Initialize input
 	ti := textinput.New()
-	ti.Placeholder = "Type / to search..."
+	ti.Placeholder = "Search PID, Name, User, Command..."
 	ti.CharLimit = 156
-	ti.Width = 30
+	ti.Width = 50
 	ti.Prompt = "> "
-	ti.PromptStyle = promptStyle // Green/Cyan prompt
-	ti.Blur()                    // Start blurred to allow navigation keys
+	ti.PromptStyle = promptStyle
+	ti.Blur()
 
 	vp := viewport.New(0, 0)
 	vp.YPosition = 0
 
-	tvp := viewport.New(0, 0) // Tree viewport
+	tvp := viewport.New(0, 0)
 	tvp.YPosition = 0
 
-	evp := viewport.New(0, 0) // Env viewport
+	evp := viewport.New(0, 0)
 	evp.YPosition = 0
 
 	return MainModel{
@@ -150,8 +137,10 @@ func InitialModel() MainModel {
 		viewport:     vp,
 		treeViewport: tvp,
 		envViewport:  evp,
-		detailFocus:  focusDetail, // Default focus
-		flagVerbose:  true,
+		detailFocus:  focusDetail,
+		listFocus:    focusMain,
+		sortCol:      "mem",
+		sortDesc:     true,
 	}
 }
 
@@ -167,6 +156,7 @@ func (m MainModel) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
 		m.refreshProcesses(),
+		waitTick(),
 	)
 }
 
@@ -176,32 +166,49 @@ func (m MainModel) refreshProcesses() tea.Cmd {
 		if err != nil {
 			return err
 		}
-		// Sort by Started (Desc) by default
-		sort.Slice(procs, func(i, j int) bool {
-			return procs[i].StartedAt.After(procs[j].StartedAt)
-		})
+		selfPID := os.Getpid()
+		filteredProcs := make([]model.Process, 0, len(procs))
+		for _, p := range procs {
+			if p.PID == selfPID {
+				continue
+			}
+			if p.PPID == selfPID && (p.Command == "ps" || strings.HasPrefix(p.Command, "ps ")) {
+				continue
+			}
+			filteredProcs = append(filteredProcs, p)
+		}
+		procs = filteredProcs
+
 		return procs
 	}
 }
 
-type treeMsg model.Result // Wrapper type for tree fetch result
+type treeMsg model.Result
 
-func (m MainModel) fetchTree(pid int) tea.Cmd {
+type debounceMsg struct {
+	id  int
+	pid int
+}
+
+type tickMsg time.Time
+
+func waitTick() tea.Cmd {
+	return tea.Tick(10*time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
+func (m MainModel) fetchTree(p model.Process) tea.Cmd {
 	return func() tea.Msg {
-		// Fetch simple tree (no verbose extended info for speed)?
-		// pipeline.AnalyzePID resolves ancestry.
-		// We can just use the same analysis but maybe control verbosity?
-		// For the tree, we really just need ancestry.
-		// AnalyzePID fetches extended info if verbose is true.
-		// We'll set verbose=false for speed in the split view update.
-		// But User wants "witr's tree flag output".
 		res, err := pipeline.AnalyzePID(pipeline.AnalyzeConfig{
-			PID:     pid,
-			Verbose: false, // Fast fetch for split view
+			PID:     p.PID,
+			Verbose: false,
 			Tree:    true,
 		})
 		if err != nil {
-			return treeMsg{} // Return empty result to clear view on error
+			return treeMsg(model.Result{
+				Process: p,
+			})
 		}
 		return treeMsg(res)
 	}
@@ -224,8 +231,13 @@ func (m MainModel) fetchProcessDetail(pid int) tea.Cmd {
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tickMsg:
+		if m.state == stateList && !m.quitting && !m.input.Focused() {
+			cmd = m.refreshProcesses()
+		}
+		return m, tea.Batch(cmd, waitTick())
+
 	case tea.KeyMsg:
-		// Global keys
 		switch msg.String() {
 		case "ctrl+c":
 			m.quitting = true
@@ -233,18 +245,15 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.state == stateList {
-			// Input handling
 			if m.input.Focused() {
 				if msg.String() == "enter" || msg.String() == "esc" {
 					m.input.Blur()
 					return m, nil
 				}
-				// Pass to input
 				var inputCmd tea.Cmd
 				m.input, inputCmd = m.input.Update(msg)
 				m.filterProcesses()
 
-				// Auto-select first result and update tree on search
 				m.table.SetCursor(0)
 				var treeCmd tea.Cmd
 				if len(m.filtered) > 0 {
@@ -252,18 +261,18 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if len(selected) > 0 {
 						pid := 0
 						fmt.Sscanf(selected[0], "%d", &pid)
-						if pid > 0 {
-							treeCmd = m.fetchTree(pid)
-						}
+						m.selectionID++
+						id := m.selectionID
+						treeCmd = tea.Tick(500*time.Millisecond, func(_ time.Time) tea.Msg {
+							return debounceMsg{id: id, pid: pid}
+						})
 					}
 				} else {
-					// Clear tree view if no results found
 					m.treeViewport.SetContent("")
 				}
 				return m, tea.Batch(inputCmd, treeCmd)
 			}
 
-			// Navigation Mode Keys (Input Blurred)
 			switch msg.String() {
 			case "/":
 				m.input.Focus()
@@ -279,50 +288,121 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						fmt.Sscanf(selected[0], "%d", &pid)
 						if pid > 0 {
 							m.state = stateDetail
+							m.viewport.GotoTop()
+							m.envViewport.GotoTop()
 							return m, m.fetchProcessDetail(pid)
 						}
 					}
 				}
-			}
 
-			// Table navigation
-			prevSelected := -1
-			if len(m.filtered) > 0 {
-				prevSelected = m.table.Cursor()
-			}
-
-			m.table, cmd = m.table.Update(msg)
-
-			// Detect selection change to trigger tree fetch
-			if len(m.filtered) > 0 && m.table.Cursor() != prevSelected {
-				selected := m.table.SelectedRow()
-				if len(selected) > 0 {
-					pid := 0
-					fmt.Sscanf(selected[0], "%d", &pid)
-					if pid > 0 {
-						// Return batch: table cmd + tree fetch
-						return m, tea.Batch(cmd, m.fetchTree(pid))
+			// Focus Switching
+			case "tab", "right", "left", "l", "h":
+				if m.input.Focused() {
+					break
+				}
+				if msg.String() == "tab" || msg.String() == "right" || msg.String() == "l" {
+					if m.listFocus == focusMain {
+						m.listFocus = focusSide
+					} else {
+						m.listFocus = focusMain
+					}
+				} else if msg.String() == "shift+tab" || msg.String() == "left" || msg.String() == "h" {
+					if m.listFocus == focusSide {
+						m.listFocus = focusMain
+					} else {
+						m.listFocus = focusSide
 					}
 				}
+				return m, nil
+
+			// Sorting Keys
+			case "c", "p", "n", "m", "t", "u":
+				newCol := ""
+				switch msg.String() {
+				case "c":
+					newCol = "cpu"
+				case "p":
+					newCol = "pid"
+				case "n":
+					newCol = "name"
+				case "m":
+					newCol = "mem"
+				case "t":
+					newCol = "time"
+				case "u":
+					newCol = "user"
+				}
+
+				if m.sortCol == newCol {
+					m.sortDesc = !m.sortDesc
+				} else {
+					m.sortCol = newCol
+					m.sortDesc = true
+				}
+				m.sortProcesses()
+				m.filterProcesses()
+				cols := m.table.Columns()
+				newCols := m.getColumns()
+				for i := range cols {
+					if i < len(newCols) {
+						newCols[i].Width = cols[i].Width
+					}
+				}
+				m.table.SetColumns(newCols)
+				return m, nil
 			}
 
-			return m, cmd
+			// Table navigation or Tree scrolling
+			var cmd tea.Cmd
+			if m.listFocus == focusMain {
+				prevSelected := -1
+				if len(m.filtered) > 0 {
+					prevSelected = m.table.Cursor()
+				}
+
+				m.table, cmd = m.table.Update(msg)
+
+				if len(m.filtered) > 0 && m.table.Cursor() != prevSelected {
+					selected := m.table.SelectedRow()
+					if len(selected) > 0 {
+						idx := m.table.Cursor()
+						if idx >= 0 && idx < len(m.filtered) {
+							m.selectionID++
+							id := m.selectionID
+							p := m.filtered[idx]
+							debounceCmd := tea.Tick(200*time.Millisecond, func(_ time.Time) tea.Msg {
+								return debounceMsg{id: id, pid: p.PID}
+							})
+							return m, tea.Batch(cmd, debounceCmd)
+						}
+					}
+				}
+				return m, cmd
+			} else {
+				m.treeViewport, cmd = m.treeViewport.Update(msg)
+				return m, cmd
+			}
 
 		} else if m.state == stateDetail {
-			// Detail View Keys
 			switch msg.String() {
 			case "esc", "q", "backspace":
 				m.state = stateList
 				m.selectedDetail = nil
-				m.detailFocus = focusDetail // Reset focus
-				return m, nil
+				m.detailFocus = focusDetail
+				return m, m.refreshProcesses()
 			case "left", "h":
 				m.detailFocus = focusDetail
 				return m, nil
 			case "right", "l":
 				m.detailFocus = focusEnv
 				return m, nil
-			// Removed w and t toggles
+			case "tab":
+				if m.detailFocus == focusDetail {
+					m.detailFocus = focusEnv
+				} else {
+					m.detailFocus = focusDetail
+				}
+				return m, nil
 			default:
 				var cmd tea.Cmd
 				if m.detailFocus == focusDetail {
@@ -338,52 +418,34 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 
-		// Calculate available width for content inside baseStyle
-		// baseStyle has Border (2) + Padding (2) = 4
-		// Extra safety buffer = 2 to ensure right border is visible
 		availableWidth := msg.Width - 6
 		if availableWidth < 0 {
 			availableWidth = 0
 		}
 
-		// Vertical Split:
-		// Left: List (70%)
-		// Right: Tree (30%)
 		listWidth := int(float64(availableWidth) * 0.7)
-		treeWidth := availableWidth - listWidth - 2 // minus split border/padding
+		treeWidth := availableWidth - listWidth - 6
 
-		// Calculate available height for Main Content
 		contentHeight := msg.Height - 11
 		if contentHeight < 5 {
-			contentHeight = 5 // Minimum height
+			contentHeight = 5
 		}
 
-		// Fixed widths for PID(8)+Process(15)+User(10)+Started(20) = 53
-		// Table usually has some internal padding between columns? Bubbletea table uses explicit widths.
-		// Let's assume some buffer.
-		fixedColumnsWidth := 53
-		// Dynamic Command Width
-		// Total list width - fixed columns - safe buffer (approx 12 for borders/spacing)
-		// Increased buffer to leave gap on right
+		// Fixed widths: PID(8) + Name(20) + User(12) + CPU(6) + Mem(16) + Started(19) = 81
+		fixedColumnsWidth := 81
 		cmdWidth := listWidth - fixedColumnsWidth - 12
 		if cmdWidth < 10 {
 			cmdWidth = 10
 		}
 
-		columns := []table.Column{
-			{Title: "PID", Width: 8},
-			{Title: "Process", Width: 15},
-			{Title: "User", Width: 10},
-			{Title: "Started", Width: 20},
-			{Title: "Command", Width: cmdWidth},
-		}
+		columns := m.getColumns()
+		columns[6].Width = cmdWidth
+
 		m.table.SetColumns(columns)
 
 		m.table.SetWidth(listWidth)
 		m.table.SetHeight(contentHeight)
 
-		// Tree view has an internal header "Ancestry Tree" (1 line) + PaddingBottom(1)
-		// Tree Viewport Height = contentHeight - 2
 		treeVpHeight := contentHeight - 2
 		if treeVpHeight < 0 {
 			treeVpHeight = 0
@@ -392,21 +454,17 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.treeViewport.Width = treeWidth
 		m.treeViewport.Height = treeVpHeight
 
-		// Detail Viewport
-		// Split 70% Detailed (Left) / 30% Env (Right) of AVAILABLE width
 		detailWidth := int(float64(availableWidth) * 0.7)
-		envWidth := availableWidth - detailWidth - 2 // minus split border/padding
+		envWidth := availableWidth - detailWidth - 2
 
-		vpHeight := msg.Height - 9 // Optimized overhead deduction (Overhead ~9 lines to fit footer)
+		vpHeight := msg.Height - 9
 		if vpHeight < 0 {
 			vpHeight = 0
 		}
 
-		m.viewport.Width = detailWidth - 2 // Increased right gap (-6)
+		m.viewport.Width = detailWidth - 2
 		m.viewport.Height = vpHeight
 
-		// Env viewport should be smaller than valid envWidth to account for container style
-		// Container has Border(1) + Padding(1) = 2 chars overhead
 		m.envViewport.Width = envWidth
 		if m.envViewport.Width < 0 {
 			m.envViewport.Width = 0
@@ -414,16 +472,84 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.envViewport.Height = vpHeight
 
 	case []model.Process:
+		// Capture current selection before update
+		var currentPID int
+		selectedRow := m.table.SelectedRow()
+		if len(selectedRow) > 0 {
+			fmt.Sscanf(selectedRow[0], "%d", &currentPID)
+		}
+
 		m.processes = msg
+		m.sortProcesses()
 		m.filterProcesses()
-		// Auto-select first and fetch tree?
+
+		newIdx := 0
+		found := false
+		if currentPID > 0 {
+			for i, p := range m.filtered {
+				if p.PID == currentPID {
+					newIdx = i
+					found = true
+					break
+				}
+			}
+		}
+
+		// Update cursor
 		if len(m.filtered) > 0 {
-			m.table.SetCursor(0)
-			return m, m.fetchTree(m.filtered[0].PID)
+			if !found {
+				newIdx = 0
+			}
+			m.table.SetCursor(newIdx)
+
+			m.selectionID++
+			id := m.selectionID
+			p := m.filtered[newIdx]
+			return m, tea.Tick(200*time.Millisecond, func(_ time.Time) tea.Msg {
+				return debounceMsg{id: id, pid: p.PID}
+			})
+		}
+
+	case debounceMsg:
+		if msg.id == m.selectionID {
+			var targetProc model.Process
+			found := false
+			row := m.table.SelectedRow()
+			if len(row) > 0 {
+				var pID int
+				fmt.Sscanf(row[0], "%d", &pID)
+				if pID == msg.pid {
+					idx := m.table.Cursor()
+					if idx >= 0 && idx < len(m.filtered) {
+						targetProc = m.filtered[idx]
+						found = true
+					}
+				}
+			}
+			if !found {
+				for _, p := range m.processes {
+					if p.PID == msg.pid {
+						targetProc = p
+						found = true
+						break
+					}
+				}
+			}
+
+			if found {
+				return m, m.fetchTree(targetProc)
+			}
 		}
 
 	case treeMsg:
-		m.updateTreeViewport(model.Result(msg))
+		selected := m.table.SelectedRow()
+		if len(selected) > 0 {
+			var currentPID int
+			fmt.Sscanf(selected[0], "%d", &currentPID)
+			if model.Result(msg).Process.PID == currentPID {
+				m.updateTreeViewport(model.Result(msg))
+			}
+		}
 
 	case model.Result:
 		m.selectedDetail = &msg
@@ -445,46 +571,104 @@ func (m *MainModel) updateEnvViewport() {
 	res := *m.selectedDetail
 	var b strings.Builder
 
-	// Adapted from internal/output/envonly.go
 	if len(res.Process.Env) > 0 {
 		for _, env := range res.Process.Env {
 			fmt.Fprintf(&b, "%s\n", env)
 		}
 	} else {
-		fmt.Fprintf(&b, "No environment variables found.\n")
+		dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243")) // Dimmed Gray
+		fmt.Fprintf(&b, "%s\n", dimStyle.Render("No environment variables found."))
 	}
 
 	content := b.String()
-	// m.envViewport.Width is already adjusted for container padding/borders in Update
 	if m.envViewport.Width > 0 {
-		// Use strict wrapping to force break on long strings without spaces
 		content = wrap.String(content, m.envViewport.Width)
 	}
 	m.envViewport.SetContent(content)
 }
 
-func (m *MainModel) filterProcesses() {
-	filter := m.input.Value()
-	if !m.flagExact {
-		filter = strings.ToLower(filter)
+func (m *MainModel) sortProcesses() {
+	sort.Slice(m.processes, func(i, j int) bool {
+		var less bool
+		switch m.sortCol {
+		case "pid":
+			less = m.processes[i].PID < m.processes[j].PID
+		case "name":
+			less = strings.ToLower(m.processes[i].Command) < strings.ToLower(m.processes[j].Command)
+		case "user":
+			less = strings.ToLower(m.processes[i].User) < strings.ToLower(m.processes[j].User)
+		case "cpu":
+			less = m.processes[i].CPUPercent < m.processes[j].CPUPercent
+		case "mem":
+			less = m.processes[i].MemoryRSS < m.processes[j].MemoryRSS
+		case "time":
+			less = m.processes[i].StartedAt.Before(m.processes[j].StartedAt)
+		default:
+			less = m.processes[i].MemoryRSS < m.processes[j].MemoryRSS
+		}
+		if m.sortDesc {
+			return !less
+		}
+		return less
+	})
+}
+
+func (m *MainModel) getColumns() []table.Column {
+	cols := []table.Column{
+		{Title: "PID", Width: 8},
+		{Title: "Name", Width: 20},
+		{Title: "User", Width: 12},
+		{Title: "CPU%", Width: 6},
+		{Title: "Mem", Width: 16},
+		{Title: "Started", Width: 19},
+		{Title: "Command", Width: 50},
 	}
 
+	addArrow := func(idx int, key string) {
+		if m.sortCol == key {
+			if m.sortDesc {
+				cols[idx].Title += " ↓"
+			} else {
+				cols[idx].Title += " ↑"
+			}
+		}
+	}
+
+	addArrow(0, "pid")
+	addArrow(1, "name")
+	addArrow(2, "user")
+	addArrow(3, "cpu")
+	addArrow(4, "mem")
+	addArrow(5, "time")
+
+	return cols
+}
+
+func formatBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := uint64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+func (m *MainModel) filterProcesses() {
+	filter := strings.ToLower(m.input.Value())
 	var rows []table.Row
 
 	m.filtered = nil
 	for _, p := range m.processes {
-		cmd := p.Command
-		if !m.flagExact {
-			cmd = strings.ToLower(cmd)
-		}
+		cmd := strings.ToLower(p.Command)
 
 		match := false
 		if filter == "" {
 			match = true
-		} else if m.flagExact {
-			match = p.Command == m.input.Value() // Exact case-sensitive match on name
 		} else {
-			// Search in Command, PID, User, or Cmdline
 			match = strings.Contains(cmd, filter) ||
 				strings.Contains(fmt.Sprintf("%d", p.PID), filter) ||
 				strings.Contains(strings.ToLower(p.User), filter) ||
@@ -500,11 +684,12 @@ func (m *MainModel) filterProcesses() {
 
 			rows = append(rows, table.Row{
 				fmt.Sprintf("%d", p.PID),
-				p.Command, // Process Name
-				// PPID removed
+				p.Command,
 				p.User,
+				fmt.Sprintf("%.1f%%", p.CPUPercent),
+				fmt.Sprintf("%s (%.1f%%)", formatBytes(p.MemoryRSS), p.MemoryPercent),
 				startedStr,
-				p.Cmdline, // Full Command
+				p.Cmdline,
 			})
 		}
 	}
@@ -518,17 +703,10 @@ func (m *MainModel) updateDetailViewport() {
 	res := *m.selectedDetail
 	var b strings.Builder
 
-	if m.flagWarnings {
-		output.RenderWarnings(&b, res, true)
-	} else if m.flagTree {
-		output.PrintTree(&b, res.Ancestry, res.Children, true)
-	} else {
-		output.RenderStandard(&b, res, true, true)
-	}
+	output.RenderStandard(&b, res, true, true)
 
 	content := b.String()
 	if m.viewport.Width > 0 {
-		// Use strict wrapping here too for consistency
 		content = wrap.String(content, m.viewport.Width)
 	}
 	m.viewport.SetContent(content)
@@ -540,12 +718,30 @@ func (m *MainModel) updateTreeViewport(res model.Result) {
 		return
 	}
 	var b strings.Builder
-	// User requested "witr's tree flag output"
-	// We use the same format
-	output.PrintTree(&b, res.Ancestry, res.Children, true)
+
+	treeLabel := lipgloss.NewStyle().Foreground(lipgloss.Color("141")).Bold(true).Render("Ancestry Tree:") // Lavender
+	fmt.Fprintf(&b, "%s\n", treeLabel)
+
+	ancestry := res.Ancestry
+	if len(ancestry) == 0 {
+		if res.Process.PID > 0 {
+			ancestry = []model.Process{res.Process}
+		} else {
+			dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243")) // Dimmed Gray
+			fmt.Fprintf(&b, "  %s\n", dimStyle.Render("No ancestry found"))
+		}
+	}
+
+	if len(ancestry) > 0 {
+		output.PrintTree(&b, ancestry, res.Children, true)
+	}
+
+	if res.Process.Cmdline != "" {
+		label := lipgloss.NewStyle().Foreground(lipgloss.Color("141")).Bold(true).Render("Command:") // Lavender
+		fmt.Fprintf(&b, "\n%s\n%s\n", label, res.Process.Cmdline)
+	}
 
 	content := b.String()
-	// Wrap tree content if needed
 	if m.treeViewport.Width > 0 {
 		content = wrap.String(content, m.treeViewport.Width)
 	}
@@ -560,15 +756,6 @@ func (m MainModel) View() string {
 		return fmt.Sprintf("Error: %v", m.err)
 	}
 
-	// Enforce consistent outer box size
-	// We subtract 2 for the borders (1 top/bottom, 1 left/right is handled by style padding/border definitions if standard)
-	// baseStyle has Border(Normal) -> 1 cell each side.
-	// So inner content + border = full size.
-	// We want the *Rendered* string to be m.width x m.height.
-	// lipgloss.Width/Height on style sets the content width/height.
-	// If we set style width/height, it includes padding but excludes border? No, lipgloss behavior varies.
-	// Safest is to set Width/Height on the style to (m.width - 2) and (m.height - 2) if standard border is used.
-
 	outerStyle := baseStyle.
 		Width(m.width-2).
 		Height(m.height-2).
@@ -580,25 +767,49 @@ func (m MainModel) View() string {
 			status = "Mode: Searching (Press Esc/Enter to stop)"
 		}
 
-		// Main layout: Header + (Table | Tree) + Footer
-		// Enforce strict height on the tree container to match table
+		activeBorderColor := lipgloss.Color("62") // Purple/Blue
+		dimBorderColor := lipgloss.Color("240")   // Dark Gray
+
+		treeBorderColor := dimBorderColor
+		treeHeaderColor := dimBorderColor
+
+		if m.listFocus == focusSide {
+			treeBorderColor = activeBorderColor
+			treeHeaderColor = activeBorderColor
+		} else {
+			treeHeaderColor = lipgloss.Color("250") // Light Gray
+		}
+
 		treeContainerStyle := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			PaddingLeft(2).          // Increased padding
-			Height(m.table.Height()) // Match calculated contentHeight
+			BorderForeground(treeBorderColor).
+			PaddingLeft(2).
+			Height(m.table.Height())
 
-		treeHeader := "Ancestry Tree"
+		treeHeader := "Details"
 		selected := m.table.SelectedRow()
 		if len(selected) > 0 {
-			treeHeader = fmt.Sprintf("Ancestry Tree for PID %s", selected[0])
+			treeHeader = fmt.Sprintf("PID %s", selected[0])
 		}
+
+		if !m.treeViewport.AtTop() && !m.treeViewport.AtBottom() {
+			treeHeader += " ↕"
+		} else if !m.treeViewport.AtTop() {
+			treeHeader += " ↑"
+		} else if !m.treeViewport.AtBottom() {
+			treeHeader += " ↓"
+		}
+
+		treeHeaderStyle := tableHeaderStyle.Copy().
+			Width(m.treeViewport.Width).
+			Foreground(treeHeaderColor).
+			BorderForeground(treeBorderColor)
 
 		mainContent := lipgloss.JoinHorizontal(lipgloss.Top,
 			m.table.View(),
 			treeContainerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
-					// Explicitly width-constrained header to ensure bottom border spans full pane
-					tableHeaderStyle.Copy().Width(m.treeViewport.Width).Render(treeHeader),
+					treeHeaderStyle.Render(treeHeader),
 					lipgloss.NewStyle().PaddingLeft(1).Render(m.treeViewport.View()),
 				),
 			),
@@ -606,23 +817,21 @@ func (m MainModel) View() string {
 
 		return outerStyle.Render(
 			lipgloss.JoinVertical(lipgloss.Left,
-				titleStyle.MarginBottom(1).Render("witr dashboard"),
+				titleStyle.MarginBottom(1).Render("witr"),
 				lipgloss.NewStyle().MarginBottom(1).PaddingLeft(1).Render(fmt.Sprintf("%s", status)),
 				lipgloss.NewStyle().MarginBottom(1).PaddingLeft(1).Render(m.input.View()),
 				mainContent,
-				// Footer at the bottom
-				lipgloss.NewStyle().Height(1).Render(""), // Spacer if needed, or just rely on JoinVertical
-				footerStyle.Width(m.width-4).Render(fmt.Sprintf("Total: %d | Esc/q: quit | enter: detail | Up/Down: Scroll", len(m.filtered))),
+				lipgloss.NewStyle().Height(1).Render(""),
+				footerStyle.Width(m.width-4).Render(fmt.Sprintf("Total: %d | Sort: p/n/u/c/m/t | Tab: Focus | Up/Down: Scroll | Esc/q: Quit | Enter: Detail", len(m.filtered))),
 			),
 		)
 	}
 
 	if m.state == stateDetail {
 		if m.selectedDetail == nil {
-			// consistent loading UI
 			return outerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
-					lipgloss.JoinHorizontal(lipgloss.Center, titleStyle.Render("witr dashboard")),
+					lipgloss.JoinHorizontal(lipgloss.Center, titleStyle.Render("witr")),
 					lipgloss.NewStyle().Height(1).Render(""),
 					lipgloss.NewStyle().Width(m.width-4).Height(m.height-7).Render("Loading details..."),
 					lipgloss.NewStyle().Height(1).Render(""),
@@ -638,84 +847,70 @@ func (m MainModel) View() string {
 		detailWidth := int(float64(availableWidth) * 0.7)
 		envWidth := availableWidth - detailWidth
 
-		// Right Pane Style (Env) - Container
-		// Match treeContainerStyle: Left border only
 		envContainerStyle := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, false, true).
-			PaddingLeft(1).               // Reduced padding (was 2)
-			Width(envWidth).              // Enforce width
-			Height(m.viewport.Height + 2) // Account for Header (2 lines) + Viewport
+			PaddingLeft(1).
+			Width(envWidth).
+			Height(m.viewport.Height + 2)
 
-		// Header Styles with Focus Logic
 		detailHeader := tableHeaderStyle.Copy()
 		envHeader := tableHeaderStyle.Copy()
 
-		// Dim inactive headers
+		activeBorderColor := lipgloss.Color("62") // Purple
+		dimColor := lipgloss.Color("250")         // Lighter Gray
+		dimBorderColor := lipgloss.Color("240")   // Dark Gray
+
 		if m.detailFocus == focusDetail {
-			envHeader.Foreground(lipgloss.Color("243")).BorderForeground(lipgloss.Color("240"))
+			detailHeader = detailHeader.BorderForeground(activeBorderColor).Foreground(activeBorderColor)
+			envHeader = envHeader.BorderForeground(dimBorderColor).Foreground(dimColor)
+			envContainerStyle = envContainerStyle.BorderForeground(dimBorderColor)
 		} else {
-			detailHeader.Foreground(lipgloss.Color("243")).BorderForeground(lipgloss.Color("240"))
+			detailHeader = detailHeader.BorderForeground(dimBorderColor).Foreground(dimColor)
+			envHeader = envHeader.BorderForeground(activeBorderColor).Foreground(activeBorderColor)
+			envContainerStyle = envContainerStyle.BorderForeground(activeBorderColor)
 		}
 
-		// Render Left Pane (Details)
-		// We need to apply the border style to the Viewport content
-		// But viewport.View() just returns string.
-		// We wrap viewport in the style.
-		// Wait, baseStyle was applied to the Whole container.
-		// The split layout needs separate containers if we want separate focus borders?
-		// Currently: baseStyle wraps the whole JoinVertical(header, splitContent).
-
-		// Let's modify to:
-		// Header
-		// SplitContent:
-		//   Left: Info
-		//   Right: Env
-		// We want to highlight the PANE.
-
-		// Adjusting layout:
-		// Left Pane: viewport.View()
-		// Right Pane: envContainer.Render(...)
-
-		// To show focus, maybe change the Header text color or add a border around the specific pane?
-		// Simple approach: Add a border around the focused pane if possible, or change the title color.
-
-		// Let's change the "Environment" header color for right pane
-		envHeaderStyle := lipgloss.NewStyle().Bold(true).PaddingBottom(1)
-		if m.detailFocus == focusEnv {
-			envHeaderStyle = envHeaderStyle.Foreground(lipgloss.Color("63"))
+		detailTitle := "Process Detail"
+		if !m.viewport.AtTop() && !m.viewport.AtBottom() {
+			detailTitle += " ↕"
+		} else if !m.viewport.AtTop() {
+			detailTitle += " ↑"
+		} else if !m.viewport.AtBottom() {
+			detailTitle += " ↓"
 		}
 
-		// Removed mainHeaderStyle and header variable
+		envTitle := "Environment Variables"
+		if !m.envViewport.AtTop() && !m.envViewport.AtBottom() {
+			envTitle += " ↕"
+		} else if !m.envViewport.AtTop() {
+			envTitle += " ↑"
+		} else if !m.envViewport.AtBottom() {
+			envTitle += " ↓"
+		}
 
-		// Construct Split Content
 		splitContent := lipgloss.JoinHorizontal(lipgloss.Top,
-			// Left Pane (Details)
 			lipgloss.NewStyle().Width(detailWidth).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
-					detailHeader.Width(m.viewport.Width).Render("Process Detail"),
+					detailHeader.Width(m.viewport.Width).Render(detailTitle),
 					lipgloss.NewStyle().PaddingLeft(1).Render(m.viewport.View()),
 				),
 			),
-			// Right Pane (Env)
 			envContainerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
-					// Header width should match container inner width (envWidth - border(1) - padding(1) = envWidth - 2)
-					// Actually envViewport.Width is already calculated as envWidth - 2
-					envHeader.Width(m.envViewport.Width).Render("Environment Variables"),
+					envHeader.Width(m.envViewport.Width).Render(envTitle),
 					lipgloss.NewStyle().PaddingLeft(1).Render(m.envViewport.View()),
 				),
 			),
 		)
 
-		// PID Header Style
 		pidStyle := lipgloss.NewStyle().
-			Background(lipgloss.Color("2")).
-			Foreground(lipgloss.Color("15")). // White text
+			Background(lipgloss.Color("2")).   // Green
+			Foreground(lipgloss.Color("231")). // White
 			Padding(0, 1).
 			Bold(true)
 
 		headerComponents := []string{
-			titleStyle.Render("witr dashboard"),
+			titleStyle.Render("witr"),
 		}
 		if m.selectedDetail != nil {
 			headerComponents = append(headerComponents, pidStyle.Render(fmt.Sprintf("PID %d", m.selectedDetail.Process.PID)))
@@ -724,11 +919,10 @@ func (m MainModel) View() string {
 		return outerStyle.Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				lipgloss.JoinHorizontal(lipgloss.Center, headerComponents...),
-				lipgloss.NewStyle().Height(1).Render(""), // Blank line after header
+				lipgloss.NewStyle().Height(1).Render(""),
 				splitContent,
-				// Footer
-				lipgloss.NewStyle().Height(1).Render(""), // Small spacer before footer
-				footerStyle.Width(m.width-4).Render("Esc/q: Back | Left/Right: Switch Pane | Up/Down: Scroll"),
+				lipgloss.NewStyle().Height(1).Render(""),
+				footerStyle.Width(m.width-4).Render("Esc/q: Back | Tab: Focus | Up/Down: Scroll"),
 			),
 		)
 	}

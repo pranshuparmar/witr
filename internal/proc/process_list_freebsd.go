@@ -16,8 +16,8 @@ import (
 // ListProcesses returns a list of all running processes with basic details (PID, Command, State).
 // This is used by the TUI to display the process list.
 func ListProcesses() ([]model.Process, error) {
-	// Use ps to fetch rich information efficiently: pid, ppid, user, lstart, comm, args
-	out, err := exec.Command("ps", "-axo", "pid,ppid,user,lstart,comm,args").Output()
+	// Use ps to fetch rich information efficiently: pid, ppid, user, lstart, %cpu, rss, %mem, comm, args
+	out, err := exec.Command("ps", "-axo", "pid,ppid,user,lstart,%cpu,rss,%mem,comm,args").Output()
 	if err != nil {
 		// Fallback to fast snapshot if ps fails
 		return listProcessSnapshot()
@@ -37,8 +37,8 @@ func ListProcesses() ([]model.Process, error) {
 		}
 		fields := strings.Fields(line)
 
-		// Expected minimum fields: pid(1) + ppid(1) + user(1) + lstart(5) + comm(1) = 9
-		if len(fields) < 9 {
+		// Expected minimum fields: pid(1) + ppid(1) + user(1) + lstart(5) + cpu(1) + rss(1) + mem(1) + comm(1) = 12
+		if len(fields) < 12 {
 			continue
 		}
 
@@ -56,20 +56,29 @@ func ListProcesses() ([]model.Process, error) {
 		timeStr := strings.Join(fields[3:8], " ")
 		started, _ := time.Parse("Mon Jan 2 15:04:05 2006", timeStr)
 
-		comm := fields[8]
+		cpu, _ := strconv.ParseFloat(fields[8], 64)
+		rss, _ := strconv.ParseUint(fields[9], 10, 64)
+		rss *= 1024
+
+		mem, _ := strconv.ParseFloat(fields[10], 64)
+
+		comm := fields[11]
 
 		cmdline := comm
-		if len(fields) > 9 {
-			cmdline = strings.Join(fields[9:], " ")
+		if len(fields) > 12 {
+			cmdline = strings.Join(fields[12:], " ")
 		}
 
 		processes = append(processes, model.Process{
-			PID:       pid,
-			PPID:      ppid,
-			Command:   comm,
-			User:      user,
-			StartedAt: started,
-			Cmdline:   cmdline,
+			PID:           pid,
+			PPID:          ppid,
+			Command:       comm,
+			User:          user,
+			StartedAt:     started,
+			CPUPercent:    cpu,
+			MemoryRSS:     rss,
+			MemoryPercent: mem,
+			Cmdline:       cmdline,
 		})
 	}
 
