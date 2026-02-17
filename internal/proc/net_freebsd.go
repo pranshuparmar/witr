@@ -3,6 +3,7 @@
 package proc
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -10,17 +11,13 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-// readListeningSockets returns a map of pseudo-inodes to sockets
-// On FreeBSD, we use sockstat to get listening sockets
-// We use a combination of PID:port as the "inode" since FreeBSD doesn't expose inodes like Linux
-func readListeningSockets() (map[string]model.Socket, error) {
+// ListOpenPorts returns all open ports
+func ListOpenPorts() ([]model.OpenPort, error) {
+	var openPorts []model.OpenPort
 	sockets := make(map[string]model.Socket)
 
-	// Use sockstat to get listening TCP sockets
-	// -4 = IPv4, -6 = IPv6, -l = listening, -P tcp = TCP protocol
-	// Run for both IPv4 and IPv6
 	for _, flag := range []string{"-4", "-6"} {
-		out, err := exec.Command("sockstat", flag, "-l", "-P", "tcp").Output()
+		out, err := exec.Command("sockstat", flag).Output()
 		if err != nil {
 			continue
 		}
@@ -28,86 +25,98 @@ func readListeningSockets() (map[string]model.Socket, error) {
 		parseSockstatOutput(string(out), sockets)
 	}
 
-	if len(sockets) == 0 {
-		// Try netstat as fallback
-		return readListeningSocketsNetstat()
+	for _, s := range sockets {
+		openPorts = append(openPorts, model.OpenPort{
+			PID:      extractPID(s.Inode),
+			Port:     s.Port,
+			Address:  s.Address,
+			Protocol: s.Protocol,
+			State:    s.State,
+		})
 	}
 
+	return openPorts, nil
+}
+
+func extractPID(inode string) int {
+	parts := strings.Split(inode, ":")
+	if len(parts) > 0 {
+		pid, _ := strconv.Atoi(parts[0])
+		return pid
+	}
+	return 0
+}
+
+func readListeningSockets() (map[string]model.Socket, error) {
+	ports, err := ListOpenPorts()
+	if err != nil {
+		return nil, err
+	}
+	sockets := make(map[string]model.Socket)
+	for _, p := range ports {
+		if p.State == "LISTEN" {
+			inode := fmt.Sprintf("%d:%d:%s", p.PID, p.Port, p.Address)
+			sockets[inode] = model.Socket{
+				Inode:    inode,
+				Port:     p.Port,
+				Address:  p.Address,
+				State:    p.State,
+				Protocol: p.Protocol,
+			}
+		}
+	}
 	return sockets, nil
 }
 
 func parseSockstatOutput(output string, sockets map[string]model.Socket) {
-	// sockstat output format:
-	// USER     COMMAND    PID   FD PROTO  LOCAL ADDRESS         FOREIGN ADDRESS
-	// root     nginx      1234  6  tcp4   *:80                  *:*
-
 	for line := range strings.Lines(output) {
 		fields := strings.Fields(line)
 		if len(fields) < 6 {
 			continue
 		}
 
-		// Skip header
 		if fields[0] == "USER" {
 			continue
 		}
 
 		pid := fields[2]
-		proto := fields[4] // tcp4 or tcp6
+		proto := fields[4] // tcp4, tcp6, udp4, udp6
 		localAddr := fields[5]
+		foreignAddr := fields[6]
 
-		// Parse local address with protocol information
+		state := "UNKNOWN"
+		protocol := "UNKNOWN"
+		if strings.Contains(proto, "tcp") {
+			protocol = "TCP"
+			if strings.Contains(proto, "6") {
+				protocol = "TCP6"
+			}
+
+			if foreignAddr == "*:*" || foreignAddr == "0.0.0.0:0" || foreignAddr == "[::]:0" {
+				state = "LISTEN"
+			} else {
+				state = "ESTABLISHED"
+			}
+		} else if strings.Contains(proto, "udp") {
+			protocol = "UDP"
+			if strings.Contains(proto, "6") {
+				protocol = "UDP6"
+			}
+			state = "OPEN"
+		}
+
 		address, port := parseSockstatAddr(localAddr, proto)
 		if port > 0 {
-			// Use PID:port:address as pseudo-inode to distinguish IPv4 and IPv6
 			inode := pid + ":" + strconv.Itoa(port) + ":" + address
 			sockets[inode] = model.Socket{
-				Inode:   inode,
-				Port:    port,
-				Address: address,
+				Inode:    inode,
+				Port:     port,
+				Address:  address,
+				Protocol: protocol,
+				State:    state,
 			}
 		}
 	}
-}
-
-func readListeningSocketsNetstat() (map[string]model.Socket, error) {
-	sockets := make(map[string]model.Socket)
-
-	// Use netstat as fallback
-	// netstat -an -p tcp shows all TCP connections
-	out, err := exec.Command("netstat", "-an", "-p", "tcp").Output()
-	if err != nil {
-		return sockets, nil
-	}
-
-	for line := range strings.Lines(string(out)) {
-		if !strings.Contains(line, "LISTEN") {
-			continue
-		}
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			continue
-		}
-		// Local address is typically field 3 (0-indexed)
-		// First field (0) is proto like "tcp4" or "tcp6"
-		proto := ""
-		if len(fields) > 0 {
-			proto = fields[0]
-		}
-		localAddr := fields[3]
-		address, port := parseSockstatAddr(localAddr, proto)
-		if port > 0 {
-			// Generate a unique key
-			inode := "netstat:" + localAddr
-			sockets[inode] = model.Socket{
-				Inode:   inode,
-				Port:    port,
-				Address: address,
-			}
-		}
-	}
-
-	return sockets, nil
 }
 
 // parseSockstatAddr parses addresses like "*:80", "127.0.0.1:8080", "[::1]:8080"

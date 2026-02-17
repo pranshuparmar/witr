@@ -245,7 +245,7 @@ func ReadProcess(pid int) (model.Process, error) {
 
 	user := readUser(pid)
 
-	sockets, _ := readListeningSockets()
+	sockets, _ := readSockets()
 	inodes := socketsForPID(pid)
 
 	var ports []int
@@ -255,6 +255,10 @@ func ReadProcess(pid int) (model.Process, error) {
 	ipv4Listeners := make(map[int]bool)
 	for _, inode := range inodes {
 		if s, ok := sockets[inode]; ok {
+			// Only consider listening sockets for this summary
+			if s.State != "LISTEN" {
+				continue
+			}
 			if s.Address == "0.0.0.0" {
 				ipv4Listeners[s.Port] = true
 			}

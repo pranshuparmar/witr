@@ -111,6 +111,8 @@ type MainModel struct {
 	sortCol  string // "pid", "name", "user", "cpu", "mem", "time"
 	sortDesc bool
 
+	showAllPorts bool
+
 	version string
 }
 
@@ -140,14 +142,11 @@ func InitialModel(version string) MainModel {
 	t.SetStyles(s)
 
 	portColumns := []table.Column{
-		{Title: "Proto", Width: 5},
-		{Title: "Address", Width: 20},
 		{Title: "Port", Width: 6},
-		{Title: "State", Width: 8},
-		{Title: "PID", Width: 7},
-		{Title: "Process", Width: 20},
-		{Title: "User", Width: 10},
-		{Title: "Exposed", Width: 12},
+		{Title: "Protocol", Width: 10},
+		{Title: "Exposure", Width: 12},
+		{Title: "Address", Width: 40},
+		{Title: "State", Width: 20},
 	}
 	pt := table.New(
 		table.WithColumns(portColumns),
@@ -167,7 +166,7 @@ func InitialModel(version string) MainModel {
 	ti.Blur()
 
 	pi := textinput.New()
-	pi.Placeholder = "Search Port, PID, Address..."
+	pi.Placeholder = "Search Port, Protocol, Address, State..."
 	pi.CharLimit = 156
 	pi.Width = 50
 	pi.Prompt = "> "
@@ -437,6 +436,14 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 
+			// Toggle All Ports (only in Ports tab)
+			case "a", "A":
+				if m.activeTab == tabPorts {
+					m.showAllPorts = !m.showAllPorts
+					m.updatePortTable()
+					return m, nil
+				}
+
 			// Sorting Keys
 			case "c", "C", "p", "P", "n", "N", "m", "M", "t", "T", "u", "U":
 				if m.activeTab != tabProcesses {
@@ -589,12 +596,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		portListWidth := int(float64(availableWidth) * 0.7)
 		if portListWidth < 0 {
 			portListWidth = 0
-		}
-
-		fixedPortWidth := 48 + 5
-		availablePortWidth := portListWidth - fixedPortWidth
-		if availablePortWidth < 20 {
-			availablePortWidth = 20
 		}
 
 		portColumns := m.portTable.Columns()
@@ -848,6 +849,7 @@ func (m *MainModel) filterProcesses() {
 func (m *MainModel) updatePortTable() {
 	var rows []table.Row
 	filter := strings.ToLower(m.portInput.Value())
+	seen := make(map[string]bool)
 
 	procMap := make(map[int]model.Process)
 	for _, p := range m.processes {
@@ -855,44 +857,44 @@ func (m *MainModel) updatePortTable() {
 	}
 
 	for _, p := range m.ports {
+
 		match := false
-		procName := ""
-		userName := ""
-		if proc, ok := procMap[p.PID]; ok {
-			procName = proc.Command
-			userName = proc.User
-		}
 
 		if filter == "" {
 			match = true
 		} else {
-			if strings.Contains(fmt.Sprintf("%d", p.PID), filter) ||
-				strings.Contains(strings.ToLower(procName), filter) ||
-				strings.Contains(fmt.Sprintf("%d", p.Port), filter) ||
+			if strings.Contains(fmt.Sprintf("%d", p.Port), filter) ||
+				strings.Contains(strings.ToLower(p.Protocol), filter) ||
 				strings.Contains(strings.ToLower(p.Address), filter) ||
-				strings.Contains(strings.ToLower(userName), filter) {
+				strings.Contains(strings.ToLower(p.State), filter) {
 				match = true
 			}
 		}
 
 		if match {
-			exposed := classifyAddress(p.Address)
+			// Filter by State if not showing all ports
+			if !m.showAllPorts && p.State != "LISTEN" && p.State != "OPEN" {
+				continue
+			}
 
-			rows = append(rows, table.Row{
-				p.Protocol,
-				p.Address,
-				fmt.Sprintf("%d", p.Port),
-				p.State,
-				fmt.Sprintf("%d", p.PID),
-				procName,
-				userName,
-				exposed,
-			})
+			exposure := classifyAddress(p.Address)
+			key := fmt.Sprintf("%d|%s|%s|%s|%s", p.Port, p.Protocol, exposure, p.Address, p.State)
+
+			if !seen[key] {
+				seen[key] = true
+				rows = append(rows, table.Row{
+					fmt.Sprintf("%d", p.Port),
+					p.Protocol,
+					exposure,
+					p.Address,
+					p.State,
+				})
+			}
 		}
 	}
 	sort.Slice(rows, func(i, j int) bool {
-		p1, _ := strconv.Atoi(rows[i][2])
-		p2, _ := strconv.Atoi(rows[j][2])
+		p1, _ := strconv.Atoi(rows[i][0])
+		p2, _ := strconv.Atoi(rows[j][0])
 		return p1 < p2
 	})
 
@@ -969,9 +971,8 @@ func (m MainModel) View() string {
 		inputView := m.input.View()
 
 		if m.activeTab == tabPorts {
-			status = "Mode: Ports View"
 			if m.portInput.Focused() {
-				status = "Mode: Searching Ports (Press Esc/Enter to stop)"
+				status = "Mode: Searching (Press Esc/Enter to stop)"
 			}
 			inputView = m.portInput.View()
 		} else {
@@ -1048,9 +1049,13 @@ func (m MainModel) View() string {
 			)
 		}
 
-		helpText := fmt.Sprintf("Total: %d | Enter: Detail | Sort: p/n/u/c/m/t | Esc/q: Quit | Tab: Focus | Up/Down: Scroll", len(m.filtered))
+		helpText := fmt.Sprintf("Total: %d | Enter: Detail | p/n/u/c/m/t: Sort | Esc/q: Quit | Tab: Focus | Up/Down: Scroll", len(m.filtered))
 		if m.activeTab == tabPorts {
-			helpText = fmt.Sprintf("Total Ports: %d | Esc/q: Quit | Up/Down: Scroll", len(m.portTable.Rows()))
+			filterStatus := "LISTEN"
+			if m.showAllPorts {
+				filterStatus = "ALL"
+			}
+			helpText = fmt.Sprintf("Total: %d [%s] | a: Toggle All | Esc/q: Quit | Up/Down: Scroll", len(m.portTable.Rows()), filterStatus)
 		}
 		footerContent := helpText
 		if m.version != "" {
@@ -1210,9 +1215,17 @@ func (m MainModel) View() string {
 }
 
 func classifyAddress(addr string) string {
+	// Strip IPv6 zone ID if present (e.g. fe80::1%lo0)
+	if idx := strings.Index(addr, "%"); idx != -1 {
+		addr = addr[:idx]
+	}
+
 	ip := net.ParseIP(addr)
 	if ip == nil {
-		return "PUBLIC"
+		if addr == "*" {
+			return "PUBLIC"
+		}
+		return "PUBLIC" // Default to public
 	}
 
 	if ip.IsLoopback() {
@@ -1223,6 +1236,9 @@ func classifyAddress(addr string) string {
 	}
 	if ip.IsPrivate() {
 		return "LAN"
+	}
+	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return "LINK-LOCAL"
 	}
 
 	return "PUBLIC"

@@ -10,10 +10,9 @@ type AnalyzeConfig struct {
 	PID     int
 	Verbose bool
 	Tree    bool
-	Target  model.Target // Optional, passes target info if known
+	Target  model.Target
 }
 
-// AnalyzePID performs the full analysis on a given PID
 func AnalyzePID(cfg AnalyzeConfig) (model.Result, error) {
 	ancestry, err := procpkg.ResolveAncestry(cfg.PID)
 	if err != nil {
@@ -57,7 +56,6 @@ func AnalyzePID(cfg AnalyzeConfig) (model.Result, error) {
 		}
 	}
 
-	// Child processes?
 	var childProcesses []model.Process
 	if (cfg.Verbose || cfg.Tree) && proc.PID > 0 {
 		if children, err := procpkg.ResolveChildren(proc.PID); err == nil {

@@ -32,7 +32,7 @@ go.work.sum
 result
 
 # Binary files
-./witr
+witr
 
 # Ignore build artifacts
 dist/

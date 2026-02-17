@@ -3,9 +3,87 @@
 package proc
 
 import (
+	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/pranshuparmar/witr/pkg/model"
 )
+
+func ListOpenPorts() ([]model.OpenPort, error) {
+	cmd := exec.Command("lsof", "-i", "-P", "-n")
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var ports []model.OpenPort
+	lines := strings.Split(string(out), "\n")
+
+	startIdx := 0
+	if len(lines) > 0 && strings.HasPrefix(lines[0], "COMMAND") {
+		startIdx = 1
+	}
+
+	for _, line := range lines[startIdx:] {
+		fields := strings.Fields(line)
+		if len(fields) < 9 {
+			continue
+		}
+
+		pidStr := fields[1]
+		pid, err := strconv.Atoi(pidStr)
+		if err != nil {
+			continue
+		}
+
+		protocol := fields[7]
+		if protocol != "TCP" && protocol != "UDP" {
+			if strings.Contains(line, "TCP") {
+				protocol = "TCP"
+			} else if strings.Contains(line, "UDP") {
+				protocol = "UDP"
+			} else {
+				protocol = "UNKNOWN"
+			}
+		}
+
+		nameField := fields[8] // Address:Port
+		state := "UNKNOWN"
+		if len(fields) > 9 {
+			state = strings.Trim(fields[9], "()")
+		} else if protocol == "UDP" {
+			state = "OPEN"
+		}
+
+		addr, port := parseNetstatAddr(nameField)
+		if port == 0 {
+			lastColon := strings.LastIndex(nameField, ":")
+			if lastColon != -1 {
+				portStr := nameField[lastColon+1:]
+				if p, err := strconv.Atoi(portStr); err == nil {
+					port = p
+					addr = nameField[:lastColon]
+					if addr == "*" {
+						addr = "0.0.0.0"
+					}
+				}
+			}
+		}
+
+		if port > 0 {
+			ports = append(ports, model.OpenPort{
+				PID:      pid,
+				Port:     port,
+				Address:  addr,
+				Protocol: protocol,
+				State:    state,
+			})
+		}
+	}
+
+	return ports, nil
+}
 
 // parseNetstatAddr parses addresses like "*.8080", "127.0.0.1.8080", "[::1].8080"
 func parseNetstatAddr(addr string) (string, int) {

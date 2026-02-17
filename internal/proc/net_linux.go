@@ -14,10 +14,24 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-func readListeningSockets() (map[string]model.Socket, error) {
+var stateMap = map[string]string{
+	"01": "ESTABLISHED",
+	"02": "SYN_SENT",
+	"03": "SYN_RECV",
+	"04": "FIN_WAIT1",
+	"05": "FIN_WAIT2",
+	"06": "TIME_WAIT",
+	"07": "CLOSE",
+	"08": "CLOSE_WAIT",
+	"09": "LAST_ACK",
+	"0A": "LISTEN",
+	"0B": "CLOSING",
+}
+
+func readSockets() (map[string]model.Socket, error) {
 	sockets := make(map[string]model.Socket)
 
-	parse := func(path string, ipv6 bool) {
+	parse := func(path, proto string, ipv6 bool) {
 		f, err := os.Open(path)
 		if err != nil {
 			return
@@ -34,26 +48,29 @@ func readListeningSockets() (map[string]model.Socket, error) {
 			}
 
 			local := fields[1]
-			state := fields[3]
+			stateHex := fields[3]
 			inode := fields[9]
 
-			// 0A = LISTEN
-			if state != "0A" {
-				continue
+			state, ok := stateMap[stateHex]
+			if !ok {
+				state = "UNKNOWN"
 			}
 
 			addr, port := parseAddr(local, ipv6)
 			sockets[inode] = model.Socket{
-				Inode:   inode,
-				Port:    port,
-				Address: addr,
-				State:   "LISTEN",
+				Inode:    inode,
+				Port:     port,
+				Address:  addr,
+				State:    state,
+				Protocol: proto,
 			}
 		}
 	}
 
-	parse("/proc/net/tcp", false)
-	parse("/proc/net/tcp6", true)
+	parse("/proc/net/tcp", "TCP", false)
+	parse("/proc/net/tcp6", "TCP6", true)
+	parse("/proc/net/udp", "UDP", false)
+	parse("/proc/net/udp6", "UDP6", true)
 
 	return sockets, nil
 }
@@ -100,7 +117,7 @@ func parseAddr(raw string, ipv6 bool) (string, int) {
 }
 
 func ListOpenPorts() ([]model.OpenPort, error) {
-	sockets, err := readListeningSockets()
+	sockets, err := readSockets()
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +158,7 @@ func ListOpenPorts() ([]model.OpenPort, error) {
 						PID:      pid,
 						Port:     s.Port,
 						Address:  s.Address,
-						Protocol: "TCP",
+						Protocol: s.Protocol,
 						State:    s.State,
 					})
 				}
