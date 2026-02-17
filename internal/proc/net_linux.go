@@ -5,6 +5,7 @@ package proc
 import (
 	"bufio"
 	"encoding/hex"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -46,6 +47,7 @@ func readListeningSockets() (map[string]model.Socket, error) {
 				Inode:   inode,
 				Port:    port,
 				Address: addr,
+				State:   "LISTEN",
 			}
 		}
 	}
@@ -95,4 +97,56 @@ func parseAddr(raw string, ipv6 bool) (string, int) {
 		strconv.Itoa(int(b[0]))
 
 	return ip, int(port)
+}
+
+func ListOpenPorts() ([]model.OpenPort, error) {
+	sockets, err := readListeningSockets()
+	if err != nil {
+		return nil, err
+	}
+
+	var openPorts []model.OpenPort
+
+	// Scan proc
+	procs, err := os.ReadDir("/proc")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range procs {
+		if !p.IsDir() {
+			continue
+		}
+		pid, err := strconv.Atoi(p.Name())
+		if err != nil {
+			continue
+		}
+
+		// Scan fds
+		fdPath := fmt.Sprintf("/proc/%d/fd", pid)
+		fds, err := os.ReadDir(fdPath)
+		if err != nil {
+			continue
+		}
+
+		for _, fd := range fds {
+			link, err := os.Readlink(fmt.Sprintf("%s/%s", fdPath, fd.Name()))
+			if err != nil {
+				continue
+			}
+			if strings.HasPrefix(link, "socket:[") {
+				inode := strings.TrimSuffix(strings.TrimPrefix(link, "socket:["), "]")
+				if s, ok := sockets[inode]; ok {
+					openPorts = append(openPorts, model.OpenPort{
+						PID:      pid,
+						Port:     s.Port,
+						Address:  s.Address,
+						Protocol: "TCP",
+						State:    s.State,
+					})
+				}
+			}
+		}
+	}
+	return openPorts, nil
 }
