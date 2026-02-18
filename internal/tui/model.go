@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"sort"
 	"strconv"
@@ -86,41 +85,42 @@ const (
 )
 
 type MainModel struct {
-	state          modelState
-	table          table.Model
-	input          textinput.Model
-	viewport       viewport.Model
-	treeViewport   viewport.Model
-	envViewport    viewport.Model
-	processes      []model.Process
-	filtered       []model.Process
-	selectedDetail *model.Result
-	detailFocus    focusState
-	listFocus      focusState
-	activeTab      tab
-	portTable      table.Model
-	portInput      textinput.Model
-	ports          []model.OpenPort
-	err            error
-	width          int
-	height         int
-	quitting       bool
+	state           modelState
+	table           table.Model
+	input           textinput.Model
+	viewport        viewport.Model
+	treeViewport    viewport.Model
+	envViewport     viewport.Model
+	processes       []model.Process
+	filtered        []model.Process
+	selectedDetail  *model.Result
+	detailFocus     focusState
+	listFocus       focusState
+	activeTab       tab
+	portTable       table.Model
+	portDetailTable table.Model
+	portInput       textinput.Model
+	ports           []model.OpenPort
+	err             error
+	width           int
+	height          int
+	quitting        bool
 
 	selectionID int
 
-	sortCol  string // "pid", "name", "user", "cpu", "mem", "time"
-	sortDesc bool
-
+	sortCol      string
+	sortDesc     bool
+	sortPortCol  string
+	sortPortDesc bool
 	showAllPorts bool
-
-	version string
+	version      string
 }
 
 func InitialModel(version string) MainModel {
 	columns := []table.Column{
 		{Title: "PID", Width: 8},
-		{Title: "Name", Width: 20},
 		{Title: "User", Width: 12},
+		{Title: "Name", Width: 20},
 		{Title: "CPU%", Width: 6},
 		{Title: "Mem", Width: 16},
 		{Title: "Started", Width: 19},
@@ -144,8 +144,7 @@ func InitialModel(version string) MainModel {
 	portColumns := []table.Column{
 		{Title: "Port", Width: 6},
 		{Title: "Protocol", Width: 10},
-		{Title: "Exposure", Width: 12},
-		{Title: "Address", Width: 40},
+		{Title: "Address", Width: 30},
 		{Title: "State", Width: 20},
 	}
 	pt := table.New(
@@ -154,6 +153,19 @@ func InitialModel(version string) MainModel {
 		table.WithHeight(20),
 	)
 	pt.SetStyles(s)
+
+	pdCols := []table.Column{
+		{Title: "PID", Width: 8},
+		{Title: "User", Width: 12},
+		{Title: "Name", Width: 15},
+		{Title: "Command", Width: 20},
+	}
+	pdt := table.New(
+		table.WithColumns(pdCols),
+		table.WithFocused(false),
+		table.WithHeight(20),
+	)
+	pdt.SetStyles(s)
 
 	pt.SetStyles(s)
 
@@ -183,20 +195,23 @@ func InitialModel(version string) MainModel {
 	evp.YPosition = 0
 
 	return MainModel{
-		state:        stateList,
-		table:        t,
-		portTable:    pt,
-		input:        ti,
-		portInput:    pi,
-		viewport:     vp,
-		treeViewport: tvp,
-		envViewport:  evp,
-		detailFocus:  focusDetail,
-		listFocus:    focusMain,
-		activeTab:    tabProcesses,
-		sortCol:      "mem",
-		sortDesc:     true,
-		version:      version,
+		state:           stateList,
+		table:           t,
+		portTable:       pt,
+		portDetailTable: pdt,
+		input:           ti,
+		portInput:       pi,
+		viewport:        vp,
+		treeViewport:    tvp,
+		envViewport:     evp,
+		detailFocus:     focusDetail,
+		listFocus:       focusMain,
+		activeTab:       tabProcesses,
+		sortCol:         "mem",
+		sortDesc:        true,
+		sortPortCol:     "port",
+		sortPortDesc:    false,
+		version:         version,
 	}
 }
 
@@ -309,8 +324,109 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, waitTick())
 
 	case tea.MouseMsg:
-		if m.state == stateDetail {
-			if msg.Action == tea.MouseActionPress || msg.Action == tea.MouseActionMotion {
+		if msg.Action != tea.MouseActionPress && msg.Action != tea.MouseActionMotion && msg.Action != tea.MouseActionRelease {
+			return m, nil
+		}
+
+		if msg.Y == 0 && msg.Action == tea.MouseActionPress {
+			if msg.X < 20 {
+				if m.activeTab != tabProcesses {
+					m.activeTab = tabProcesses
+					return m, nil
+				}
+			} else if msg.X < 40 {
+				if m.activeTab != tabPorts {
+					m.activeTab = tabPorts
+					return m, m.refreshPorts()
+				}
+			}
+		}
+
+		if msg.Y >= 6 {
+			switch m.activeTab {
+			case tabProcesses:
+				availableWidth := m.width - 6
+				processListPaneWidth := int(float64(availableWidth) * 0.7)
+				if processListPaneWidth < 10 {
+					processListPaneWidth = 10
+				}
+
+				if msg.X < processListPaneWidth {
+					if msg.Action == tea.MouseActionPress {
+						m.listFocus = focusMain
+
+						if msg.Y == 6 {
+							m.handleProcessHeaderClick(msg.X)
+							return m, nil
+						}
+					}
+
+					var cmd tea.Cmd
+					m.table, cmd = m.table.Update(msg)
+
+					if msg.Action == tea.MouseActionPress && msg.Y > 6 {
+						selected := m.table.SelectedRow()
+						if len(selected) > 0 {
+							pid := 0
+							fmt.Sscanf(selected[0], "%d", &pid)
+							m.selectionID++
+							id := m.selectionID
+							debounceCmd := tea.Tick(200*time.Millisecond, func(_ time.Time) tea.Msg {
+								return debounceMsg{id: id, pid: pid}
+							})
+							return m, tea.Batch(cmd, debounceCmd)
+						}
+					}
+					return m, cmd
+
+				} else {
+					if msg.Action == tea.MouseActionPress {
+						m.listFocus = focusSide
+					}
+					var cmd tea.Cmd
+					m.treeViewport, cmd = m.treeViewport.Update(msg)
+					return m, cmd
+				}
+
+			case tabPorts:
+				availableWidth := m.width - 6
+				portPaneWidth := availableWidth / 2
+
+				if msg.X < portPaneWidth {
+					if msg.Action == tea.MouseActionPress {
+						m.listFocus = focusMain
+						m.portDetailTable.Blur()
+						m.portTable.Focus()
+
+						if msg.Y == 6 {
+							m.handlePortHeaderClick(msg.X)
+							return m, nil
+						}
+					}
+
+					var cmd tea.Cmd
+					prevSelected := m.portTable.Cursor()
+					m.portTable, cmd = m.portTable.Update(msg)
+
+					if m.portTable.Cursor() != prevSelected {
+						m.updatePortDetails()
+					}
+					return m, cmd
+
+				} else {
+					if msg.Action == tea.MouseActionPress {
+						m.listFocus = focusSide
+						m.portTable.Blur()
+						m.portDetailTable.Focus()
+					}
+
+					var cmd tea.Cmd
+					m.portDetailTable, cmd = m.portDetailTable.Update(msg)
+					return m, cmd
+				}
+			}
+		} else if m.state == stateDetail {
+			if msg.Action == tea.MouseActionPress {
 				if msg.X < m.viewport.Width+2 {
 					m.detailFocus = focusDetail
 				} else {
@@ -402,7 +518,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			case "enter":
-				if m.table.Focused() {
+				if m.activeTab == tabProcesses && m.table.Focused() {
 					selected := m.table.SelectedRow()
 					if len(selected) > 0 {
 						pid := 0
@@ -414,6 +530,26 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							return m, m.fetchProcessDetail(pid)
 						}
 					}
+				} else if m.activeTab == tabPorts {
+					switch m.listFocus {
+					case focusMain:
+						m.listFocus = focusSide
+						m.portTable.Blur()
+						m.portDetailTable.Focus()
+					case focusSide:
+						selected := m.portDetailTable.SelectedRow()
+						if len(selected) > 0 {
+							pid := 0
+							fmt.Sscanf(selected[0], "%d", &pid)
+							if pid > 0 {
+								m.state = stateDetail
+								m.viewport.GotoTop()
+								m.envViewport.GotoTop()
+								return m, m.fetchProcessDetail(pid)
+							}
+						}
+					}
+
 				}
 
 			// Focus Switching
@@ -424,14 +560,30 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if msg.String() == "tab" || msg.String() == "right" || msg.String() == "l" {
 					if m.listFocus == focusMain {
 						m.listFocus = focusSide
+						if m.activeTab == tabPorts {
+							m.portTable.Blur()
+							m.portDetailTable.Focus()
+						}
 					} else {
 						m.listFocus = focusMain
+						if m.activeTab == tabPorts {
+							m.portDetailTable.Blur()
+							m.portTable.Focus()
+						}
 					}
 				} else if msg.String() == "shift+tab" || msg.String() == "left" || msg.String() == "h" {
 					if m.listFocus == focusSide {
 						m.listFocus = focusMain
+						if m.activeTab == tabPorts {
+							m.portDetailTable.Blur()
+							m.portTable.Focus()
+						}
 					} else {
 						m.listFocus = focusSide
+						if m.activeTab == tabPorts {
+							m.portTable.Blur()
+							m.portDetailTable.Focus()
+						}
 					}
 				}
 				return m, nil
@@ -445,43 +597,68 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 			// Sorting Keys
-			case "c", "C", "p", "P", "n", "N", "m", "M", "t", "T", "u", "U":
-				if m.activeTab != tabProcesses {
-					break
-				}
-				newCol := ""
-				switch msg.String() {
-				case "c", "C":
-					newCol = "cpu"
-				case "p", "P":
-					newCol = "pid"
-				case "n", "N":
-					newCol = "name"
-				case "m", "M":
-					newCol = "mem"
-				case "t", "T":
-					newCol = "time"
-				case "u", "U":
-					newCol = "user"
-				}
+			case "c", "C", "p", "P", "n", "N", "m", "M", "t", "T", "u", "U", "s", "S":
+				switch m.activeTab {
+				case tabProcesses:
+					newCol := ""
+					switch msg.String() {
+					case "c", "C":
+						newCol = "cpu"
+					case "p", "P":
+						newCol = "pid"
+					case "n", "N":
+						newCol = "name"
+					case "m", "M":
+						newCol = "mem"
+					case "t", "T":
+						newCol = "time"
+					case "u", "U":
+						newCol = "user"
+					}
 
-				if m.sortCol == newCol {
-					m.sortDesc = !m.sortDesc
-				} else {
-					m.sortCol = newCol
-					m.sortDesc = true
-				}
-				m.sortProcesses()
-				m.filterProcesses()
-				cols := m.table.Columns()
-				newCols := m.getColumns()
-				for i := range cols {
-					if i < len(newCols) {
-						newCols[i].Width = cols[i].Width
+					if newCol != "" {
+						if m.sortCol == newCol {
+							m.sortDesc = !m.sortDesc
+						} else {
+							m.sortCol = newCol
+							m.sortDesc = true
+						}
+						m.sortProcesses()
+						m.filterProcesses()
+						cols := m.table.Columns()
+						newCols := m.getColumns()
+						for i := range cols {
+							if i < len(newCols) {
+								newCols[i].Width = cols[i].Width
+							}
+						}
+						m.table.SetColumns(newCols)
+						return m, nil
+					}
+				case tabPorts:
+					newCol := ""
+					switch msg.String() {
+					case "p", "P":
+						newCol = "port"
+					case "t", "T":
+						newCol = "proto"
+					case "n", "N":
+						newCol = "addr"
+					case "s", "S":
+						newCol = "state"
+					}
+
+					if newCol != "" {
+						if m.sortPortCol == newCol {
+							m.sortPortDesc = !m.sortPortDesc
+						} else {
+							m.sortPortCol = newCol
+							m.sortPortDesc = false
+						}
+						m.updatePortTable()
+						return m, nil
 					}
 				}
-				m.table.SetColumns(newCols)
-				return m, nil
 			}
 
 			// Table navigation or Tree scrolling
@@ -512,11 +689,19 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, cmd
 				} else {
+					prevSelected := m.portTable.Cursor()
 					m.portTable, cmd = m.portTable.Update(msg)
+					if m.portTable.Cursor() != prevSelected {
+						m.updatePortDetails()
+					}
 					return m, cmd
 				}
 			} else {
-				m.treeViewport, cmd = m.treeViewport.Update(msg)
+				if m.activeTab == tabProcesses {
+					m.treeViewport, cmd = m.treeViewport.Update(msg)
+				} else {
+					m.portDetailTable, cmd = m.portDetailTable.Update(msg)
+				}
 				return m, cmd
 			}
 
@@ -565,7 +750,13 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			processListHeight = 5
 		}
 
-		processListWidth := int(float64(availableWidth) * 0.7)
+		processListPaneWidth := int(float64(availableWidth) * 0.7)
+		if processListPaneWidth < 10 {
+			processListPaneWidth = 10
+		}
+
+		processTablePadding := 4
+		processListWidth := processListPaneWidth - processTablePadding
 		if processListWidth < 10 {
 			processListWidth = 10
 		}
@@ -582,7 +773,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table.SetWidth(processListWidth)
 		m.table.SetHeight(processListHeight)
 
-		treeWidth := availableWidth - processListWidth - 6
+		treeWidth := availableWidth - processListPaneWidth - 4
 		if treeWidth < 10 {
 			treeWidth = 10
 		}
@@ -593,23 +784,60 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		portListHeight := processListHeight
 
-		portListWidth := int(float64(availableWidth) * 0.7)
-		if portListWidth < 0 {
-			portListWidth = 0
+		portPaneWidth := int(float64(availableWidth) * 0.5)
+		if portPaneWidth < 0 {
+			portPaneWidth = 0
 		}
 
-		portColumns := m.portTable.Columns()
+		tablePadding := 4
+		portTableWidth := portPaneWidth - tablePadding
+		if portTableWidth < 0 {
+			portTableWidth = 0
+		}
+
+		portColumns := m.getPortColumns()
+		// Port(6) + Protocol(10) + State(20) = 36
+		fixedPortWidth := 36
+		buffer := 6
+		addrWidth := portTableWidth - fixedPortWidth - buffer
+		if addrWidth < 10 {
+			addrWidth = 10
+		}
+		if len(portColumns) > 2 {
+			portColumns[2].Width = addrWidth
+		}
 		m.portTable.SetColumns(portColumns)
-		m.portTable.SetWidth(portListWidth)
+		m.portTable.SetWidth(portTableWidth)
 		m.portTable.SetHeight(portListHeight)
+
+		portDetailWidth := availableWidth - portPaneWidth - 5
+		if portDetailWidth < 10 {
+			portDetailWidth = 10
+		}
+
+		pdCols := m.portDetailTable.Columns()
+		// PID(8) + User(12) + Name(15) = 35
+		fixedPdWidth := 35
+		buffer = 6
+		cmdPdWidth := portDetailWidth - fixedPdWidth - buffer
+		if cmdPdWidth < 10 {
+			cmdPdWidth = 10
+		}
+		if len(pdCols) > 3 {
+			pdCols[3].Width = cmdPdWidth
+		}
+		m.portDetailTable.SetColumns(pdCols)
+		m.portDetailTable.SetWidth(portDetailWidth)
+		m.portDetailTable.SetHeight(portListHeight - 2)
+
 		vpHeight := msg.Height - 9
 		if vpHeight < 0 {
 			vpHeight = 0
 		}
 		detailViewWidth := int(float64(availableWidth) * 0.7)
-		envViewWidth := availableWidth - detailViewWidth - 2
+		envViewWidth := availableWidth - detailViewWidth - 4
 
-		m.viewport.Width = detailViewWidth - 2
+		m.viewport.Width = detailViewWidth - 4
 		m.viewport.Height = vpHeight
 
 		m.envViewport.Width = envViewWidth
@@ -617,8 +845,9 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.envViewport.Width = 0
 		}
 		m.envViewport.Height = vpHeight
+
+		m.updatePortDetails()
 	case []model.Process:
-		// Capture current selection before update
 		var currentPID int
 		selectedRow := m.table.SelectedRow()
 		if len(selectedRow) > 0 {
@@ -641,7 +870,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Update cursor
 		if len(m.filtered) > 0 {
 			if !found {
 				newIdx = 0
@@ -690,6 +918,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case []model.OpenPort:
 		m.ports = msg
 		m.updatePortTable()
+		m.updatePortDetails()
 
 	case treeMsg:
 		selected := m.table.SelectedRow()
@@ -766,8 +995,8 @@ func (m *MainModel) sortProcesses() {
 func (m *MainModel) getColumns() []table.Column {
 	cols := []table.Column{
 		{Title: "PID", Width: 8},
-		{Title: "Name", Width: 20},
 		{Title: "User", Width: 12},
+		{Title: "Name", Width: 20},
 		{Title: "CPU%", Width: 6},
 		{Title: "Mem", Width: 16},
 		{Title: "Started", Width: 19},
@@ -785,13 +1014,62 @@ func (m *MainModel) getColumns() []table.Column {
 	}
 
 	addArrow(0, "pid")
-	addArrow(1, "name")
-	addArrow(2, "user")
+	addArrow(1, "user")
+	addArrow(2, "name")
 	addArrow(3, "cpu")
 	addArrow(4, "mem")
 	addArrow(5, "time")
+	addArrow(6, "cmd")
 
 	return cols
+}
+
+func (m *MainModel) getPortColumns() []table.Column {
+	cols := []table.Column{
+		{Title: "Port", Width: 6},
+		{Title: "Protocol", Width: 10},
+		{Title: "Address", Width: 30},
+		{Title: "State", Width: 20},
+	}
+
+	addArrow := func(idx int, key string) {
+		if m.sortPortCol == key {
+			if m.sortPortDesc {
+				cols[idx].Title += " ↓"
+			} else {
+				cols[idx].Title += " ↑"
+			}
+		}
+	}
+
+	addArrow(0, "port")
+	addArrow(1, "proto")
+	addArrow(2, "addr")
+	addArrow(3, "state")
+
+	return cols
+}
+
+func (m *MainModel) sortPorts() {
+	sort.Slice(m.ports, func(i, j int) bool {
+		var less bool
+		switch m.sortPortCol {
+		case "port":
+			less = m.ports[i].Port < m.ports[j].Port
+		case "proto":
+			less = strings.ToLower(m.ports[i].Protocol) < strings.ToLower(m.ports[j].Protocol)
+		case "addr":
+			less = strings.ToLower(m.ports[i].Address) < strings.ToLower(m.ports[j].Address)
+		case "state":
+			less = strings.ToLower(m.ports[i].State) < strings.ToLower(m.ports[j].State)
+		default:
+			less = m.ports[i].Port < m.ports[j].Port
+		}
+		if m.sortPortDesc {
+			return !less
+		}
+		return less
+	})
 }
 
 func formatBytes(bytes uint64) string {
@@ -834,8 +1112,8 @@ func (m *MainModel) filterProcesses() {
 
 			rows = append(rows, table.Row{
 				fmt.Sprintf("%d", p.PID),
-				p.Command,
 				p.User,
+				p.Command,
 				fmt.Sprintf("%.1f%%", p.CPUPercent),
 				fmt.Sprintf("%s (%.1f%%)", formatBytes(p.MemoryRSS), p.MemoryPercent),
 				startedStr,
@@ -847,9 +1125,20 @@ func (m *MainModel) filterProcesses() {
 }
 
 func (m *MainModel) updatePortTable() {
+	m.sortPorts()
+
 	var rows []table.Row
 	filter := strings.ToLower(m.portInput.Value())
 	seen := make(map[string]bool)
+
+	existingCols := m.portTable.Columns()
+	newCols := m.getPortColumns()
+	for i := range existingCols {
+		if i < len(newCols) {
+			newCols[i].Width = existingCols[i].Width
+		}
+	}
+	m.portTable.SetColumns(newCols)
 
 	procMap := make(map[int]model.Process)
 	for _, p := range m.processes {
@@ -872,33 +1161,82 @@ func (m *MainModel) updatePortTable() {
 		}
 
 		if match {
-			// Filter by State if not showing all ports
 			if !m.showAllPorts && p.State != "LISTEN" && p.State != "OPEN" {
 				continue
 			}
 
-			exposure := classifyAddress(p.Address)
-			key := fmt.Sprintf("%d|%s|%s|%s|%s", p.Port, p.Protocol, exposure, p.Address, p.State)
+			key := fmt.Sprintf("%d|%s|%s|%s", p.Port, p.Protocol, p.Address, p.State)
 
 			if !seen[key] {
 				seen[key] = true
 				rows = append(rows, table.Row{
 					fmt.Sprintf("%d", p.Port),
 					p.Protocol,
-					exposure,
 					p.Address,
 					p.State,
 				})
 			}
 		}
 	}
-	sort.Slice(rows, func(i, j int) bool {
-		p1, _ := strconv.Atoi(rows[i][0])
-		p2, _ := strconv.Atoi(rows[j][0])
-		return p1 < p2
-	})
 
 	m.portTable.SetRows(rows)
+	m.updatePortDetails()
+}
+
+func (m *MainModel) updatePortDetails() {
+	selected := m.portTable.SelectedRow()
+	if len(selected) == 0 {
+		m.portDetailTable.SetRows(nil)
+		return
+	}
+
+	portStr := selected[0]
+	protocol := selected[1]
+	address := selected[2]
+	state := selected[3]
+
+	port, _ := strconv.Atoi(portStr)
+
+	var rows []table.Row
+	seen := make(map[int]bool)
+
+	procMap := make(map[int]model.Process)
+	for _, p := range m.processes {
+		procMap[p.PID] = p
+	}
+
+	for _, p := range m.ports {
+		if p.Port == port && p.Protocol == protocol && p.Address == address && p.State == state {
+			if !seen[p.PID] {
+				seen[p.PID] = true
+				if proc, ok := procMap[p.PID]; ok {
+					cmd := proc.Cmdline
+					cols := m.portDetailTable.Columns()
+					if len(cols) > 3 {
+						width := cols[3].Width
+						if width > 3 && len(cmd) > width {
+							cmd = cmd[:width-3] + "..."
+						}
+					}
+					rows = append(rows, table.Row{
+						fmt.Sprintf("%d", proc.PID),
+						proc.User,
+						proc.Command,
+						cmd,
+					})
+				} else {
+					// Process might have exited or we don't have permission, just show PID
+					rows = append(rows, table.Row{
+						fmt.Sprintf("%d", p.PID),
+						"???",
+						"???",
+						"???",
+					})
+				}
+			}
+		}
+	}
+	m.portDetailTable.SetRows(rows)
 }
 
 func (m *MainModel) updateDetailViewport() {
@@ -951,6 +1289,92 @@ func (m *MainModel) updateTreeViewport(res model.Result) {
 		content = wrap.String(content, m.treeViewport.Width)
 	}
 	m.treeViewport.SetContent(content)
+}
+
+func (m *MainModel) getColumnAtX(x int, cols []table.Column) int {
+	currentX := 0
+	for i, col := range cols {
+		colWidth := col.Width + 2
+
+		if x >= currentX && x < currentX+colWidth {
+			return i
+		}
+		currentX += colWidth
+	}
+	return -1
+}
+
+func (m *MainModel) handleProcessHeaderClick(x int) {
+	cols := m.table.Columns()
+	colIdx := m.getColumnAtX(x, cols)
+
+	if colIdx >= 0 {
+		newCol := ""
+		switch colIdx {
+		case 0:
+			newCol = "pid"
+		case 1:
+			newCol = "user"
+		case 2:
+			newCol = "name"
+		case 3:
+			newCol = "cpu"
+		case 4:
+			newCol = "mem"
+		case 5:
+			newCol = "time"
+		case 6:
+			newCol = "cmd"
+		}
+
+		if newCol != "" {
+			if m.sortCol == newCol {
+				m.sortDesc = !m.sortDesc
+			} else {
+				m.sortCol = newCol
+				m.sortDesc = true
+			}
+			m.sortProcesses()
+			m.filterProcesses()
+
+			newCols := m.getColumns()
+			for i := range cols {
+				if i < len(newCols) {
+					newCols[i].Width = cols[i].Width
+				}
+			}
+			m.table.SetColumns(newCols)
+		}
+	}
+}
+
+func (m *MainModel) handlePortHeaderClick(x int) {
+	cols := m.portTable.Columns()
+	colIdx := m.getColumnAtX(x, cols)
+
+	if colIdx >= 0 {
+		newCol := ""
+		switch colIdx {
+		case 0:
+			newCol = "port"
+		case 1:
+			newCol = "proto"
+		case 2:
+			newCol = "addr"
+		case 3:
+			newCol = "state"
+		}
+
+		if newCol != "" {
+			if m.sortPortCol == newCol {
+				m.sortPortDesc = !m.sortPortDesc
+			} else {
+				m.sortPortCol = newCol
+				m.sortPortDesc = false
+			}
+			m.updatePortTable()
+		}
+	}
 }
 
 func (m MainModel) View() string {
@@ -1019,7 +1443,6 @@ func (m MainModel) View() string {
 			Foreground(treeHeaderColor).
 			BorderForeground(treeBorderColor)
 
-		// Reconstruct table styles to update focus colors
 		s := table.DefaultStyles()
 		if m.listFocus == focusMain {
 			s.Header = tableHeaderStyle.BorderForeground(activeBorderColor)
@@ -1032,8 +1455,14 @@ func (m MainModel) View() string {
 			Bold(false)
 		m.table.SetStyles(s)
 
+		availableWidth := m.width - 6
+		processListPaneWidth := int(float64(availableWidth) * 0.7)
+		if processListPaneWidth < 10 {
+			processListPaneWidth = 10
+		}
+
 		mainContent := lipgloss.JoinHorizontal(lipgloss.Top,
-			m.table.View(),
+			lipgloss.NewStyle().Width(processListPaneWidth).Render(m.table.View()),
 			treeContainerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					treeHeaderStyle.Render(treeHeader),
@@ -1043,9 +1472,62 @@ func (m MainModel) View() string {
 		)
 
 		if m.activeTab == tabPorts {
-			// Placeholder for Ports tab
+			sideBorderColor := dimBorderColor
+			sideHeaderColor := lipgloss.Color("250") // Light Gray
+
+			if m.listFocus == focusSide {
+				sideBorderColor = activeBorderColor
+				sideHeaderColor = activeBorderColor
+			}
+
+			s1 := table.DefaultStyles()
+			if m.listFocus == focusMain {
+				s1.Header = tableHeaderStyle.BorderForeground(activeBorderColor)
+			} else {
+				s1.Header = tableHeaderStyle.BorderForeground(dimBorderColor)
+			}
+			s1.Selected = s1.Selected.
+				Foreground(lipgloss.Color("229")). // Light Yellow
+				Background(lipgloss.Color("56")).  // Purple
+				Bold(false)
+			m.portTable.SetStyles(s1)
+
+			s2 := table.DefaultStyles()
+			if m.listFocus == focusSide {
+				s2.Header = tableHeaderStyle.BorderForeground(activeBorderColor)
+			} else {
+				s2.Header = tableHeaderStyle.BorderForeground(dimBorderColor)
+			}
+			s2.Selected = s2.Selected.
+				Foreground(lipgloss.Color("229")). // Light Yellow
+				Background(lipgloss.Color("56")).  // Purple
+				Bold(false)
+			m.portDetailTable.SetStyles(s2)
+
+			detailContainerStyle := lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder(), false, false, false, true).
+				BorderForeground(sideBorderColor).
+				PaddingLeft(1).
+				Height(m.portTable.Height())
+
+			detailHeader := "Attached Processes"
+			availableWidth := m.width - 6
+			portPaneWidth := int(float64(availableWidth) * 0.5)
+			headerWidth := availableWidth - portPaneWidth - 3
+
+			detailHeaderStyle := tableHeaderStyle.
+				Width(headerWidth).
+				Foreground(sideHeaderColor).
+				BorderForeground(sideBorderColor)
+
 			mainContent = lipgloss.JoinHorizontal(lipgloss.Top,
-				m.portTable.View(),
+				lipgloss.NewStyle().Width(portPaneWidth).Render(m.portTable.View()),
+				detailContainerStyle.Render(
+					lipgloss.JoinVertical(lipgloss.Left,
+						detailHeaderStyle.Render(detailHeader),
+						m.portDetailTable.View(),
+					),
+				),
 			)
 		}
 
@@ -1055,7 +1537,7 @@ func (m MainModel) View() string {
 			if m.showAllPorts {
 				filterStatus = "ALL"
 			}
-			helpText = fmt.Sprintf("Total: %d [%s] | a: Toggle All | Esc/q: Quit | Up/Down: Scroll", len(m.portTable.Rows()), filterStatus)
+			helpText = fmt.Sprintf("Total: %d [%s] | p/t/n/s: Sort | a: Toggle All | Esc/q: Quit | Tab: Focus | Up/Down: Scroll", len(m.portTable.Rows()), filterStatus)
 		}
 		footerContent := helpText
 		if m.version != "" {
@@ -1212,34 +1694,4 @@ func (m MainModel) View() string {
 	}
 
 	return "Unknown state"
-}
-
-func classifyAddress(addr string) string {
-	// Strip IPv6 zone ID if present (e.g. fe80::1%lo0)
-	if idx := strings.Index(addr, "%"); idx != -1 {
-		addr = addr[:idx]
-	}
-
-	ip := net.ParseIP(addr)
-	if ip == nil {
-		if addr == "*" {
-			return "PUBLIC"
-		}
-		return "PUBLIC" // Default to public
-	}
-
-	if ip.IsLoopback() {
-		return "LOCAL"
-	}
-	if ip.IsUnspecified() {
-		return "PUBLIC"
-	}
-	if ip.IsPrivate() {
-		return "LAN"
-	}
-	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-		return "LINK-LOCAL"
-	}
-
-	return "PUBLIC"
 }
