@@ -235,6 +235,25 @@ func runApp(cmd *cobra.Command, args []string) error {
 		errStr := err.Error()
 		var errorMsg string
 		if strings.Contains(errStr, "socket found but owning process not detected") {
+			// Fallback: try Docker CLI to identify which container owns the port
+			if t.Type == model.TargetPort {
+				if portNum, convErr := strconv.Atoi(t.Value); convErr == nil {
+					if match := procpkg.ResolveContainerByPort(portNum); match != nil {
+						if jsonFlag {
+							importJSON, jsonErr := output.DockerFallbackToJSON(t.Value, match)
+							if jsonErr != nil {
+								return fmt.Errorf("failed to generate json output: %w", jsonErr)
+							}
+							fmt.Fprintln(outw, importJSON)
+						} else if shortFlag {
+							output.RenderDockerFallbackShort(outw, t.Value, match, !noColorFlag)
+						} else {
+							output.RenderDockerFallback(outw, t.Value, match, !noColorFlag)
+						}
+						return nil
+					}
+				}
+			}
 			errorMsg = fmt.Sprintf("%s\n\nA socket was found for the port, but the owning process could not be detected.\nThis may be due to insufficient permissions. Try running with sudo:\n  sudo %s", errStr, strings.Join(os.Args, " "))
 		} else {
 			errorMsg = fmt.Sprintf("%s\n\nNo matching process or service found. Please check your query or try a different name/port/PID.\nFor usage and options, run: witr --help", errStr)

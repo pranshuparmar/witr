@@ -1,10 +1,57 @@
 package proc
 
 import (
+	"context"
+	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 	"unicode"
+
+	"github.com/pranshuparmar/witr/pkg/model"
 )
+
+// ResolveContainerByPort queries the Docker CLI for a container publishing the given port.
+// Returns nil if Docker is not available or no container matches.
+func ResolveContainerByPort(port int) *model.DockerPortMatch {
+	if _, err := exec.LookPath("docker"); err != nil {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	format := "{{.ID}}|{{.Names}}|{{.Image}}|{{.Ports}}|{{.Label \"com.docker.compose.project\"}}|{{.Label \"com.docker.compose.service\"}}"
+	cmd := exec.CommandContext(ctx, "docker", "ps", "--filter", fmt.Sprintf("publish=%d", port), "--format", format)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	line := strings.TrimSpace(string(out))
+	if line == "" {
+		return nil
+	}
+
+	// Take the first matching container if multiple lines
+	if idx := strings.Index(line, "\n"); idx >= 0 {
+		line = line[:idx]
+	}
+
+	parts := strings.SplitN(line, "|", 6)
+	if len(parts) < 6 {
+		return nil
+	}
+
+	return &model.DockerPortMatch{
+		ID:             parts[0],
+		Name:           parts[1],
+		Image:          parts[2],
+		Ports:          parts[3],
+		ComposeProject: parts[4],
+		ComposeService: parts[5],
+	}
+}
 
 // resolveContainerName attempts to resolve a container ID to a name using the specified runtime CLI.
 func resolveContainerName(id, runtime string) string {
