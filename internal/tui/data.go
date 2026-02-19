@@ -136,6 +136,9 @@ func formatBytes(bytes uint64) string {
 	for n := bytes / unit; n >= unit; n /= unit {
 		div *= unit
 		exp++
+		if exp >= 5 { //avoid index out of range
+			break
+		}
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
@@ -296,7 +299,7 @@ func (m *MainModel) updatePortTable() {
 
 func (m *MainModel) updatePortDetails() {
 	selected := m.portTable.SelectedRow()
-	if len(selected) == 0 {
+	if len(selected) < 4 {
 		m.portDetailTable.SetRows(nil)
 		return
 	}

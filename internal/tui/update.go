@@ -38,6 +38,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, waitTick())
 
 	case tea.MouseMsg:
+		m.statusMsg = "" // clear any transient error on interaction
 		if msg.Action != tea.MouseActionPress && msg.Action != tea.MouseActionMotion && msg.Action != tea.MouseActionRelease {
 			return m, nil
 		}
@@ -369,7 +370,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					// Double Click (Ports): Focus Attached Processes
-					if isDoubleClick && msg.Action == tea.MouseActionPress && portMsg.Y > 0 {
+					if isDoubleClick && isClick && portMsg.Y > 0 {
 						if portMsg.Y <= m.portTable.Height() {
 							m.listFocus = focusSide
 							m.portTable.Blur()
@@ -426,7 +427,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					// Double Click (Attached Processes): Open Detail
-					if isDoubleClick && msg.Action == tea.MouseActionPress && detailMsg.Y > 0 {
+					if isDoubleClick && isClick && detailMsg.Y > 0 {
 						selected := m.portDetailTable.SelectedRow()
 						if len(selected) > 0 {
 							pid := 0
@@ -445,6 +446,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		m.statusMsg = "" // clear any transient error on interaction
 		switch msg.String() {
 		case "ctrl+c":
 			m.quitting = true
@@ -932,8 +934,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateEnvViewport()
 
 	case error:
-		m.err = msg
-		return m, nil
+		// Revert to list view on any error
+		m.state = stateList
+		m.selectedDetail = nil
+		m.statusMsg = fmt.Sprintf("Error: %v", msg)
+		return m, m.refreshProcesses()
 	}
 
 	return m, nil

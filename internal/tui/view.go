@@ -12,9 +12,6 @@ func (m MainModel) View() string {
 	if m.quitting {
 		return ""
 	}
-	if m.err != nil {
-		return fmt.Sprintf("Error: %v", m.err)
-	}
 
 	outerStyle := baseStyle.
 		Width(m.width-2).
@@ -23,6 +20,9 @@ func (m MainModel) View() string {
 
 	if m.state == stateList {
 		status := "Mode: Navigation (Press / to search)"
+		if m.statusMsg != "" {
+			status = errorStyle.Render(m.statusMsg)
+		}
 		inputView := m.input.View()
 
 		if m.activeTab == tabPorts {
@@ -37,7 +37,7 @@ func (m MainModel) View() string {
 		}
 
 		activeBorderColor := lipgloss.Color("#5f5fd7") // Purple/Blue
-		dimBorderColor := lipgloss.Color("#585858")   // Dark Gray
+		dimBorderColor := lipgloss.Color("#585858")    // Dark Gray
 
 		treeBorderColor := dimBorderColor
 		treeHeaderColor := dimBorderColor
@@ -82,7 +82,7 @@ func (m MainModel) View() string {
 		}
 		s.Selected = s.Selected.
 			Foreground(lipgloss.Color("#ffffaf")). // Light Yellow
-			Background(lipgloss.Color("#5f00d7")).  // Purple
+			Background(lipgloss.Color("#5f00d7")). // Purple
 			Bold(false)
 		m.table.SetStyles(s)
 
@@ -119,7 +119,7 @@ func (m MainModel) View() string {
 			}
 			s1.Selected = s1.Selected.
 				Foreground(lipgloss.Color("#ffffaf")). // Light Yellow
-				Background(lipgloss.Color("#5f00d7")).  // Purple
+				Background(lipgloss.Color("#5f00d7")). // Purple
 				Bold(false)
 			m.portTable.SetStyles(s1)
 
@@ -131,7 +131,7 @@ func (m MainModel) View() string {
 			}
 			s2.Selected = s2.Selected.
 				Foreground(lipgloss.Color("#ffffaf")). // Light Yellow
-				Background(lipgloss.Color("#5f00d7")).  // Purple
+				Background(lipgloss.Color("#5f00d7")). // Purple
 				Bold(false)
 			m.portDetailTable.SetStyles(s2)
 
@@ -245,8 +245,8 @@ func (m MainModel) View() string {
 		envHeader := tableHeaderStyle
 
 		activeBorderColor := lipgloss.Color("#5f5fd7") // Purple
-		dimColor := lipgloss.Color("#bcbcbc")         // Lighter Gray
-		dimBorderColor := lipgloss.Color("#585858")   // Dark Gray
+		dimColor := lipgloss.Color("#bcbcbc")          // Lighter Gray
+		dimBorderColor := lipgloss.Color("#585858")    // Dark Gray
 
 		if m.detailFocus == focusDetail {
 			detailHeader = detailHeader.BorderForeground(activeBorderColor).Foreground(activeBorderColor)
@@ -292,7 +292,7 @@ func (m MainModel) View() string {
 		)
 
 		pidStyle := lipgloss.NewStyle().
-			Background(lipgloss.Color("#22aa22")).   // Green
+			Background(lipgloss.Color("#22aa22")). // Green
 			Foreground(lipgloss.Color("#ffffff")). // White
 			Padding(0, 1).
 			Bold(true)

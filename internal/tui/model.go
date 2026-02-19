@@ -52,6 +52,10 @@ var (
 				Foreground(lipgloss.Color("#ffffff")). // White
 				Background(lipgloss.Color("#767676")). // Dimmed Gray
 				Padding(0, 1)
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ff5f5f")). // Soft red
+			Bold(true)
 )
 
 type tab int
@@ -94,7 +98,7 @@ type MainModel struct {
 	portDetailTable table.Model
 	portInput       textinput.Model
 	ports           []model.OpenPort
-	err             error
+	statusMsg       string // transient status/error message shown in status line
 	width           int
 	height          int
 	quitting        bool
