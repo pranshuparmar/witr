@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -114,6 +115,11 @@ type MainModel struct {
 	sortPortDesc bool
 	showAllPorts bool
 	version      string
+
+	// Mouse Double-click tracking
+	lastClickTime time.Time
+	lastClickX    int
+	lastClickY    int
 }
 
 func InitialModel(version string) MainModel {
@@ -232,6 +238,11 @@ func (m MainModel) Init() tea.Cmd {
 	)
 }
 
+func stripAnsi(str string) string {
+	ansi := regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
+	return ansi.ReplaceAllString(str, "")
+}
+
 func (m MainModel) refreshProcesses() tea.Cmd {
 	return func() tea.Msg {
 		procs, err := proc.ListProcesses()
@@ -328,13 +339,92 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if msg.Y == 0 && msg.Action == tea.MouseActionPress {
-			if msg.X < 20 {
+		isDoubleClick := false
+		if msg.Action == tea.MouseActionPress {
+			clickDuration := time.Since(m.lastClickTime)
+			if clickDuration < 500*time.Millisecond {
+				distX := m.lastClickX - msg.X
+				distY := m.lastClickY - msg.Y
+				if distX < 0 {
+					distX = -distX
+				}
+				if distY < 0 {
+					distY = -distY
+				}
+				if distX <= 2 && distY <= 1 {
+					isDoubleClick = true
+				}
+			}
+			m.lastClickTime = time.Now()
+			m.lastClickX = msg.X
+			m.lastClickY = msg.Y
+		}
+
+		// Handle "witr" Title Click (Home)
+		if msg.Y == 1 && msg.Action == tea.MouseActionPress && msg.X >= 1 && msg.X <= 6 {
+			m.state = stateList
+			m.activeTab = tabProcesses
+			return m, m.refreshProcesses()
+		}
+
+		// Handle Detail View Clicks
+		if m.state == stateDetail {
+			if msg.Action == tea.MouseActionPress {
+				availableWidth := m.width - 6
+				if availableWidth < 0 {
+					availableWidth = 0
+				}
+				detailWidth := int(float64(availableWidth) * 0.7)
+				contentX := msg.X - 2
+
+				if contentX < detailWidth {
+					m.detailFocus = focusDetail
+				} else {
+					m.detailFocus = focusEnv
+				}
+			}
+
+			var cmd tea.Cmd
+			detailMsg := msg
+			detailMsg.Y -= 3
+
+			if m.detailFocus == focusDetail {
+				detailMsg.X -= 1
+				if detailMsg.X >= 0 {
+					m.viewport, cmd = m.viewport.Update(detailMsg)
+				}
+			} else {
+				availableWidth := m.width - 6
+				if availableWidth < 0 {
+					availableWidth = 0
+				}
+				detailWidth := int(float64(availableWidth) * 0.7)
+				detailMsg.X -= (detailWidth + 2)
+				if detailMsg.X >= 0 {
+					m.envViewport, cmd = m.envViewport.Update(detailMsg)
+				}
+			}
+			return m, cmd
+		}
+
+		// Handle Search Clicks
+		if msg.Action == tea.MouseActionPress && msg.Y != 5 {
+			if m.input.Focused() {
+				m.input.Blur()
+			}
+			if m.portInput.Focused() {
+				m.portInput.Blur()
+			}
+		}
+
+		// Row 1: Tabs
+		if msg.Y == 1 && msg.Action == tea.MouseActionPress {
+			if msg.X >= 8 && msg.X < 22 { // "1. Processes"
 				if m.activeTab != tabProcesses {
 					m.activeTab = tabProcesses
 					return m, nil
 				}
-			} else if msg.X < 40 {
+			} else if msg.X >= 22 && msg.X < 32 { // "2. Ports"
 				if m.activeTab != tabPorts {
 					m.activeTab = tabPorts
 					return m, m.refreshPorts()
@@ -342,7 +432,24 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if msg.Y >= 6 {
+		// Handle Search Input Clicks
+		if msg.Y == 5 && msg.Action == tea.MouseActionPress && m.state == stateList {
+			switch m.activeTab {
+			case tabProcesses:
+				m.input.Focus()
+			case tabPorts:
+				m.portInput.Focus()
+			}
+			return m, nil
+		}
+
+		// Handle Content Area Clicks
+		if msg.Y >= 7 {
+			contentX := msg.X - 2
+			if contentX < 0 {
+				return m, nil
+			}
+
 			switch m.activeTab {
 			case tabProcesses:
 				availableWidth := m.width - 6
@@ -351,24 +458,70 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					processListPaneWidth = 10
 				}
 
-				if msg.X < processListPaneWidth {
+				if contentX < processListPaneWidth {
 					if msg.Action == tea.MouseActionPress {
 						m.listFocus = focusMain
 
-						if msg.Y == 6 {
-							m.handleProcessHeaderClick(msg.X)
+						if msg.Y == 7 {
+							m.handleProcessHeaderClick(contentX)
 							return m, nil
 						}
 					}
 
 					var cmd tea.Cmd
-					m.table, cmd = m.table.Update(msg)
+					tableMsg := msg
+					tableMsg.X -= 2
+					tableMsg.Y -= 7
+					if tableMsg.X >= 0 && tableMsg.Y >= 0 {
+						m.table, cmd = m.table.Update(tableMsg)
+					}
 
-					if msg.Action == tea.MouseActionPress && msg.Y > 6 {
+					// Manual Row Selection
+					if msg.Action == tea.MouseActionPress && tableMsg.Y >= 0 {
+						view := m.table.View()
+						lines := strings.Split(view, "\n")
+						if tableMsg.Y < len(lines) {
+							line := stripAnsi(lines[tableMsg.Y])
+							fields := strings.Fields(line)
+							var pid int
+							found := false
+							for _, f := range fields {
+								if p, err := strconv.Atoi(f); err == nil && p > 0 {
+									pid = p
+									found = true
+									break
+								}
+							}
+
+							if found {
+								rows := m.table.Rows()
+								for i, row := range rows {
+									if len(row) > 0 {
+										if p, err := strconv.Atoi(row[0]); err == nil && p == pid {
+											m.table.SetCursor(i)
+											break
+										}
+									}
+								}
+							}
+						}
+					}
+
+					// Row selection check using translated Y
+					if msg.Action == tea.MouseActionPress && tableMsg.Y > 0 && tableMsg.Y <= m.table.Height() {
 						selected := m.table.SelectedRow()
 						if len(selected) > 0 {
 							pid := 0
 							fmt.Sscanf(selected[0], "%d", &pid)
+
+							// Double Click Action: Open Detail
+							if isDoubleClick {
+								m.state = stateDetail
+								m.viewport.GotoTop()
+								m.envViewport.GotoTop()
+								return m, m.fetchProcessDetail(pid)
+							}
+
 							m.selectionID++
 							id := m.selectionID
 							debounceCmd := tea.Tick(200*time.Millisecond, func(_ time.Time) tea.Msg {
@@ -384,7 +537,13 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.listFocus = focusSide
 					}
 					var cmd tea.Cmd
-					m.treeViewport, cmd = m.treeViewport.Update(msg)
+					// Translate for Tree View
+					treeMsg := msg
+					treeMsg.X -= (6 + processListPaneWidth)
+					treeMsg.Y -= 8
+					if treeMsg.X >= 0 && treeMsg.Y >= 0 {
+						m.treeViewport, cmd = m.treeViewport.Update(treeMsg)
+					}
 					return m, cmd
 				}
 
@@ -392,25 +551,78 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				availableWidth := m.width - 6
 				portPaneWidth := availableWidth / 2
 
-				if msg.X < portPaneWidth {
+				if contentX < portPaneWidth {
 					if msg.Action == tea.MouseActionPress {
 						m.listFocus = focusMain
 						m.portDetailTable.Blur()
 						m.portTable.Focus()
 
-						if msg.Y == 6 {
-							m.handlePortHeaderClick(msg.X)
+						if msg.Y == 7 {
+							m.handlePortHeaderClick(contentX)
 							return m, nil
 						}
 					}
 
 					var cmd tea.Cmd
 					prevSelected := m.portTable.Cursor()
-					m.portTable, cmd = m.portTable.Update(msg)
+
+					// Translate for Port Table
+					portMsg := msg
+					portMsg.X -= 2
+					portMsg.Y -= 7
+					if portMsg.X >= 0 && portMsg.Y >= 0 {
+						m.portTable, cmd = m.portTable.Update(portMsg)
+					}
+
+					// Manual Row Selection for Port Table
+					if msg.Action == tea.MouseActionPress && portMsg.Y >= 0 {
+						view := m.portTable.View()
+						lines := strings.Split(view, "\n")
+						if portMsg.Y < len(lines) {
+							line := stripAnsi(lines[portMsg.Y])
+							fields := strings.Fields(line)
+							var port int
+							var protocol string
+
+							if len(fields) >= 2 {
+								if p, err := strconv.Atoi(fields[0]); err == nil && p > 0 {
+									port = p
+									protocol = fields[1]
+								}
+							}
+
+							if port > 0 {
+								if port > 0 {
+									rows := m.portTable.Rows()
+									for i, row := range rows {
+										if len(row) >= 2 {
+											if p, err := strconv.Atoi(row[0]); err == nil && p == port {
+												if strings.EqualFold(row[1], protocol) {
+													m.portTable.SetCursor(i)
+													break
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 
 					if m.portTable.Cursor() != prevSelected {
 						m.updatePortDetails()
 					}
+
+					// Double Click (Ports): Focus Attached Processes
+					if isDoubleClick && msg.Action == tea.MouseActionPress && portMsg.Y > 0 {
+						if portMsg.Y <= m.portTable.Height() {
+							m.listFocus = focusSide
+							m.portTable.Blur()
+							m.portDetailTable.Focus()
+							return m, cmd
+						}
+					}
+
 					return m, cmd
 
 				} else {
@@ -421,26 +633,59 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					var cmd tea.Cmd
-					m.portDetailTable, cmd = m.portDetailTable.Update(msg)
+					detailMsg := msg
+					detailMsg.X -= (4 + portPaneWidth)
+					detailMsg.Y -= 9
+					if detailMsg.X >= 0 && detailMsg.Y >= 0 {
+						m.portDetailTable, cmd = m.portDetailTable.Update(detailMsg)
+					}
+
+					if msg.Action == tea.MouseActionPress && detailMsg.Y >= 0 {
+						view := m.portDetailTable.View()
+						lines := strings.Split(view, "\n")
+						if detailMsg.Y < len(lines) {
+							line := stripAnsi(lines[detailMsg.Y])
+							fields := strings.Fields(line)
+							var pid int
+							found := false
+							for _, f := range fields {
+								if p, err := strconv.Atoi(f); err == nil && p > 0 {
+									pid = p
+									found = true
+									break
+								}
+							}
+							if found {
+								rows := m.portDetailTable.Rows()
+								for i, row := range rows {
+									if len(row) > 0 {
+										if p, err := strconv.Atoi(row[0]); err == nil && p == pid {
+											m.portDetailTable.SetCursor(i)
+											break
+										}
+									}
+								}
+							}
+						}
+					}
+
+					// Double Click (Attached Processes): Open Detail
+					if isDoubleClick && msg.Action == tea.MouseActionPress && detailMsg.Y > 0 {
+						selected := m.portDetailTable.SelectedRow()
+						if len(selected) > 0 {
+							pid := 0
+							fmt.Sscanf(selected[0], "%d", &pid)
+							if pid > 0 {
+								m.state = stateDetail
+								m.viewport.GotoTop()
+								m.envViewport.GotoTop()
+								return m, m.fetchProcessDetail(pid)
+							}
+						}
+					}
 					return m, cmd
 				}
 			}
-		} else if m.state == stateDetail {
-			if msg.Action == tea.MouseActionPress {
-				if msg.X < m.viewport.Width+2 {
-					m.detailFocus = focusDetail
-				} else {
-					m.detailFocus = focusEnv
-				}
-			}
-
-			var cmd tea.Cmd
-			if m.detailFocus == focusDetail {
-				m.viewport, cmd = m.viewport.Update(msg)
-			} else {
-				m.envViewport, cmd = m.envViewport.Update(msg)
-			}
-			return m, cmd
 		}
 
 	case tea.KeyMsg:
@@ -588,7 +833,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 
-			// Toggle All Ports (only in Ports tab)
+			// Toggle All Ports
 			case "a", "A":
 				if m.activeTab == tabPorts {
 					m.showAllPorts = !m.showAllPorts
@@ -847,6 +1092,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.envViewport.Height = vpHeight
 
 		m.updatePortDetails()
+
 	case []model.Process:
 		var currentPID int
 		selectedRow := m.table.SelectedRow()
@@ -1323,8 +1569,6 @@ func (m *MainModel) handleProcessHeaderClick(x int) {
 			newCol = "mem"
 		case 5:
 			newCol = "time"
-		case 6:
-			newCol = "cmd"
 		}
 
 		if newCol != "" {
