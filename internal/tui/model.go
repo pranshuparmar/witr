@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -15,7 +16,7 @@ import (
 var (
 	baseStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240")) // Dark Gray
+			BorderForeground(lipgloss.Color("#585858")) // Dark Gray
 
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
@@ -24,32 +25,32 @@ var (
 			Padding(0, 1)
 
 	tableHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("62")). // Purple/Blue
+				Foreground(lipgloss.Color("#5f5fd7")). // Purple/Blue
 				Bold(true).
 				Border(lipgloss.NormalBorder(), false, false, true, false).
-				BorderForeground(lipgloss.Color("240")). // Dark Gray
+				BorderForeground(lipgloss.Color("#585858")). // Dark Gray
 				Padding(0, 1)
 
 	promptStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("62")). // Purple/Blue
+			Foreground(lipgloss.Color("#5f5fd7")). // Purple/Blue
 			Bold(true)
 
 	footerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("243")). // Dimmed Gray
+			Foreground(lipgloss.Color("#767676")). // Dimmed Gray
 			Border(lipgloss.NormalBorder(), true, false, false, false).
-			BorderForeground(lipgloss.Color("240")). // Dark Gray
+			BorderForeground(lipgloss.Color("#585858")). // Dark Gray
 			Padding(0, 1).
 			Width(100)
 
 	activeTabStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("231")). // White
-			Background(lipgloss.Color("2")).   // Green
+			Foreground(lipgloss.Color("#ffffff")). // White
+			Background(lipgloss.Color("#22aa22")). // Green
 			Padding(0, 1).
 			Bold(true)
 
 	inactiveTabStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("231")). // White
-				Background(lipgloss.Color("243")). // Dimmed Gray
+				Foreground(lipgloss.Color("#ffffff")). // White
+				Background(lipgloss.Color("#767676")). // Dimmed Gray
 				Padding(0, 1)
 )
 
@@ -131,10 +132,10 @@ func InitialModel(version string) MainModel {
 	)
 
 	s := table.DefaultStyles()
-	s.Header = tableHeaderStyle.BorderForeground(lipgloss.Color("240"))
+	s.Header = tableHeaderStyle.BorderForeground(lipgloss.Color("#585858"))
 	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")). // Light Yellow
-		Background(lipgloss.Color("56")).  // Purple
+		Foreground(lipgloss.Color("#ffffaf")). // Light Yellow
+		Background(lipgloss.Color("#5f00d7")). // Purple
 		Bold(false)
 	t.SetStyles(s)
 
@@ -211,6 +212,10 @@ func InitialModel(version string) MainModel {
 }
 
 func Start(version string) error {
+	if os.Getenv("COLORTERM") == "" {
+		os.Setenv("COLORTERM", "truecolor") //nolint:errcheck
+	}
+
 	p := tea.NewProgram(InitialModel(version), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("error running tui: %w", err)

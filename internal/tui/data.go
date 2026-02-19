@@ -377,7 +377,7 @@ func (m *MainModel) updateEnvViewport() {
 			fmt.Fprintf(&b, "%s\n", env)
 		}
 	} else {
-		dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+		dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#767676"))
 		fmt.Fprintf(&b, "%s\n", dimStyle.Render("No environment variables found."))
 	}
 
@@ -395,7 +395,7 @@ func (m *MainModel) updateTreeViewport(res model.Result) {
 	}
 	var b strings.Builder
 
-	treeLabel := lipgloss.NewStyle().Foreground(lipgloss.Color("141")).Bold(true).Render("Ancestry Tree:")
+	treeLabel := lipgloss.NewStyle().Foreground(lipgloss.Color("#af87ff")).Bold(true).Render("Ancestry Tree:")
 	fmt.Fprintf(&b, "%s\n", treeLabel)
 
 	ancestry := res.Ancestry
@@ -403,7 +403,7 @@ func (m *MainModel) updateTreeViewport(res model.Result) {
 		if res.Process.PID > 0 {
 			ancestry = []model.Process{res.Process}
 		} else {
-			dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+			dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#767676"))
 			fmt.Fprintf(&b, "  %s\n", dimStyle.Render("No ancestry found"))
 		}
 	}
@@ -413,7 +413,7 @@ func (m *MainModel) updateTreeViewport(res model.Result) {
 	}
 
 	if res.Process.Cmdline != "" {
-		label := lipgloss.NewStyle().Foreground(lipgloss.Color("141")).Bold(true).Render("Command:")
+		label := lipgloss.NewStyle().Foreground(lipgloss.Color("#af87ff")).Bold(true).Render("Command:")
 		fmt.Fprintf(&b, "\n%s\n%s\n", label, res.Process.Cmdline)
 	}
 
