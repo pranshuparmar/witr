@@ -56,6 +56,14 @@ var (
 	errorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#ff5f5f")). // Soft red
 			Bold(true)
+
+	actionMenuStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ffdf87")). // Amber
+			Bold(true)
+
+	confirmStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ffaf5f")). // Orange-amber
+			Bold(true)
 )
 
 type tab int
@@ -79,6 +87,17 @@ const (
 	focusEnv
 	focusMain
 	focusSide
+)
+
+type actionKind int
+
+const (
+	actionNone   actionKind = iota
+	actionKill              // SIGKILL
+	actionTerm              // SIGTERM
+	actionPause             // SIGSTOP
+	actionResume            // SIGCONT
+	actionRenice            // setpriority
 )
 
 type MainModel struct {
@@ -116,6 +135,11 @@ type MainModel struct {
 	lastClickTime time.Time
 	lastClickX    int
 	lastClickY    int
+
+	// Process action state
+	actionMenuOpen bool
+	pendingAction  actionKind
+	reniceInput    textinput.Model
 }
 
 func InitialModel(version string) MainModel {
@@ -194,6 +218,12 @@ func InitialModel(version string) MainModel {
 	evp := viewport.New(0, 0)
 	evp.YPosition = 0
 
+	ri := textinput.New()
+	ri.Placeholder = "−20…19"
+	ri.CharLimit = 4
+	ri.Width = 8
+	ri.Blur()
+
 	return MainModel{
 		state:           stateList,
 		table:           t,
@@ -204,6 +234,7 @@ func InitialModel(version string) MainModel {
 		viewport:        vp,
 		treeViewport:    tvp,
 		envViewport:     evp,
+		reniceInput:     ri,
 		detailFocus:     focusDetail,
 		listFocus:       focusMain,
 		activeTab:       tabProcesses,

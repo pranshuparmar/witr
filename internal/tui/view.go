@@ -304,9 +304,31 @@ func (m MainModel) View() string {
 			headerComponents = append(headerComponents, pidStyle.Render(fmt.Sprintf("PID %d", m.selectedDetail.Process.PID)))
 		}
 
-		helpText := "Esc/q: Back | Tab: Focus | Up/Down: Scroll"
+		var helpText string
+		pid := 0
+		if m.selectedDetail != nil {
+			pid = m.selectedDetail.Process.PID
+		}
+		switch {
+		case m.actionMenuOpen:
+			helpText = actionMenuStyle.Render("Esc/q: cancel | Actions:  [k]ill  [t]erm  [p]ause  [r]esume  [n]ice")
+		case m.pendingAction == actionKill:
+			helpText = confirmStyle.Render(fmt.Sprintf("Kill PID %d? [y]es / [n]o", pid))
+		case m.pendingAction == actionTerm:
+			helpText = confirmStyle.Render(fmt.Sprintf("Terminate PID %d? [y]es / [n]o", pid))
+		case m.pendingAction == actionPause:
+			helpText = confirmStyle.Render(fmt.Sprintf("Pause PID %d? [y]es / [n]o", pid))
+		case m.pendingAction == actionResume:
+			helpText = confirmStyle.Render(fmt.Sprintf("Resume PID %d? [y]es / [n]o", pid))
+		case m.pendingAction == actionRenice:
+			helpText = confirmStyle.Render(fmt.Sprintf("Nice value for PID %d (−20…19): ", pid)) + m.reniceInput.View()
+		case m.statusMsg != "":
+			helpText = errorStyle.Render(m.statusMsg)
+		default:
+			helpText = "Esc/q: Back | Tab: Focus | Up/Down: Scroll | a: Actions"
+		}
 		footerContent := helpText
-		if m.version != "" {
+		if m.version != "" && !m.actionMenuOpen && m.pendingAction == actionNone && m.statusMsg == "" {
 			gap := m.width - 6 - lipgloss.Width(helpText) - lipgloss.Width(m.version)
 			if gap > 0 {
 				footerContent = helpText + strings.Repeat(" ", gap) + m.version

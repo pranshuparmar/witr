@@ -708,12 +708,119 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		} else if m.state == stateDetail {
+			pid := 0
+			if m.selectedDetail != nil {
+				pid = m.selectedDetail.Process.PID
+			}
+
+			// renice text input
+			if m.pendingAction == actionRenice {
+				switch msg.String() {
+				case "esc":
+					m.pendingAction = actionNone
+					m.reniceInput.SetValue("")
+					m.reniceInput.Blur()
+				case "enter":
+					val := 0
+					if _, err := fmt.Sscanf(m.reniceInput.Value(), "%d", &val); err != nil {
+						m.statusMsg = "Invalid nice value — enter a number between −20 and 19"
+					} else if err := setNice(pid, val); err != nil {
+						m.statusMsg = fmt.Sprintf("Renice failed: %v", err)
+					} else {
+						m.statusMsg = fmt.Sprintf("PID %d reniced to %d", pid, val)
+					}
+					m.pendingAction = actionNone
+					m.reniceInput.SetValue("")
+					m.reniceInput.Blur()
+				default:
+					var inputCmd tea.Cmd
+					m.reniceInput, inputCmd = m.reniceInput.Update(msg)
+					return m, inputCmd
+				}
+				return m, nil
+			}
+
+			// confirmation prompt
+			if m.pendingAction != actionNone {
+				switch msg.String() {
+				case "y", "Y":
+					originalAction := m.pendingAction
+					var execErr error
+					switch originalAction {
+					case actionKill:
+						execErr = killProcess(pid)
+					case actionTerm:
+						execErr = termProcess(pid)
+					case actionPause:
+						execErr = pauseProcess(pid)
+					case actionResume:
+						execErr = resumeProcess(pid)
+					}
+					m.pendingAction = actionNone
+					if execErr != nil {
+						m.statusMsg = fmt.Sprintf("Error: %v", execErr)
+						return m, nil
+					}
+					switch originalAction {
+					case actionKill, actionTerm:
+						// Process is gone — go back to list
+						m.state = stateList
+						m.selectedDetail = nil
+						m.statusMsg = fmt.Sprintf("Signal sent to PID %d", pid)
+						return m, m.refreshProcesses()
+					default:
+						// Pause/Resume succeeded — stay in detail view
+						m.statusMsg = "Done"
+						return m, nil
+					}
+				case "n", "N", "esc":
+					m.pendingAction = actionNone
+				}
+				return m, nil
+			}
+
+			// action menu
+			if m.actionMenuOpen {
+				switch msg.String() {
+				case "k":
+					m.actionMenuOpen = false
+					m.pendingAction = actionKill
+				case "t":
+					m.actionMenuOpen = false
+					m.pendingAction = actionTerm
+				case "p":
+					m.actionMenuOpen = false
+					m.pendingAction = actionPause
+				case "r":
+					m.actionMenuOpen = false
+					m.pendingAction = actionResume
+				case "n":
+					m.actionMenuOpen = false
+					m.pendingAction = actionRenice
+					m.reniceInput.Focus()
+					return m, textinput.Blink
+				case "esc", "q":
+					m.actionMenuOpen = false
+				}
+				return m, nil
+			}
+
+			// detail view navigation
 			switch msg.String() {
 			case "esc", "q", "backspace":
 				m.state = stateList
 				m.selectedDetail = nil
 				m.detailFocus = focusDetail
+				m.actionMenuOpen = false
+				m.pendingAction = actionNone
+				m.reniceInput.SetValue("")
+				m.reniceInput.Blur()
 				return m, m.refreshProcesses()
+			case "a":
+				if m.selectedDetail != nil {
+					m.actionMenuOpen = true
+				}
+				return m, nil
 			case "left", "h":
 				m.detailFocus = focusDetail
 				return m, nil
