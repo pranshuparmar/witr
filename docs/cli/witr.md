@@ -47,11 +47,6 @@ witr [process name] [flags]
   # Output machine-readable JSON
   witr chrome --json
 
-  # Launch Interactive Mode
-  witr
-  or
-  witr --interactive
-
   # Show extended process information (memory, I/O, file descriptors)
   witr mysql --verbose
 
