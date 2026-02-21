@@ -7,6 +7,8 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/pranshuparmar/witr?style=flat-square)](https://github.com/pranshuparmar/witr/blob/main/go.mod) [![Go Report Card](https://goreportcard.com/badge/github.com/pranshuparmar/witr?style=flat-square)](https://goreportcard.com/report/github.com/pranshuparmar/witr) [![Release](https://img.shields.io/github/actions/workflow/status/pranshuparmar/witr/release.yml?style=flat-square)](https://github.com/pranshuparmar/witr/actions/workflows/release.yml) [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows%20%7C%20freebsd-blue?style=flat-square)](https://github.com/pranshuparmar/witr) <br>
 [![Latest Release](https://img.shields.io/github/v/release/pranshuparmar/witr?label=Latest%20Release&style=flat-square)](https://github.com/pranshuparmar/witr/releases/latest) [![Package Managers](https://img.shields.io/badge/Package%20Managers-brew%20|%20conda%20|%20aur%20|%20winget%20|%20choco%20|%20scoop%20|%20ports%20|%20aosc%20|%20guix%20|%20uniget%20|%20brioche%20|%20aqua%20-blue?style=flat-square)](https://repology.org/project/witr/versions)
 
+*Introducing the new* [**Interactive TUI Mode**](#3-interactive-mode-tui)
+
 <img width="1232" height="693" alt="witr_banner" src="https://github.com/user-attachments/assets/e9c19ef0-1391-4a5f-a015-f4003d3697a9" />
 
 </div>
@@ -15,9 +17,9 @@
 
 <div align="center">
 
-[**Purpose**](#1-purpose) • [**Installation**](#2-installation) • [**Flags**](#3-flags--options) • [**Examples**](#4-example-outputs) • [**Platforms**](#5-platform-support)
+[**Purpose**](#1-purpose) • [**Installation**](#2-installation) • [**TUI**](#3-interactive-mode-tui) <sup>✨</sup> • [**Flags**](#4-flags--options) • [**Examples**](#5-example-outputs) • [**Platforms**](#6-platform-support)
 <br>
-[**Goals**](#6-goals) • [**Core Concept**](#7-core-concept) • [**Output Behavior**](#8-output-behavior) • [**Success Criteria**](#9-success-criteria)
+[**Goals**](#7-goals) • [**Core Concept**](#8-core-concept) • [**Output Behavior**](#9-output-behavior) • [**Success Criteria**](#10-success-criteria)
 
 </div>
 
@@ -35,7 +37,7 @@ Existing tools (`ps`, `top`, `lsof`, `ss`, `systemctl`, `docker ps`) expose stat
 
 **witr** makes that causality explicit.
 
-It explains **where a running thing came from**, **how it was started**, and **what chain of systems is responsible for it existing right now**, in a single, human-readable output.
+It explains **where a running thing came from**, **how it was started**, and **what chain of systems is responsible for it existing right now**, in a single, human-readable output or an **interactive TUI dashboard**.
 
 ---
 
@@ -228,7 +230,7 @@ uniget install witr
 </details>
 
 <details>
-<summary><strong>Brioche (Linux)</strong> <a href="https://github.com/brioche-dev/brioche-packages/tree/main/packages/witr"><img src="https://img.shields.io/static/v1?label=brioche&message=v0.2.6&color=blue&style=flat-square" alt="Brioche"></a></summary>
+<summary><strong>Brioche (Linux)</strong> <a href="https://github.com/brioche-dev/brioche-packages/tree/main/packages/witr"><img src="https://img.shields.io/static/v1?label=brioche&message=v0.2.7&color=blue&style=flat-square" alt="Brioche"></a></summary>
 <br>
 
 You can install **witr** using [brioche](https://brioche.dev/):
@@ -438,14 +440,28 @@ Remove-Item -Recurse -Force "$env:LocalAppData\witr"
 </details>
 
 ---
+ 
+## 3. Interactive Mode (TUI)
 
-## 3. Flags & Options
+Running `witr` without any arguments or with the `-i` flag launches the **Interactive Mode (TUI)**. This provides a real-time, terminal-based dashboard for exploring processes and ports.
+
+### Key Features:
+- **Live Process List**: Real-time view of all running processes with sorting and filtering.
+- **Port View**: Explore open ports and immediately see which processes are holding them.
+- **Process Details**: Deep-dive into a specific process to see its full ancestry tree, child processes, environment variables, working directory, and more.
+- **Process Actions**: Send signals (Kill, Terminate, Pause, Resume) or Renice processes directly from the UI.
+- **Mouse Support**: Navigate, sort columns, and click rows using your mouse.
+
+---
+
+## 4. Flags & Options
 
 ```
       --env           show environment variables for the process
   -x, --exact         use exact name matching (no substring search)
   -f, --file string   file path to find process for
   -h, --help          help for witr
+  -i, --interactive   interactive mode (TUI)
       --json          show result as JSON
       --no-color      disable colorized output
   -p, --pid string    pid to look up
@@ -459,11 +475,13 @@ Remove-Item -Recurse -Force "$env:LocalAppData\witr"
 
 A single positional argument (without flags) is treated as a process or service name. By default, name matching uses substring matching (fuzzy search). Use `--exact` to match only processes with the exact name.
 
+The TUI is launched if no arguments or relevant flags (`--pid`, `--port`, `--file`) are provided, or if the `--interactive` flag is explicitly used.
+
 ---
 
-## 4. Example Outputs
+## 5. Example Outputs
 
-### 4.1 Name Based Query
+### 5.1 Name Based Query
 
 ```bash
 witr node
@@ -490,7 +508,7 @@ Listening   : 127.0.0.1:5001
 
 ---
 
-### 4.2 Short Output
+### 5.2 Short Output
 
 ```bash
 witr --port 5000 --short
@@ -502,7 +520,7 @@ systemd (pid 1) → PM2 v5.3.1: God (pid 1481580) → python (pid 1482060)
 
 ---
 
-### 4.3 Tree Output
+### 5.3 Tree Output
 
 ```bash
 witr --pid 143895 --tree
@@ -525,7 +543,7 @@ Note: _Tree view includes child processes (up to 10) and highlights the target p
 
 ---
 
-### 4.4 Multiple Matches
+### 5.4 Multiple Matches
 
 ```bash
 witr ng
@@ -553,7 +571,7 @@ witr nginx -x
 
 ---
 
-### 4.5 File Based Query
+### 5.5 File Based Query
 
 ```bash
 witr --file /var/lib/dpkg/lock
@@ -563,7 +581,7 @@ Explains the process holding a file open.
 
 ---
 
-## 5. Platform Support
+## 6. Platform Support
 
 - **Linux** (x86_64, arm64) - Full feature support (`/proc`).
 - **macOS** (x86_64, arm64) - Uses `ps`, `lsof`, `sysctl`, `pgrep`.
@@ -580,7 +598,7 @@ Explains the process holding a file open.
 | By Name | ✅ | ✅ | ✅ | ✅ | |
 | By PID | ✅ | ✅ | ✅ | ✅ | |
 | By Port | ✅ | ✅ | ✅ | ✅ | |
-| By File | ✅ | ✅ | ✅ | ❌ | |
+| By File | ✅ | ✅ | ❌ | ✅ | |
 | Exact Match | ✅ | ✅ | ✅ | ✅ | |
 | Full command line | ✅ | ✅ | ✅ | ✅ | |
 | Process start time | ✅ | ✅ | ✅ | ✅ | |
@@ -604,6 +622,11 @@ Explains the process holding a file open.
 | Deleted binary detection | ✅ | ✅ | ✅ | ✅ | Warns if executable is missing. |
 | **Context** |
 | Git repo/branch detection | ✅ | ✅ | ✅ | ✅ | |
+| **Interactive Mode (TUI)** |
+| Process Dashboard | ✅ | ✅ | ✅ | ✅ | |
+| Port Dashboard | ✅ | ✅ | ✅ | ✅ | |
+| Process Details | ✅ | ✅ | ✅ | ✅ | |
+| Process Actions | ✅ | ✅ | ❌ | ✅ | |
 
 **Legend:** ✅ Full support | ⚠️ Partial/limited support | ❌ Not available
 
@@ -642,7 +665,7 @@ On Windows, witr uses `Get-CimInstance`, `tasklist`, and `netstat`. To see detai
 
 ---
 
-## 6. Goals
+## 7. Goals
 
 ### Primary goals
 
@@ -661,7 +684,7 @@ On Windows, witr uses `Get-CimInstance`, `tasklist`, and `netstat`. To see detai
 
 ---
 
-## 7. Core Concept
+## 8. Core Concept
 
 witr treats **everything as a process question**.
 
@@ -676,9 +699,9 @@ At its core, witr answers:
 
 ---
 
-## 8. Output Behavior
+## 9. Output Behavior
 
-### 8.1 Output Principles
+### 9.1 Output Principles
 
 - Single screen by default (best effort)
 - Deterministic ordering
@@ -687,7 +710,7 @@ At its core, witr answers:
 
 ---
 
-### 8.2 Standard Output Sections
+### 9.2 Standard Output Sections
 
 #### Target
 
@@ -736,7 +759,7 @@ Non‑blocking observations such as:
 
 ---
 
-## 9. Success Criteria
+## 10. Success Criteria
 
 witr is successful if:
 

@@ -47,6 +47,11 @@ witr [process name] [flags]
   # Output machine-readable JSON
   witr chrome --json
 
+  # Launch Interactive Mode
+  witr
+  or
+  witr --interactive
+
   # Show extended process information (memory, I/O, file descriptors)
   witr mysql --verbose
 
@@ -62,6 +67,7 @@ witr [process name] [flags]
   -x, --exact         use exact name matching (no substring search)
   -f, --file string   file path to find process for
   -h, --help          help for witr
+  -i, --interactive   interactive mode (TUI)
       --json          show result as JSON
       --no-color      disable colorized output
   -p, --pid string    pid to look up

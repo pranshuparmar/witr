@@ -30,6 +30,10 @@ witr explains why a process or port is running by tracing its ancestry.
 	help for witr
 
 .PP
+\fB-i\fP, \fB--interactive\fP[=false]
+	interactive mode (TUI)
+
+.PP
 \fB--json\fP[=false]
 	show result as JSON
 
@@ -64,6 +68,11 @@ witr explains why a process or port is running by tracing its ancestry.
 
 .SH EXAMPLE
 .EX
+
+  # Launch Interactive Mode (TUI)
+  witr
+  or
+  witr --interactive
 
   # Inspect a running process by name
   witr nginx

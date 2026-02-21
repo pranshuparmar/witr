@@ -325,7 +325,7 @@ func (m MainModel) View() string {
 		case m.statusMsg != "":
 			helpText = errorStyle.Render(m.statusMsg)
 		default:
-			helpText = "Esc/q: Back | Tab: Focus | Up/Down: Scroll | a: Actions"
+			helpText = "a: Actions | Esc/q: Back | Tab: Focus | Up/Down: Scroll"
 		}
 		footerContent := helpText
 		if m.version != "" && !m.actionMenuOpen && m.pendingAction == actionNone && m.statusMsg == "" {
