@@ -872,15 +872,20 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		fixedColumnsWidth := 81 // PID(8)+Name(20)+User(12)+CPU(6)+Mem(16)+Started(19)
 		cmdWidth := processListWidth - fixedColumnsWidth - 12
+		m.showCmdCol = cmdWidth >= 15
 		if cmdWidth < 10 {
 			cmdWidth = 10
 		}
 
 		columns := m.getColumns()
-		columns[6].Width = cmdWidth
-		m.table.SetColumns(columns)
+		if m.showCmdCol {
+			columns[6].Width = cmdWidth
+		}
 		m.table.SetWidth(processListWidth)
 		m.table.SetHeight(processListHeight)
+		m.table.SetRows(nil)
+		m.table.SetColumns(columns)
+		m.filterProcesses()
 
 		treeWidth := availableWidth - processListPaneWidth - 4
 		if treeWidth < 10 {

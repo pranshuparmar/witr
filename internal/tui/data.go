@@ -182,15 +182,18 @@ func (m *MainModel) filterProcesses() {
 				startedStr = ""
 			}
 
-			rows = append(rows, table.Row{
+			row := table.Row{
 				fmt.Sprintf("%d", p.PID),
 				p.User,
 				p.Command,
 				fmt.Sprintf("%.1f%%", p.CPUPercent),
 				fmt.Sprintf("%s (%.1f%%)", formatBytes(p.MemoryRSS), p.MemoryPercent),
 				startedStr,
-				p.Cmdline,
-			})
+			}
+			if m.showCmdCol {
+				row = append(row, p.Cmdline)
+			}
+			rows = append(rows, row)
 		}
 	}
 	m.table.SetRows(rows)
@@ -204,11 +207,13 @@ func (m *MainModel) getColumns() []table.Column {
 		{Title: "CPU%", Width: 6},
 		{Title: "Mem", Width: 16},
 		{Title: "Started", Width: 19},
-		{Title: "Command", Width: 50},
+	}
+	if m.showCmdCol {
+		cols = append(cols, table.Column{Title: "Command", Width: 50})
 	}
 
 	addArrow := func(idx int, key string) {
-		if m.sortCol == key {
+		if idx < len(cols) && m.sortCol == key {
 			if m.sortDesc {
 				cols[idx].Title += " ↓"
 			} else {
@@ -223,7 +228,6 @@ func (m *MainModel) getColumns() []table.Column {
 	addArrow(3, "cpu")
 	addArrow(4, "mem")
 	addArrow(5, "time")
-	addArrow(6, "cmd")
 
 	return cols
 }

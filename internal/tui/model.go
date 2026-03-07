@@ -129,6 +129,7 @@ type MainModel struct {
 	sortPortCol  string
 	sortPortDesc bool
 	showAllPorts bool
+	showCmdCol   bool
 	version      string
 
 	// Mouse double-click tracking
