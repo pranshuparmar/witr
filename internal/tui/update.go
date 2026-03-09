@@ -470,11 +470,15 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.portInput.Blur()
 						return m, nil
 					}
-					var inputCmd tea.Cmd
-					m.portInput, inputCmd = m.portInput.Update(msg)
-					m.updatePortTable()
-					m.portTable.SetCursor(0)
-					return m, inputCmd
+					if msg.Type == tea.KeyUp || msg.Type == tea.KeyDown {
+						m.portInput.Blur()
+					} else {
+						var inputCmd tea.Cmd
+						m.portInput, inputCmd = m.portInput.Update(msg)
+						m.updatePortTable()
+						m.portTable.SetCursor(0)
+						return m, inputCmd
+					}
 				}
 
 				if msg.String() == "/" {
@@ -487,27 +491,31 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.input.Blur()
 						return m, nil
 					}
-					var inputCmd tea.Cmd
-					m.input, inputCmd = m.input.Update(msg)
-					m.filterProcesses()
-
-					m.table.SetCursor(0)
-					var treeCmd tea.Cmd
-					if len(m.filtered) > 0 {
-						selected := m.table.SelectedRow()
-						if len(selected) > 0 {
-							pid := 0
-							fmt.Sscanf(selected[0], "%d", &pid)
-							m.selectionID++
-							id := m.selectionID
-							treeCmd = tea.Tick(500*time.Millisecond, func(_ time.Time) tea.Msg {
-								return debounceMsg{id: id, pid: pid}
-							})
-						}
+					if msg.Type == tea.KeyUp || msg.Type == tea.KeyDown {
+						m.input.Blur()
 					} else {
-						m.treeViewport.SetContent("")
+						var inputCmd tea.Cmd
+						m.input, inputCmd = m.input.Update(msg)
+						m.filterProcesses()
+
+						m.table.SetCursor(0)
+						var treeCmd tea.Cmd
+						if len(m.filtered) > 0 {
+							selected := m.table.SelectedRow()
+							if len(selected) > 0 {
+								pid := 0
+								fmt.Sscanf(selected[0], "%d", &pid)
+								m.selectionID++
+								id := m.selectionID
+								treeCmd = tea.Tick(500*time.Millisecond, func(_ time.Time) tea.Msg {
+									return debounceMsg{id: id, pid: pid}
+								})
+							}
+						} else {
+							m.treeViewport.SetContent("")
+						}
+						return m, tea.Batch(inputCmd, treeCmd)
 					}
-					return m, tea.Batch(inputCmd, treeCmd)
 				}
 
 				if msg.String() == "/" {

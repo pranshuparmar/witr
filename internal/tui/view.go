@@ -27,12 +27,12 @@ func (m MainModel) View() string {
 
 		if m.activeTab == tabPorts {
 			if m.portInput.Focused() {
-				status = "Mode: Searching (Press Esc/Enter to stop)"
+				status = "Mode: Searching (↑↓ to navigate, Esc/Enter to stop)"
 			}
 			inputView = m.portInput.View()
 		} else {
 			if m.input.Focused() {
-				status = "Mode: Searching (Press Esc/Enter to stop)"
+				status = "Mode: Searching (↑↓ to navigate, Esc/Enter to stop)"
 			}
 		}
 
