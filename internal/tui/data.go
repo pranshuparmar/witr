@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"cmp"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -80,42 +82,29 @@ func (m MainModel) fetchProcessDetail(pid int) tea.Cmd {
 }
 
 func (m *MainModel) sortProcesses() {
-	sort.Slice(m.processes, func(i, j int) bool {
-		pi, pj := m.processes[i], m.processes[j]
-		var less bool
-		var equal bool
+	slices.SortStableFunc(m.processes, func(a, b model.Process) int {
+		var n int
 		switch m.sortCol {
 		case "pid":
-			less = pi.PID < pj.PID
-			equal = pi.PID == pj.PID
+			n = cmp.Compare(a.PID, b.PID)
 		case "name":
-			ni, nj := strings.ToLower(pi.Command), strings.ToLower(pj.Command)
-			less = ni < nj
-			equal = ni == nj
+			n = cmp.Compare(strings.ToLower(a.Command), strings.ToLower(b.Command))
 		case "user":
-			ui, uj := strings.ToLower(pi.User), strings.ToLower(pj.User)
-			less = ui < uj
-			equal = ui == uj
+			n = cmp.Compare(strings.ToLower(a.User), strings.ToLower(b.User))
 		case "cpu":
-			less = pi.CPUPercent < pj.CPUPercent
-			equal = pi.CPUPercent == pj.CPUPercent
-		case "mem":
-			less = pi.MemoryRSS < pj.MemoryRSS
-			equal = pi.MemoryRSS == pj.MemoryRSS
+			n = cmp.Compare(a.CPUPercent, b.CPUPercent)
 		case "time":
-			less = pi.StartedAt.Before(pj.StartedAt)
-			equal = pi.StartedAt.Equal(pj.StartedAt)
-		default:
-			less = pi.MemoryRSS < pj.MemoryRSS
-			equal = pi.MemoryRSS == pj.MemoryRSS
+			n = cmp.Compare(a.StartedAt.UnixNano(), b.StartedAt.UnixNano())
+		default: // "mem"
+			n = cmp.Compare(a.MemoryRSS, b.MemoryRSS)
 		}
-		if equal {
-			return pi.PID < pj.PID
+		if n == 0 {
+			n = cmp.Compare(a.PID, b.PID)
 		}
 		if m.sortDesc {
-			return !less
+			return -n
 		}
-		return less
+		return n
 	})
 }
 
@@ -187,7 +176,7 @@ func (m *MainModel) filterProcesses() {
 				p.User,
 				p.Command,
 				fmt.Sprintf("%.1f%%", p.CPUPercent),
-				fmt.Sprintf("%s (%.1f%%)", formatBytes(p.MemoryRSS), p.MemoryPercent),
+				fmt.Sprintf("%16s", fmt.Sprintf("%s (%.1f%%)", formatBytes(p.MemoryRSS), p.MemoryPercent)),
 				startedStr,
 			}
 			if m.showCmdCol {
