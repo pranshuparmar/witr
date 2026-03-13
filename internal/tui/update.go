@@ -946,6 +946,10 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(pdCols) > 3 {
 			pdCols[3].Width = cmdPdWidth
 		}
+		// Center-align PID header in port detail table
+		if len(pdCols) > 0 {
+			pdCols[0].Title = centerHeader("PID", pdCols[0].Width)
+		}
 		m.portDetailTable.SetColumns(pdCols)
 		m.portDetailTable.SetWidth(portDetailWidth)
 		m.portDetailTable.SetHeight(portListHeight - 2)

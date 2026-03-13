@@ -172,10 +172,10 @@ func (m *MainModel) filterProcesses() {
 			}
 
 			row := table.Row{
-				fmt.Sprintf("%d", p.PID),
+				fmt.Sprintf("%8d", p.PID),
 				p.User,
 				p.Command,
-				fmt.Sprintf("%.1f%%", p.CPUPercent),
+				fmt.Sprintf("%6s", fmt.Sprintf("%.1f%%", p.CPUPercent)),
 				fmt.Sprintf("%16s", fmt.Sprintf("%s (%.1f%%)", formatBytes(p.MemoryRSS), p.MemoryPercent)),
 				startedStr,
 			}
@@ -186,6 +186,16 @@ func (m *MainModel) filterProcesses() {
 		}
 	}
 	m.table.SetRows(rows)
+}
+
+func centerHeader(title string, width int) string {
+	w := lipgloss.Width(title)
+	if w >= width {
+		return title
+	}
+	pad := width - w
+	left := pad / 2
+	return strings.Repeat(" ", left) + title
 }
 
 func (m *MainModel) getColumns() []table.Column {
@@ -218,6 +228,13 @@ func (m *MainModel) getColumns() []table.Column {
 	addArrow(4, "mem")
 	addArrow(5, "time")
 
+	// Center-align numeric column headers
+	for _, idx := range []int{0, 3, 4} {
+		if idx < len(cols) {
+			cols[idx].Title = centerHeader(cols[idx].Title, cols[idx].Width)
+		}
+	}
+
 	return cols
 }
 
@@ -243,6 +260,9 @@ func (m *MainModel) getPortColumns() []table.Column {
 	addArrow(1, "proto")
 	addArrow(2, "addr")
 	addArrow(3, "state")
+
+	// Center-align the Port column header
+	cols[0].Title = centerHeader(cols[0].Title, cols[0].Width)
 
 	return cols
 }
@@ -291,7 +311,7 @@ func (m *MainModel) updatePortTable() {
 			if !seen[key] {
 				seen[key] = true
 				rows = append(rows, table.Row{
-					fmt.Sprintf("%d", p.Port),
+					fmt.Sprintf("%6d", p.Port),
 					p.Protocol,
 					p.Address,
 					p.State,
@@ -311,7 +331,7 @@ func (m *MainModel) updatePortDetails() {
 		return
 	}
 
-	portStr := selected[0]
+	portStr := strings.TrimSpace(selected[0])
 	protocol := selected[1]
 	address := selected[2]
 	state := selected[3]
@@ -340,14 +360,14 @@ func (m *MainModel) updatePortDetails() {
 						}
 					}
 					rows = append(rows, table.Row{
-						fmt.Sprintf("%d", proc.PID),
+						fmt.Sprintf("%8d", proc.PID),
 						proc.User,
 						proc.Command,
 						cmd,
 					})
 				} else {
 					rows = append(rows, table.Row{
-						fmt.Sprintf("%d", p.PID),
+						fmt.Sprintf("%8d", p.PID),
 						"???",
 						"???",
 						"???",

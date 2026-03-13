@@ -169,7 +169,7 @@ func InitialModel(version string) MainModel {
 	t.SetStyles(s)
 
 	portColumns := []table.Column{
-		{Title: "Port", Width: 6},
+		{Title: centerHeader("Port", 6), Width: 6},
 		{Title: "Protocol", Width: 10},
 		{Title: "Address", Width: 30},
 		{Title: "State", Width: 20},
@@ -182,7 +182,7 @@ func InitialModel(version string) MainModel {
 	pt.SetStyles(s)
 
 	pdCols := []table.Column{
-		{Title: "PID", Width: 8},
+		{Title: centerHeader("PID", 8), Width: 8},
 		{Title: "User", Width: 12},
 		{Title: "Name", Width: 15},
 		{Title: "Command", Width: 20},
