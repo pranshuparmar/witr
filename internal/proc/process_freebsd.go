@@ -91,6 +91,12 @@ func ReadProcess(pid int) (model.Process, error) {
 	// Container detection on FreeBSD (jails)
 	container := detectContainer(pid)
 
+	// Recover full process name when kernel comm field is truncated
+	displayName := deriveDisplayCommand(comm, cmdline)
+	if displayName == "" {
+		displayName = comm
+	}
+
 	if comm == "docker-proxy" && container == "" {
 		container = resolveDockerProxyContainer(cmdline)
 	}
@@ -121,7 +127,7 @@ func ReadProcess(pid int) (model.Process, error) {
 	return model.Process{
 		PID:            pid,
 		PPID:           ppid,
-		Command:        comm,
+		Command:        displayName,
 		Cmdline:        cmdline,
 		StartedAt:      startedAt,
 		User:           user,

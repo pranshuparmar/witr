@@ -69,10 +69,16 @@ func ListProcesses() ([]model.Process, error) {
 			cmdline = strings.Join(fields[12:], " ")
 		}
 
+		// Recover full process name when kernel comm field is truncated
+		displayName := deriveDisplayCommand(comm, cmdline)
+		if displayName == "" {
+			displayName = comm
+		}
+
 		processes = append(processes, model.Process{
 			PID:           pid,
 			PPID:          ppid,
-			Command:       comm,
+			Command:       displayName,
 			User:          user,
 			StartedAt:     started,
 			CPUPercent:    cpu,
