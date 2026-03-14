@@ -170,6 +170,9 @@ func runApp(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("error: %v", err)
 		}
+		if len(pids) == 0 {
+			return fmt.Errorf("no matching process found")
+		}
 		if len(pids) > 1 {
 			cmd.SilenceErrors = true
 			outp.Print("Multiple matching processes found:\n\n")

@@ -22,6 +22,9 @@ func bootTime() time.Time {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "btime") {
 			parts := strings.Fields(line)
+			if len(parts) < 2 {
+				continue
+			}
 			sec, _ := strconv.ParseInt(parts[1], 10, 64)
 			return time.Unix(sec, 0)
 		}

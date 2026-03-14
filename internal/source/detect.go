@@ -124,6 +124,10 @@ func envSuspiciousWarnings(env []string) []string {
 }
 
 func Warnings(p []model.Process) []string {
+	if len(p) == 0 {
+		return nil
+	}
+
 	var w []string
 
 	last := p[len(p)-1]

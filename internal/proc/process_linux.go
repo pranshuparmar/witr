@@ -198,12 +198,16 @@ func ReadProcess(pid int) (model.Process, error) {
 	raw := string(stat)
 	open := strings.Index(raw, "(")
 	close := strings.LastIndex(raw, ")")
-	if open == -1 || close == -1 {
-		return model.Process{}, fmt.Errorf("invalid stat format")
+	if open == -1 || close == -1 || close+2 >= len(raw) {
+		return model.Process{}, fmt.Errorf("invalid stat format for pid %d", pid)
 	}
 
 	comm := raw[open+1 : close]
 	fields := strings.Fields(raw[close+2:])
+	// /proc/[pid]/stat has 52 fields after comm; we need at least index 21 (rss)
+	if len(fields) < 22 {
+		return model.Process{}, fmt.Errorf("unexpected stat format for pid %d: got %d fields", pid, len(fields))
+	}
 
 	ppid, _ := strconv.Atoi(fields[1])
 	state := processState(fields)

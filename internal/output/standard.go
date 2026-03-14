@@ -79,18 +79,18 @@ func RenderWarnings(w io.Writer, r model.Result, colorEnabled bool) {
 
 func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool) {
 	out := NewPrinter(w)
-	// Target
-	target := "unknown"
-	if len(r.Ancestry) > 0 {
-		target = SanitizeTerminal(r.Ancestry[len(r.Ancestry)-1].Command)
+	if len(r.Ancestry) == 0 {
+		out.Println("No process information available.")
+		return
 	}
+
+	target := SanitizeTerminal(r.Ancestry[len(r.Ancestry)-1].Command)
 	if colorEnabled {
 		out.Printf("%sTarget%s      : %s\n\n", ColorBlue, ColorReset, target)
 	} else {
 		out.Printf("Target      : %s\n\n", target)
 	}
 
-	// Process
 	var proc = r.Ancestry[len(r.Ancestry)-1]
 	proc.Command = SanitizeTerminal(proc.Command)
 	proc.Cmdline = SanitizeTerminal(proc.Cmdline)
