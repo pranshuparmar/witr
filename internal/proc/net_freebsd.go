@@ -71,7 +71,7 @@ func readListeningSockets() (map[string]model.Socket, error) {
 func parseSockstatOutput(output string, sockets map[string]model.Socket) {
 	for line := range strings.Lines(output) {
 		fields := strings.Fields(line)
-		if len(fields) < 6 {
+		if len(fields) < 7 {
 			continue
 		}
 

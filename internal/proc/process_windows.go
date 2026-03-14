@@ -103,7 +103,7 @@ func detectContainer(cmdline string) string {
 			if name := resolveContainerName(id, "crictl"); name != "" {
 				return "k8s: " + name
 			}
-			return "k8s (" + id[:12] + ")"
+			return "k8s (" + shortID(id) + ")"
 		}
 		return "kubernetes"
 	case strings.Contains(lowerCmd, "nerdctl"):

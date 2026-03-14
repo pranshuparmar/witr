@@ -100,8 +100,11 @@ func ReadProcess(pid int) (model.Process, error) {
 	var addrs []string
 
 	for _, inode := range inodes {
-		var addrPort = strings.Split(inode, ":")
-		var port, _ = strconv.Atoi(addrPort[1])
+		addrPort := strings.SplitN(inode, ":", 2)
+		if len(addrPort) < 2 {
+			continue
+		}
+		port, _ := strconv.Atoi(addrPort[1])
 		ports = append(ports, port)
 		addrs = append(addrs, addrPort[0])
 	}
@@ -254,7 +257,7 @@ func detectContainer(cmdline string) string {
 			if name := resolveContainerName(id, "crictl"); name != "" {
 				return "k8s: " + name
 			}
-			return "k8s (" + id[:12] + ")"
+			return "k8s (" + shortID(id) + ")"
 		}
 		return "kubernetes"
 	case strings.Contains(lowerCmd, "colima"):

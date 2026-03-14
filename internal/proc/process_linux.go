@@ -90,9 +90,7 @@ func ReadProcess(pid int) (model.Process, error) {
 				if name := resolveContainerName(containerID, "docker"); name != "" {
 					container = name
 				} else {
-					if len(containerID) > 12 {
-						container = "docker (" + containerID[:12] + ")"
-					}
+					container = "docker (" + shortID(containerID) + ")"
 				}
 			}
 
@@ -103,9 +101,7 @@ func ReadProcess(pid int) (model.Process, error) {
 				if name := resolveContainerName(containerID, "podman"); name != "" {
 					container = name
 				} else {
-					if len(containerID) > 12 {
-						container = "podman (" + containerID[:12] + ")"
-					}
+					container = "podman (" + shortID(containerID) + ")"
 				}
 			}
 
@@ -116,7 +112,7 @@ func ReadProcess(pid int) (model.Process, error) {
 				if name := resolveContainerName(containerID, "crictl"); name != "" {
 					container = "k8s: " + name
 				} else {
-					container = "k8s (" + containerID[:12] + ")"
+					container = "k8s (" + shortID(containerID) + ")"
 				}
 			}
 
@@ -127,7 +123,7 @@ func ReadProcess(pid int) (model.Process, error) {
 				if name := resolveContainerName(containerID, "nerdctl"); name != "" {
 					container = "containerd: " + name
 				} else {
-					container = "containerd (" + containerID[:12] + ")"
+					container = "containerd (" + shortID(containerID) + ")"
 				}
 			}
 

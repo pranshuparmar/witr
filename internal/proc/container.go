@@ -142,6 +142,15 @@ func findLongHexID(s string) string {
 	return ""
 }
 
+// shortID returns the first 12 characters of a container ID, or the full
+// string if it is shorter than 12 characters.
+func shortID(id string) string {
+	if len(id) > 12 {
+		return id[:12]
+	}
+	return id
+}
+
 // extractFlagValue extracts the value of a specific flag from a command line string.
 func extractFlagValue(cmdline string, flags ...string) string {
 	args := splitCmdline(cmdline)
