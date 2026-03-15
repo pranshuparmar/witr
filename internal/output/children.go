@@ -18,7 +18,7 @@ func PrintChildren(w io.Writer, root model.Process, children []model.Process, co
 	}
 
 	if colorEnabled {
-		p.Printf("%sChildren%s of %s (%spid %d%s):\n", ColorGreen, ColorReset, rootName, ColorBold, root.PID, ColorReset)
+		p.Printf("%sChildren%s of %s (%spid %d%s):\n", ColorGreen, ColorReset, rootName, ColorDim, root.PID, ColorReset)
 	} else {
 		p.Printf("Children of %s (pid %d):\n", rootName, root.PID)
 	}
@@ -60,7 +60,7 @@ func PrintChildren(w io.Writer, root model.Process, children []model.Process, co
 		}
 
 		if colorEnabled {
-			p.Printf("  %s%s%s%s (%spid %d%s)\n", ColorMagenta, connector, ColorReset, childName, ColorBold, child.PID, ColorReset)
+			p.Printf("  %s%s%s%s (%spid %d%s)\n", ColorMagenta, connector, ColorReset, childName, ColorDim, child.PID, ColorReset)
 		} else {
 			p.Printf("  %s%s (pid %d)\n", connector, childName, child.PID)
 		}

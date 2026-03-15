@@ -21,7 +21,7 @@ func bootTime() time.Time {
 		return time.Now()
 	}
 	// Parse 20231025123456
-	t, err := time.Parse("20060102150405", val[:14])
+	t, err := time.ParseInLocation("20060102150405", val[:14], time.Local)
 	if err != nil {
 		return time.Now()
 	}

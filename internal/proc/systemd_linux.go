@@ -53,25 +53,13 @@ func ResolveSystemdService(port int) (string, error) {
 	portStr := fmt.Sprintf(":%d", port)
 	lines := strings.Split(out.String(), "\n")
 
-	var socketUnit string
-
 	for _, line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
 			continue
 		}
-		listen := fields[0]
-
-		if strings.HasSuffix(listen, portStr) {
-			socketUnit = fields[1]
-			service := fields[2]
-			return service, nil
-		}
-	}
-
-	if socketUnit != "" {
-		if strings.HasSuffix(socketUnit, ".socket") {
-			return strings.TrimSuffix(socketUnit, ".socket") + ".service", nil
+		if strings.HasSuffix(fields[0], portStr) {
+			return fields[2], nil
 		}
 	}
 

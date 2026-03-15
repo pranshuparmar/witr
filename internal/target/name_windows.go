@@ -3,6 +3,7 @@
 package target
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -90,5 +91,8 @@ func ResolveName(name string, exact bool) ([]int, error) {
 		}
 	}
 
+	if len(pids) == 0 {
+		return nil, fmt.Errorf("no process found matching: %s", name)
+	}
 	return pids, nil
 }

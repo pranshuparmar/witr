@@ -120,9 +120,6 @@ func getUnitNameFromCgroup(pid int) string {
 
 		if controllers == "" || strings.Contains(controllers, "systemd") {
 			path = strings.TrimSpace(path)
-
-			path = strings.TrimSpace(path)
-
 			pathParts := strings.Split(path, "/")
 
 			for i := len(pathParts) - 1; i >= 0; i-- {

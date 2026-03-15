@@ -143,7 +143,7 @@ func ReadProcess(pid int) (model.Process, error) {
 	gitBranch := ""
 	if cwd != "unknown" {
 		searchDir := cwd
-		for searchDir != "/" && searchDir != "." && searchDir != "" {
+		for depth := 0; depth < 10 && searchDir != "/" && searchDir != "." && searchDir != ""; depth++ {
 			gitDir := searchDir + "/.git"
 			if fi, err := os.Stat(gitDir); err == nil && fi.IsDir() {
 				// Repo name is the base dir

@@ -3,6 +3,7 @@
 package proc
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -141,7 +142,7 @@ func getCPUAndMemoryUsage(pid int) (float64, uint64, error) {
 	output := string(out)
 	fields := strings.Fields(output)
 	if len(fields) < 2 {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("could not read CPU and memory usage")
 	}
 
 	// Parse CPU usage

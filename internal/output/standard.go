@@ -40,7 +40,7 @@ func RenderWarnings(w io.Writer, r model.Result, colorEnabled bool) {
 	proc.Command = SanitizeTerminal(proc.Command)
 
 	if colorEnabled {
-		out.Printf("%sProcess%s     : %s%s%s (%spid %d%s)\n", ColorBlue, ColorReset, ColorGreen, proc.Command, ColorReset, ColorBold, proc.PID, ColorReset)
+		out.Printf("%sProcess%s     : %s%s%s (%spid %d%s)\n", ColorBlue, ColorReset, ColorGreen, proc.Command, ColorReset, ColorDim, proc.PID, ColorReset)
 		if proc.Cmdline != "" {
 			out.Printf("%sCommand%s     : %s\n", ColorBlue, ColorReset, proc.Cmdline)
 		} else {
@@ -101,7 +101,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 	proc.GitRepo = SanitizeTerminal(proc.GitRepo)
 	proc.GitBranch = SanitizeTerminal(proc.GitBranch)
 	if colorEnabled {
-		out.Printf("%sProcess%s     : %s%s%s (%spid %d%s)", ColorBlue, ColorReset, ColorGreen, proc.Command, ColorReset, ColorBold, proc.PID, ColorReset)
+		out.Printf("%sProcess%s     : %s%s%s (%spid %d%s)", ColorBlue, ColorReset, ColorGreen, proc.Command, ColorReset, ColorDim, proc.PID, ColorReset)
 	} else {
 		out.Printf("Process     : %s (pid %d)", proc.Command, proc.PID)
 	}
@@ -208,7 +208,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 			if i == len(r.Ancestry)-1 {
 				nameColor = ColorGreen
 			}
-			out.Printf("%s%s%s (%spid %d%s)", nameColor, name, ColorReset, ColorBold, p.PID, ColorReset)
+			out.Printf("%s%s%s (%spid %d%s)", nameColor, name, ColorReset, ColorDim, p.PID, ColorReset)
 			if i < len(r.Ancestry)-1 {
 				out.Printf(" %s\u2192%s ", ColorMagenta, ColorReset)
 			}
@@ -290,7 +290,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 			if val, ok := r.Source.Details[key]; ok {
 				label := formatDetailLabel(key)
 				if colorEnabled {
-					out.Printf("%s%s%s : %s\n", ColorBold, label, ColorReset, SanitizeTerminal(val))
+					out.Printf("%s%s%s : %s\n", ColorDim, label, ColorReset, SanitizeTerminal(val))
 				} else {
 					out.Printf("%s : %s\n", label, SanitizeTerminal(val))
 				}
@@ -330,11 +330,7 @@ func RenderStandard(w io.Writer, r model.Result, colorEnabled bool, verbose bool
 		for i := range proc.ListeningPorts {
 			if displayed >= MaxDisplayItems {
 				remaining := count - displayed
-				if colorEnabled {
-					out.Printf("              ... and %d more\n", remaining)
-				} else {
-					out.Printf("              ... and %d more\n", remaining)
-				}
+				out.Printf("              ... and %d more\n", remaining)
 				break
 			}
 			addr := proc.BindAddresses[i]

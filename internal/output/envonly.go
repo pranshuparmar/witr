@@ -14,13 +14,13 @@ func RenderEnvOnly(w io.Writer, r model.Result, colorEnabled bool) {
 	colorBlueEnv := ansiString("")
 	colorRedEnv := ansiString("")
 	colorGreenEnv := ansiString("")
-	colorBoldEnv := ansiString("")
+	colorDimEnv := ansiString("")
 	if colorEnabled {
 		colorResetEnv = ColorReset
 		colorBlueEnv = ColorBlue
 		colorRedEnv = ColorRed
 		colorGreenEnv = ColorGreen
-		colorBoldEnv = ColorBold
+		colorDimEnv = ColorDim
 	}
 
 	procName := r.Process.Command
@@ -29,7 +29,7 @@ func RenderEnvOnly(w io.Writer, r model.Result, colorEnabled bool) {
 	}
 
 	if colorEnabled {
-		p.Printf("%sProcess%s     : %s%s%s (%spid %d%s)\n", colorBlueEnv, colorResetEnv, colorGreenEnv, procName, colorResetEnv, colorBoldEnv, r.Process.PID, colorResetEnv)
+		p.Printf("%sProcess%s     : %s%s%s (%spid %d%s)\n", colorBlueEnv, colorResetEnv, colorGreenEnv, procName, colorResetEnv, colorDimEnv, r.Process.PID, colorResetEnv)
 	} else {
 		p.Printf("Process     : %s (pid %d)\n", procName, r.Process.PID)
 	}

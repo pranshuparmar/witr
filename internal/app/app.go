@@ -189,7 +189,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 				if !noColorFlag {
 					outp.Printf("[%d] %s%s%s (%spid %d%s)\n    %s\n",
 						i+1, output.ColorGreen, command, output.ColorReset,
-						output.ColorBold, pid, output.ColorReset,
+						output.ColorDim, pid, output.ColorReset,
 						cmdline)
 				} else {
 					outp.Printf("[%d] %s (pid %d)\n    %s\n", i+1, command, pid, cmdline)
@@ -287,7 +287,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 			if !noColorFlag {
 				outp.Printf("[%d] %s%s%s (%spid %d%s)\n    %s\n",
 					i+1, output.ColorGreen, command, output.ColorReset,
-					output.ColorBold, pid, output.ColorReset,
+					output.ColorDim, pid, output.ColorReset,
 					cmdline)
 			} else {
 				outp.Printf("[%d] %s (pid %d)\n    %s\n", i+1, command, pid, cmdline)

@@ -127,8 +127,7 @@ func detectGitInfo(cwd string) (string, string) {
 	}
 
 	searchDir := cwd
-	// Walk up 5 levels max to avoid endless loops or too much IO
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		gitDir := filepath.Join(searchDir, ".git")
 		if fi, err := os.Stat(gitDir); err == nil && fi.IsDir() {
 			gitRepo := filepath.Base(searchDir)

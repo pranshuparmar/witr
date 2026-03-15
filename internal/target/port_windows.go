@@ -59,5 +59,8 @@ func ResolvePort(port int) ([]int, error) {
 		}
 	}
 
+	if len(pids) == 0 {
+		return nil, fmt.Errorf("no process found listening on port %d", port)
+	}
 	return pids, nil
 }

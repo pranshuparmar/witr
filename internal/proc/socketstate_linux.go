@@ -23,50 +23,47 @@ func GetSocketStateForPort(port int) *model.SocketInfo {
 	for _, file := range files {
 		isIPv6 := strings.HasSuffix(file, "tcp6")
 
-		f, err := os.Open(file)
-		if err != nil {
-			continue
-		}
-		defer f.Close()
-
-		scanner := bufio.NewScanner(f)
-		scanner.Scan()
-
-		for scanner.Scan() {
-			fields := strings.Fields(scanner.Text())
-			if len(fields) < 10 {
-				continue
+		func() {
+			f, err := os.Open(file)
+			if err != nil {
+				return
 			}
+			defer f.Close()
 
-			// Field 1: local_address (IP:Port in hex)
-			// Format example: 0100007F:1388
-			localAddrHex := fields[1]
-			// parseAddr is defined in internal/proc/net_linux.go (same package)
-			localIP, localPort := parseAddr(localAddrHex, isIPv6)
+			scanner := bufio.NewScanner(f)
+			scanner.Scan()
 
-			if localPort != port {
-				continue
+			for scanner.Scan() {
+				fields := strings.Fields(scanner.Text())
+				if len(fields) < 10 {
+					continue
+				}
+
+				localAddrHex := fields[1]
+				localIP, localPort := parseAddr(localAddrHex, isIPv6)
+
+				if localPort != port {
+					continue
+				}
+
+				remoteAddrHex := fields[2]
+				remoteIP, _ := parseAddr(remoteAddrHex, isIPv6)
+
+				stateHex := fields[3]
+				stateVal, _ := strconv.ParseInt(stateHex, 16, 0)
+				stateStr := mapTCPState(int(stateVal))
+
+				info := model.SocketInfo{
+					Port:       port,
+					State:      stateStr,
+					LocalAddr:  localIP,
+					RemoteAddr: remoteIP,
+				}
+
+				addStateExplanation(&info)
+				states = append(states, info)
 			}
-
-			// Field 2: rem_address (IP:Port in hex)
-			remoteAddrHex := fields[2]
-			remoteIP, _ := parseAddr(remoteAddrHex, isIPv6)
-
-			// Field 3: st (state in hex)
-			stateHex := fields[3]
-			stateVal, _ := strconv.ParseInt(stateHex, 16, 0)
-			stateStr := mapTCPState(int(stateVal))
-
-			info := model.SocketInfo{
-				Port:       port,
-				State:      stateStr,
-				LocalAddr:  localIP,
-				RemoteAddr: remoteIP,
-			}
-
-			addStateExplanation(&info)
-			states = append(states, info)
-		}
+		}()
 	}
 
 	if len(states) == 0 {

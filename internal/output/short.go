@@ -23,7 +23,7 @@ func RenderShort(w io.Writer, r model.Result, colorEnabled bool) {
 			if i == len(r.Ancestry)-1 {
 				nameColor = ColorGreen
 			}
-			p.Printf("%s%s%s (%spid %d%s)", nameColor, proc.Command, ColorReset, ColorBold, proc.PID, ColorReset)
+			p.Printf("%s%s%s (%spid %d%s)", nameColor, proc.Command, ColorReset, ColorDim, proc.PID, ColorReset)
 		} else {
 			p.Printf("%s (pid %d)", proc.Command, proc.PID)
 		}

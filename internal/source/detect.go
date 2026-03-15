@@ -123,7 +123,7 @@ func envSuspiciousWarnings(env []string) []string {
 	return warnings
 }
 
-func Warnings(p []model.Process) []string {
+func Warnings(p []model.Process, srcType ...model.SourceType) []string {
 	if len(p) == 0 {
 		return nil
 	}
@@ -165,7 +165,13 @@ func Warnings(p []model.Process) []string {
 		w = append(w, "Process is running as root")
 	}
 
-	if Detect(p).Type == model.SourceUnknown {
+	st := model.SourceUnknown
+	if len(srcType) > 0 {
+		st = srcType[0]
+	} else {
+		st = Detect(p).Type
+	}
+	if st == model.SourceUnknown {
 		w = append(w, "No known supervisor or service manager detected")
 	}
 
