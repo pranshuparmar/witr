@@ -13,7 +13,7 @@ func ResolveFile(path string) ([]int, error) {
 	out, err := cmd.Output()
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok && exitError.ExitCode() == 1 {
-			return nil, nil
+			return nil, fmt.Errorf("no process found holding file: %s", path)
 		}
 		return nil, fmt.Errorf("lsof failed: %w", err)
 	}
@@ -31,5 +31,8 @@ func ResolveFile(path string) ([]int, error) {
 		}
 	}
 
+	if len(pids) == 0 {
+		return nil, fmt.Errorf("no process found holding file: %s", path)
+	}
 	return pids, nil
 }

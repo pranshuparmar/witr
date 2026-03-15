@@ -55,7 +55,7 @@ func ResolveFile(path string) ([]int, error) {
 	}
 
 	if len(pids) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("no process found holding file: %s", absPath)
 	}
 
 	return pids, nil
