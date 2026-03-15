@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	userCache   map[int]string
+	userCache     map[int]string
 	userCacheOnce sync.Once
 )
 

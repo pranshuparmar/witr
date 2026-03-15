@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -49,10 +48,8 @@ func (m MainModel) View() string {
 			treeHeaderColor = lipgloss.Color("#bcbcbc") // Light Gray
 		}
 
-		treeContainerStyle := lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
+		treeContainerStyle := paneDividerStyle.
 			BorderForeground(treeBorderColor).
-			PaddingLeft(2).
 			Height(m.table.Height())
 
 		treeHeader := "Details"
@@ -74,13 +71,7 @@ func (m MainModel) View() string {
 			Foreground(treeHeaderColor).
 			BorderForeground(treeBorderColor)
 
-		baseStyles := table.DefaultStyles()
-		baseStyles.Selected = baseStyles.Selected.
-			Foreground(lipgloss.Color("#ffffaf")). // Light Yellow
-			Background(lipgloss.Color("#5f00d7")). // Purple
-			Bold(false)
-
-		s := baseStyles
+		s := cachedTableStyles
 		if m.listFocus == focusMain {
 			s.Header = tableHeaderStyle.BorderForeground(activeBorderColor)
 		} else {
@@ -99,7 +90,7 @@ func (m MainModel) View() string {
 			treeContainerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					treeHeaderStyle.Render(treeHeader),
-					lipgloss.NewStyle().PaddingLeft(1).Render(m.treeViewport.View()),
+					paddedStyle.Render(m.treeViewport.View()),
 				),
 			),
 		)
@@ -113,12 +104,12 @@ func (m MainModel) View() string {
 				sideHeaderColor = activeBorderColor
 			}
 
-			// Reuse base styles — only header border differs per table
-			s1 := baseStyles
+			// Reuse cached styles — only header border differs per table
+			s1 := cachedTableStyles
 			s1.Header = s.Header // same focus state as main table
 			m.portTable.SetStyles(s1)
 
-			s2 := baseStyles
+			s2 := cachedTableStyles
 			if m.listFocus == focusSide {
 				s2.Header = tableHeaderStyle.BorderForeground(activeBorderColor)
 			} else {
@@ -126,10 +117,8 @@ func (m MainModel) View() string {
 			}
 			m.portDetailTable.SetStyles(s2)
 
-			detailContainerStyle := lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder(), false, false, false, true).
+			detailContainerStyle := detailDividerStyle.
 				BorderForeground(sideBorderColor).
-				PaddingLeft(1).
 				Height(m.portTable.Height())
 
 			detailHeader := "Attached Processes"
@@ -187,11 +176,11 @@ func (m MainModel) View() string {
 		return outerStyle.Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				header,
-				lipgloss.NewStyle().Height(1).Render(""),
-				lipgloss.NewStyle().MarginBottom(1).PaddingLeft(1).Render(fmt.Sprintf("%s", status)),
-				lipgloss.NewStyle().MarginBottom(1).PaddingLeft(1).Render(inputView),
+				spacerStyle.Render(""),
+				statusBarStyle.Render(status),
+				statusBarStyle.Render(inputView),
 				mainContent,
-				lipgloss.NewStyle().Height(1).Render(""),
+				spacerStyle.Render(""),
 				footerStyle.Width(m.width-4).Render(footerContent),
 			),
 		)
@@ -211,9 +200,9 @@ func (m MainModel) View() string {
 			return outerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					lipgloss.JoinHorizontal(lipgloss.Center, titleStyle.Render("witr")),
-					lipgloss.NewStyle().Height(1).Render(""),
+					spacerStyle.Render(""),
 					lipgloss.NewStyle().Width(m.width-4).Height(m.height-7).Render("Loading details..."),
-					lipgloss.NewStyle().Height(1).Render(""),
+					spacerStyle.Render(""),
 					footerStyle.Width(m.width-4).Render(footerContent),
 				),
 			)
@@ -226,9 +215,7 @@ func (m MainModel) View() string {
 		detailWidth := int(float64(availableWidth) * 0.7)
 		envWidth := availableWidth - detailWidth
 
-		envContainerStyle := lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
-			PaddingLeft(1).
+		envContainerStyle := envPanelStyle.
 			Width(envWidth).
 			Height(m.viewport.Height + 2)
 
@@ -271,22 +258,16 @@ func (m MainModel) View() string {
 			lipgloss.NewStyle().Width(detailWidth).Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					detailHeader.Width(m.viewport.Width).Render(detailTitle),
-					lipgloss.NewStyle().PaddingLeft(1).Render(m.viewport.View()),
+					paddedStyle.Render(m.viewport.View()),
 				),
 			),
 			envContainerStyle.Render(
 				lipgloss.JoinVertical(lipgloss.Left,
 					envHeader.Width(m.envViewport.Width).Render(envTitle),
-					lipgloss.NewStyle().PaddingLeft(1).Render(m.envViewport.View()),
+					paddedStyle.Render(m.envViewport.View()),
 				),
 			),
 		)
-
-		pidStyle := lipgloss.NewStyle().
-			Background(lipgloss.Color("#22aa22")). // Green
-			Foreground(lipgloss.Color("#ffffff")). // White
-			Padding(0, 1).
-			Bold(true)
 
 		headerComponents := []string{
 			titleStyle.Render("witr"),
@@ -329,9 +310,9 @@ func (m MainModel) View() string {
 		return outerStyle.Render(
 			lipgloss.JoinVertical(lipgloss.Left,
 				lipgloss.JoinHorizontal(lipgloss.Center, headerComponents...),
-				lipgloss.NewStyle().Height(1).Render(""),
+				spacerStyle.Render(""),
 				splitContent,
-				lipgloss.NewStyle().Height(1).Render(""),
+				spacerStyle.Render(""),
 				footerStyle.Width(m.width-4).Render(footerContent),
 			),
 		)

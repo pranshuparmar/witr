@@ -15,15 +15,15 @@ import (
 // Maximum number of items to display in any list before truncating
 const MaxDisplayItems = 10
 
-// formatDetailLabel formats a detail key into a padded label for display
+var detailLabels = map[string]string{
+	"type":      "              Type",
+	"plist":     "              Plist",
+	"triggers":  "              Trigger",
+	"keepalive": "              KeepAlive",
+}
+
 func formatDetailLabel(key string) string {
-	labels := map[string]string{
-		"type":      "              Type",
-		"plist":     "              Plist",
-		"triggers":  "              Trigger",
-		"keepalive": "              KeepAlive",
-	}
-	if label, ok := labels[key]; ok {
+	if label, ok := detailLabels[key]; ok {
 		return label
 	}
 	return "              " + key

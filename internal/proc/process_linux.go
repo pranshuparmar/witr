@@ -196,7 +196,7 @@ func ReadProcess(pid int) (model.Process, error) {
 		forked = "not-forked"
 	}
 
-	startedAt := bootTime().Add(time.Duration(startTicks) * time.Second / ticksPerSecond())
+	startedAt := bootTime().Add(time.Duration(startTicks) * time.Second / time.Duration(ticksPerSecond()))
 
 	// Health: zombie/stopped
 	switch state {

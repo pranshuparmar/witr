@@ -15,13 +15,14 @@ import (
 func GetFileContext(pid int) *model.FileContext {
 	ctx := &model.FileContext{}
 
-	// Get open file count
-	openFiles, fileLimit := getOpenFileCount(pid)
+	// Run fstat once and reuse output for both open file count and lock detection
+	fstatOutput, _ := exec.Command("fstat", "-p", strconv.Itoa(pid)).Output()
+
+	openFiles, fileLimit := getOpenFileCount(fstatOutput, pid)
 	ctx.OpenFiles = openFiles
 	ctx.FileLimit = fileLimit
 
-	// Get locked files
-	ctx.LockedFiles = getLockedFiles(pid)
+	ctx.LockedFiles = getLockedFiles(fstatOutput)
 
 	// Only return if we have meaningful data to show
 	// Show if: high file usage (>50% of limit) or has locks
@@ -39,17 +40,13 @@ func GetFileContext(pid int) *model.FileContext {
 	return nil
 }
 
-// getOpenFileCount returns the number of open files and the limit for a process
-func getOpenFileCount(pid int) (int, int) {
-	// Use fstat to count open files
-	out, err := exec.Command("fstat", "-p", strconv.Itoa(pid)).Output()
-	if err != nil {
+func getOpenFileCount(fstatOut []byte, pid int) (int, int) {
+	if len(fstatOut) == 0 {
 		return 0, 0
 	}
 
-	// Count lines (subtract 1 for header)
 	openFiles := 0
-	for line := range strings.Lines(string(out)) {
+	for line := range strings.Lines(string(fstatOut)) {
 		if strings.TrimSpace(line) != "" {
 			openFiles++
 		}
@@ -96,17 +93,13 @@ func getFileLimit(pid int) int {
 	return 1024
 }
 
-// getLockedFiles returns files with locks held by the process
-func getLockedFiles(pid int) []string {
+func getLockedFiles(fstatOut []byte) []string {
 	var locked []string
-
-	// Use fstat to find file locks
-	out, err := exec.Command("fstat", "-p", strconv.Itoa(pid)).Output()
-	if err != nil {
+	if len(fstatOut) == 0 {
 		return locked
 	}
 
-	for line := range strings.Lines(string(out)) {
+	for line := range strings.Lines(string(fstatOut)) {
 		// Look for lock indicators in the output
 		if strings.Contains(line, ".lock") ||
 			strings.Contains(line, ".pid") ||

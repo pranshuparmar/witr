@@ -3,6 +3,7 @@
 package launchd
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"os"
@@ -169,7 +170,7 @@ func ParsePlist(path string) (*LaunchdInfo, error) {
 
 // parsePlistXML parses XML plist data into LaunchdInfo
 func parsePlistXML(data []byte, info *LaunchdInfo) error {
-	decoder := xml.NewDecoder(strings.NewReader(string(data)))
+	decoder := xml.NewDecoder(bytes.NewReader(data))
 
 	var currentKey string
 	var dictDepth int // Track dict nesting depth (1 = root dict)

@@ -104,6 +104,7 @@ func ResolvePort(port int) ([]int, error) {
 				inode, ok := strings.CutSuffix(rest, "]")
 				if ok && inodes[inode] {
 					pidSet[pid] = true
+					break
 				}
 			}
 		}

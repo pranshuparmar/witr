@@ -20,8 +20,8 @@ import (
 func GetFileContext(pid int) *model.FileContext {
 	var fileContext model.FileContext
 
-	// Count /proc/<pid>/fd entries for open files.
-	fdFiles, err := os.ReadDir(fmt.Sprintf("/proc/%v/fd", pid))
+	fdDir := fmt.Sprintf("/proc/%v/fd", pid)
+	fdFiles, err := os.ReadDir(fdDir)
 	if err != nil {
 		return nil
 	}
@@ -29,7 +29,7 @@ func GetFileContext(pid int) *model.FileContext {
 	fileContext.OpenFiles = len(fdFiles)
 	fileContext.FileLimit = getFileLimit(pid)
 	fileContext.LockedFiles = getLockedFiles(pid)
-	fileContext.WatchedDirs = getWatchedDirs(pid)
+	fileContext.WatchedDirs = getWatchedDirs(fdDir, fdFiles)
 
 	return &fileContext
 }
@@ -155,15 +155,9 @@ func getLockedFilesProc(pid int) []string {
 
 // get list of directories being accessed by the process
 // directories being watched/accessed (detectable via /proc/<pid>/fd)
-func getWatchedDirs(pid int) []string {
+func getWatchedDirs(fdDir string, entries []os.DirEntry) []string {
 	var result []string
 	seen := make(map[string]bool)
-
-	fdDir := fmt.Sprintf("/proc/%d/fd", pid)
-	entries, err := os.ReadDir(fdDir)
-	if err != nil {
-		return result
-	}
 
 	for _, entry := range entries {
 		path := fmt.Sprintf("%s/%s", fdDir, entry.Name())

@@ -8,6 +8,8 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
+var suspiciousDirs = map[string]bool{"/": true, "/tmp": true, "/var/tmp": true}
+
 type envSuspiciousRule struct {
 	pattern     string
 	match       func(key, pattern string) bool
@@ -180,8 +182,6 @@ func Warnings(p []model.Process, srcType ...model.SourceType) []string {
 		w = append(w, "Process has been running for over 90 days")
 	}
 
-	// Warn if working dir is suspicious
-	suspiciousDirs := map[string]bool{"/": true, "/tmp": true, "/var/tmp": true}
 	if suspiciousDirs[last.WorkingDir] {
 		w = append(w, "Process is running from a suspicious working directory: "+last.WorkingDir)
 	}

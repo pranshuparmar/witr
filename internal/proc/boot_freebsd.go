@@ -33,7 +33,7 @@ func bootTime() time.Time {
 	return time.Now()
 }
 
-func ticksPerSecond() time.Duration {
+func ticksPerSecond() int {
 	// FreeBSD default (same as Linux/macOS)
 	return 100
 }

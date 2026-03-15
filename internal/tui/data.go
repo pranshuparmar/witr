@@ -159,7 +159,7 @@ func (m *MainModel) filterProcesses() {
 			match = true
 		} else {
 			match = strings.Contains(cmd, filter) ||
-				strings.Contains(fmt.Sprintf("%d", p.PID), filter) ||
+				strings.Contains(strconv.Itoa(p.PID), filter) ||
 				strings.Contains(strings.ToLower(p.User), filter) ||
 				strings.Contains(strings.ToLower(p.Cmdline), filter)
 		}

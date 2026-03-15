@@ -32,6 +32,6 @@ func bootTime() time.Time {
 	return time.Now()
 }
 
-func ticksPerSecond() time.Duration {
+func ticksPerSecond() int {
 	return 100 // Linux default; portable enough for now
 }

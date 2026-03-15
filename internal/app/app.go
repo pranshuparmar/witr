@@ -161,28 +161,7 @@ func runApp(cmd *cobra.Command, args []string) error {
 		}
 		if len(pids) > 1 {
 			cmd.SilenceErrors = true
-			outp.Print("Multiple matching processes found:\n\n")
-			for i, pid := range pids {
-				proc, err := procpkg.ReadProcess(pid)
-				var command, cmdline string
-				if err != nil {
-					command = "unknown"
-					cmdline = procpkg.GetCmdline(pid)
-				} else {
-					command = proc.Command
-					cmdline = proc.Cmdline
-				}
-				if !noColorFlag {
-					outp.Printf("[%d] %s%s%s (%spid %d%s)\n    %s\n",
-						i+1, output.ColorGreen, command, output.ColorReset,
-						output.ColorDim, pid, output.ColorReset,
-						cmdline)
-				} else {
-					outp.Printf("[%d] %s (pid %d)\n    %s\n", i+1, command, pid, cmdline)
-				}
-			}
-			outp.Println("\nRe-run with:")
-			outp.Println("  witr --pid <pid> --env")
+			printMultiMatch(outp, pids, !noColorFlag, "witr --pid <pid> --env")
 			return fmt.Errorf("multiple processes found")
 		}
 		pid := pids[0]
@@ -259,32 +238,11 @@ func runApp(cmd *cobra.Command, args []string) error {
 
 	if len(pids) > 1 {
 		cmd.SilenceErrors = true
-		outp.Print("Multiple matching processes found:\n\n")
-		for i, pid := range pids {
-			proc, err := procpkg.ReadProcess(pid)
-			var command, cmdline string
-			if err != nil {
-				command = "unknown"
-				cmdline = procpkg.GetCmdline(pid)
-			} else {
-				command = proc.Command
-				cmdline = proc.Cmdline
-			}
-			if !noColorFlag {
-				outp.Printf("[%d] %s%s%s (%spid %d%s)\n    %s\n",
-					i+1, output.ColorGreen, command, output.ColorReset,
-					output.ColorDim, pid, output.ColorReset,
-					cmdline)
-			} else {
-				outp.Printf("[%d] %s (pid %d)\n    %s\n", i+1, command, pid, cmdline)
-			}
-		}
-		outp.Println("\nRe-run with:")
+		hint := "witr --pid <pid>"
 		if envFlag {
-			outp.Println("  witr --pid <pid> --env")
-		} else {
-			outp.Println("  witr --pid <pid>")
+			hint = "witr --pid <pid> --env"
 		}
+		printMultiMatch(outp, pids, !noColorFlag, hint)
 		return fmt.Errorf("multiple processes found")
 	}
 
@@ -368,6 +326,31 @@ func runInteractive() error {
 		v = ""
 	}
 	return tui.Start(v)
+}
+
+func printMultiMatch(outp output.Printer, pids []int, colorEnabled bool, hint string) {
+	outp.Print("Multiple matching processes found:\n\n")
+	for i, pid := range pids {
+		proc, err := procpkg.ReadProcess(pid)
+		var command, cmdline string
+		if err != nil {
+			command = "unknown"
+			cmdline = procpkg.GetCmdline(pid)
+		} else {
+			command = proc.Command
+			cmdline = proc.Cmdline
+		}
+		if colorEnabled {
+			outp.Printf("[%d] %s%s%s (%spid %d%s)\n    %s\n",
+				i+1, output.ColorGreen, command, output.ColorReset,
+				output.ColorDim, pid, output.ColorReset,
+				cmdline)
+		} else {
+			outp.Printf("[%d] %s (pid %d)\n    %s\n", i+1, command, pid, cmdline)
+		}
+	}
+	outp.Println("\nRe-run with:")
+	outp.Printf("  %s\n", hint)
 }
 
 func SetVersion(v string, c string, bd string) {
