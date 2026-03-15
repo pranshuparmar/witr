@@ -12,18 +12,18 @@ import (
 )
 
 // ReadExtendedInfo assembles the additional process facts.
-func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, []int, int, error) {
+// Child PID discovery is handled by the caller to avoid redundant process scans.
+func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, int, error) {
 	memInfo, threadCount, memErr := readDarwinTaskInfo(pid)
 	fdCount, fileDescs, fdErr := readDarwinFDs(pid)
 	ioStats, ioErr := readDarwinIO(pid)
 	fdLimit := detectDarwinFileLimit()
-	children := listDarwinChildren(pid)
 
 	if memErr != nil && fdErr != nil && ioErr != nil {
-		return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, errors.Join(memErr, fdErr, ioErr)
+		return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, errors.Join(memErr, fdErr, ioErr)
 	}
 
-	return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, nil
+	return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, nil
 }
 
 // detectDarwinFileLimit reads launchctl's maxfiles limit (soft cap) so we can
@@ -61,28 +61,4 @@ func parseLaunchctlLimitLine(line string) (uint64, bool) {
 		return 0, false
 	}
 	return limit, true
-}
-
-// Wrapper around pgrep(1).
-func listDarwinChildren(pid int) []int {
-	cmd := exec.Command("pgrep", "-P", strconv.Itoa(pid))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
-			return nil
-		}
-		return nil
-	}
-	var children []int
-	for line := range strings.Lines(string(out)) {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		if pidVal, err := strconv.Atoi(trimmed); err == nil {
-			children = append(children, pidVal)
-		}
-	}
-	return children
 }

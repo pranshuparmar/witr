@@ -11,12 +11,12 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-// ReadExtendedInfo reads extended process information for verbose output
-func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, []int, int, error) {
+// ReadExtendedInfo reads extended process information for verbose output.
+// Child PID discovery is handled by the caller to avoid redundant process scans.
+func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, int, error) {
 	var memInfo model.MemoryInfo
 	var ioStats model.IOStats
 	var fileDescs []string
-	var children []int
 	var threadCount int
 	var fdCount int
 	var fdLimit uint64
@@ -26,7 +26,7 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", psScript)
 	out, err := cmd.Output()
 	if err != nil {
-		return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, fmt.Errorf("powershell extended info: %w", err)
+		return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, fmt.Errorf("powershell extended info: %w", err)
 	}
 
 	lines := strings.Split(string(out), "\n")
@@ -64,21 +64,5 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 		}
 	}
 
-	childCmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ParentProcessId=%d\" | Select-Object ProcessId | ConvertTo-Csv -NoTypeInformation", pid))
-	if childOut, err := childCmd.Output(); err == nil {
-		childLines := strings.Split(string(childOut), "\n")
-		for _, line := range childLines {
-			line = strings.TrimSpace(line)
-			if line == "" || strings.HasPrefix(line, "\"ProcessId\"") {
-				continue
-			}
-			// "1234"
-			pidStr := strings.Trim(line, "\"")
-			if cpid, err := strconv.Atoi(pidStr); err == nil {
-				children = append(children, cpid)
-			}
-		}
-	}
-
-	return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, nil
+	return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, nil
 }

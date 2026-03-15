@@ -12,12 +12,11 @@ import (
 )
 
 // ReadExtendedInfo reads extended process information for verbose output on FreeBSD.
-// It uses `ps` to fetch memory usage and thread counts, similar to macOS.
-func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, []int, int, error) {
+// Child PID discovery is handled by the caller to avoid redundant process scans.
+func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, int, error) {
 	var memInfo model.MemoryInfo
 	var ioStats model.IOStats
 	var fileDescs []string
-	var children []int
 	var threadCount int
 	var fdCount int
 	var fdLimit uint64
@@ -67,19 +66,5 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 		}
 	}
 
-	// 4. Children resolution using pgrep
-	childCmd := exec.Command("pgrep", "-P", strconv.Itoa(pid))
-	if childOut, err := childCmd.Output(); err == nil {
-		lines := strings.Split(strings.TrimSpace(string(childOut)), "\n")
-		for _, line := range lines {
-			if line == "" {
-				continue
-			}
-			if cpid, err := strconv.Atoi(line); err == nil {
-				children = append(children, cpid)
-			}
-		}
-	}
-
-	return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, nil
+	return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, nil
 }

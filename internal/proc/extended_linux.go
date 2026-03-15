@@ -11,12 +11,12 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-// ReadExtendedInfo reads extended process information for verbose output
-func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, []int, int, error) {
+// ReadExtendedInfo reads extended process information for verbose output.
+// Child PID discovery is handled by the caller to avoid redundant /proc scans.
+func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, int, error) {
 	var memInfo model.MemoryInfo
 	var ioStats model.IOStats
 	var fileDescs []string
-	var children []int
 	var threadCount int
 	fdCount := 0
 	var fdLimit uint64
@@ -85,44 +85,8 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 		}
 	}
 
-	// Get file descriptor limit
-	if limitsData, err := os.ReadFile(fmt.Sprintf("/proc/%d/limits", pid)); err == nil {
-		lines := strings.Split(string(limitsData), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "Max open files") {
-				fields := strings.Fields(line)
-				if len(fields) >= 4 {
-					if fields[3] == "unlimited" {
-						fdLimit = 0
-					} else if limit, err := strconv.ParseUint(fields[3], 10, 64); err == nil {
-						fdLimit = limit
-					}
-				}
-				break
-			}
-		}
-	}
-
-	// Find child processes
-	if procEntries, err := os.ReadDir("/proc"); err == nil {
-		for _, entry := range procEntries {
-			if childPID, err := strconv.Atoi(entry.Name()); err == nil {
-				if statData, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", childPID)); err == nil {
-					raw := string(statData)
-					closeIdx := strings.LastIndex(raw, ")")
-					if closeIdx != -1 && closeIdx+2 < len(raw) {
-						rest := strings.Fields(raw[closeIdx+2:])
-						if len(rest) > 1 {
-							ppid, _ := strconv.Atoi(rest[1])
-							if ppid == pid {
-								children = append(children, childPID)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+	// Reuse the shared file limit parser
+	fdLimit = uint64(getFileLimit(pid))
 
 	// Get thread count from /proc/[pid]/status
 	if statusData, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", pid)); err == nil {
@@ -137,5 +101,5 @@ func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, 
 		}
 	}
 
-	return memInfo, ioStats, fileDescs, fdCount, fdLimit, children, threadCount, nil
+	return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, nil
 }

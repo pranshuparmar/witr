@@ -16,18 +16,27 @@ import (
 func ResolveName(name string, exact bool) ([]int, error) {
 	var procPIDs []int
 
-	// Process name and command line matching (case-insensitive, substring or exact)
 	entries, _ := os.ReadDir("/proc")
 	lowerName := strings.ToLower(name)
 	selfPid := os.Getpid()
 
-	// Resolve own ancestry to exclude parents (sudo, shell, etc.) from matching
-	ignoredPids := make(map[int]bool)
-	ignoredPids[selfPid] = true
-	if ancestry, err := procpkg.ResolveAncestry(selfPid); err == nil {
-		for _, p := range ancestry {
-			ignoredPids[p.PID] = true
+	// Build ignored PID set lazily — only resolve ancestry if we actually
+	// need to filter matches (avoids walking the chain on every invocation)
+	var ignoredPids map[int]bool
+	isIgnored := func(pid int) bool {
+		if pid == selfPid {
+			return true
 		}
+		if ignoredPids == nil {
+			ignoredPids = make(map[int]bool)
+			ignoredPids[selfPid] = true
+			if ancestry, err := procpkg.ResolveAncestry(selfPid); err == nil {
+				for _, p := range ancestry {
+					ignoredPids[p.PID] = true
+				}
+			}
+		}
+		return ignoredPids[pid]
 	}
 
 	for _, e := range entries {
@@ -36,13 +45,11 @@ func ResolveName(name string, exact bool) ([]int, error) {
 			continue
 		}
 
-		// Prevent matching the PID itself as a name
 		if lowerName == strconv.Itoa(pid) {
 			continue
 		}
 
-		// Exclude self and ancestry (parent, witr, sudo, etc.)
-		if ignoredPids[pid] {
+		if isIgnored(pid) {
 			continue
 		}
 
@@ -56,7 +63,6 @@ func ResolveName(name string, exact bool) ([]int, error) {
 				match = strings.Contains(commLower, lowerName)
 			}
 			if match {
-				// Exclude grep-like processes
 				if !strings.Contains(commLower, "grep") {
 					procPIDs = append(procPIDs, pid)
 				}
@@ -66,13 +72,10 @@ func ResolveName(name string, exact bool) ([]int, error) {
 
 		cmdline, err := os.ReadFile("/proc/" + e.Name() + "/cmdline")
 		if err == nil {
-			// cmdline is null-separated
 			cmd := strings.ReplaceAll(string(cmdline), "\x00", " ")
 			cmdLower := strings.ToLower(cmd)
-			// Exclude self, parent, and grep
 			var match bool
 			if exact {
-				// For cmdline, exact match means ANY argument must match the query token exactly
 				parts := strings.Fields(cmdLower)
 				for _, part := range parts {
 					if part == lowerName {
@@ -89,10 +92,8 @@ func ResolveName(name string, exact bool) ([]int, error) {
 		}
 	}
 
-	// Service detection (systemd)
 	servicePID, _ := resolveSystemdServiceMainPID(name)
 
-	// Merge and dedupe matches, keeping service PID first.
 	seen := map[int]bool{}
 	var procUnique []int
 	for _, pid := range procPIDs {

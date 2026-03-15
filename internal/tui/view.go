@@ -58,7 +58,7 @@ func (m MainModel) View() string {
 		treeHeader := "Details"
 		selected := m.table.SelectedRow()
 		if len(selected) > 0 {
-			treeHeader = fmt.Sprintf("PID %s", selected[0])
+			treeHeader = fmt.Sprintf("PID %s", strings.TrimSpace(selected[0]))
 		}
 
 		if !m.treeViewport.AtTop() && !m.treeViewport.AtBottom() {

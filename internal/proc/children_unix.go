@@ -15,7 +15,7 @@ func ResolveChildren(pid int) ([]model.Process, error) {
 		return nil, fmt.Errorf("invalid pid")
 	}
 
-	processes, err := listProcessSnapshot()
+	processes, err := ListProcessSnapshot()
 	if err != nil {
 		return nil, err
 	}
