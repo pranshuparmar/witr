@@ -42,14 +42,15 @@ func detectSupervisor(ancestry []model.Process) *model.Source {
 	// Check if there's a shell in the ancestry
 	hasShell := false
 	for _, p := range ancestry {
-		if shells[p.Command] {
+		if shells[filepath.Base(p.Command)] {
 			hasShell = true
 			break
 		}
 	}
 
 	for _, p := range ancestry {
-		if p.Command == "init" || strings.HasSuffix(p.Command, "/init") {
+		base := filepath.Base(p.Command)
+		if base == "init" {
 			if !hasShell {
 				return &model.Source{
 					Type: model.SourceSupervisor,
@@ -58,7 +59,7 @@ func detectSupervisor(ancestry []model.Process) *model.Source {
 			}
 		}
 
-		if label, ok := knownSupervisors[strings.ToLower(p.Command)]; ok {
+		if label, ok := knownSupervisors[strings.ToLower(base)]; ok {
 			if label == "init" && hasShell {
 				continue
 			}

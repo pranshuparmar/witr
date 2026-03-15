@@ -56,7 +56,7 @@ var userTools = map[string]bool{
 func detectShell(ancestry []model.Process) *model.Source {
 	// Scan from the end (target) backwards to find the closest shell OR user tool
 	// This ensures we get the direct parent rather than an ancestor
-	for i := len(ancestry) - 1; i >= 0; i-- {
+	for i := len(ancestry) - 2; i >= 0; i-- {
 		cmd := ancestry[i].Command
 		base := filepath.Base(cmd)
 

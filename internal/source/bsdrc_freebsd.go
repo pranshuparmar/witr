@@ -79,7 +79,7 @@ func detectBsdRc(ancestry []model.Process) *model.Source {
 
 		hasShell := false
 		for i := 0; i < len(ancestry)-1; i++ {
-			if shells[ancestry[i].Command] {
+			if shells[filepath.Base(ancestry[i].Command)] {
 				hasShell = true
 				break
 			}
