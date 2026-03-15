@@ -60,10 +60,10 @@ func detectShell(ancestry []model.Process) *model.Source {
 		cmd := ancestry[i].Command
 		base := filepath.Base(cmd)
 
-		if shells[cmd] {
+		if shells[base] {
 			return &model.Source{
 				Type: model.SourceShell,
-				Name: cmd,
+				Name: base,
 			}
 		}
 
