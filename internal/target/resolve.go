@@ -8,6 +8,26 @@ import (
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
+// matchesExactToken checks whether name matches any token in the cmdline,
+// including path components. For example, "core24" matches the argument
+// "/snap/core24/1349" because "core24" is a complete path segment.
+// Handles both forward slashes and backslashes as path separators.
+func matchesExactToken(cmdline, name string) bool {
+	for _, part := range strings.Fields(cmdline) {
+		if part == name {
+			return true
+		}
+		// Normalize backslashes to forward slashes for uniform splitting
+		normalized := strings.ReplaceAll(part, "\\", "/")
+		for _, seg := range strings.Split(normalized, "/") {
+			if seg == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func Resolve(t model.Target, exact bool) ([]int, error) {
 	val := strings.TrimSpace(t.Value)
 

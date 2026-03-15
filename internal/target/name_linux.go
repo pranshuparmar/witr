@@ -76,13 +76,7 @@ func ResolveName(name string, exact bool) ([]int, error) {
 			cmdLower := strings.ToLower(cmd)
 			var match bool
 			if exact {
-				parts := strings.Fields(cmdLower)
-				for _, part := range parts {
-					if part == lowerName {
-						match = true
-						break
-					}
-				}
+				match = matchesExactToken(cmdLower, lowerName)
 			} else {
 				match = strings.Contains(cmdLower, lowerName)
 			}
