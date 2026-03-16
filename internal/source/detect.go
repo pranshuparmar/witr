@@ -10,6 +10,21 @@ import (
 
 var suspiciousDirs = map[string]bool{"/": true, "/tmp": true, "/var/tmp": true}
 
+var dangerousCapabilities = map[string]bool{
+	"CAP_SYS_ADMIN":       true,
+	"CAP_SYS_PTRACE":      true,
+	"CAP_NET_RAW":         true,
+	"CAP_DAC_OVERRIDE":    true,
+	"CAP_DAC_READ_SEARCH": true,
+	"CAP_FOWNER":          true,
+	"CAP_SYS_MODULE":      true,
+	"CAP_SYS_RAWIO":       true,
+}
+
+func isDangerousCapability(cap string) bool {
+	return dangerousCapabilities[cap]
+}
+
 type envSuspiciousRule struct {
 	pattern     string
 	match       func(key, pattern string) bool
@@ -168,6 +183,16 @@ func Warnings(p []model.Process, srcType ...model.SourceType) []string {
 
 	if last.User == "root" {
 		w = append(w, "Process is running as root")
+	} else if len(last.Capabilities) > 0 {
+		var dangerous []string
+		for _, cap := range last.Capabilities {
+			if isDangerousCapability(cap) {
+				dangerous = append(dangerous, cap)
+			}
+		}
+		if len(dangerous) > 0 {
+			w = append(w, "Process has dangerous capabilities: "+strings.Join(dangerous, ", "))
+		}
 	}
 
 	st := model.SourceUnknown

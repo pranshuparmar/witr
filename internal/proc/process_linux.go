@@ -266,6 +266,7 @@ func ReadProcess(pid int) (model.Process, error) {
 		Forked:         forked,
 		Env:            env,
 		ExeDeleted:     isBinaryDeleted(pid),
+		Capabilities:   ReadCapabilities(pid),
 	}, nil
 }
 

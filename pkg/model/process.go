@@ -35,6 +35,9 @@ type Process struct {
 	// True if the executable was deleted after the process started
 	ExeDeleted bool
 
+	// Linux capabilities (e.g., CAP_NET_BIND_SERVICE, CAP_SYS_ADMIN)
+	Capabilities []string `json:",omitempty"`
+
 	// Extended information for verbose output
 	Memory      MemoryInfo `json:",omitempty"`
 	IO          IOStats    `json:",omitempty"`
