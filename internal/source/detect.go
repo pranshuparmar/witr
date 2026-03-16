@@ -40,6 +40,9 @@ func Detect(ancestry []model.Process) model.Source {
 	if src := detectContainer(ancestry); src != nil {
 		return *src
 	}
+	if src := detectSSH(ancestry); src != nil {
+		return *src
+	}
 	if src := detectShell(ancestry); src != nil {
 		return *src
 	}

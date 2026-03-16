@@ -9,6 +9,7 @@ const (
 	SourceBsdRc          SourceType = "bsdrc"
 	SourceSupervisor     SourceType = "supervisor"
 	SourceCron           SourceType = "cron"
+	SourceSSH            SourceType = "ssh"
 	SourceShell          SourceType = "shell"
 	SourceWindowsService SourceType = "windows_service"
 	SourceInit           SourceType = "init"
