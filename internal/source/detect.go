@@ -214,8 +214,8 @@ func Warnings(p []model.Process, srcType ...model.SourceType) []string {
 		w = append(w, "Process is running from a suspicious working directory: "+last.WorkingDir)
 	}
 
-	// Warn if container and no healthcheck (placeholder, as healthcheck not detected)
-	if last.Container != "" {
+	// Warn if container and no healthcheck (skip for snap/flatpak which don't use healthchecks)
+	if last.Container != "" && !strings.HasPrefix(last.Container, "snap:") && !strings.HasPrefix(last.Container, "flatpak:") {
 		w = append(w, "No healthcheck detected for container (best effort)")
 	}
 

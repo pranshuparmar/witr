@@ -120,6 +120,20 @@ func ReadProcess(pid int) (model.Process, error) {
 		}
 	}
 
+	// Snap/Flatpak sandbox detection via environment variables
+	if container == "" {
+		for _, e := range env {
+			if strings.HasPrefix(e, "SNAP_NAME=") {
+				container = "snap: " + e[len("SNAP_NAME="):]
+				break
+			}
+			if strings.HasPrefix(e, "FLATPAK_ID=") {
+				container = "flatpak: " + e[len("FLATPAK_ID="):]
+				break
+			}
+		}
+	}
+
 	// Service detection (try systemctl show for this PID)
 	service := ""
 	svcOut, err := exec.Command("systemctl", "status", fmt.Sprintf("%d", pid)).CombinedOutput()

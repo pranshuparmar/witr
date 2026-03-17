@@ -44,6 +44,26 @@ func detectContainer(ancestry []model.Process) *model.Source {
 			}
 		}
 	}
+
+	// Snap/Flatpak sandbox detection via environment variables
+	if len(ancestry) > 0 {
+		target := ancestry[len(ancestry)-1]
+		for _, e := range target.Env {
+			if strings.HasPrefix(e, "SNAP_NAME=") {
+				return &model.Source{
+					Type: model.SourceContainer,
+					Name: "snap",
+				}
+			}
+			if strings.HasPrefix(e, "FLATPAK_ID=") {
+				return &model.Source{
+					Type: model.SourceContainer,
+					Name: "flatpak",
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
