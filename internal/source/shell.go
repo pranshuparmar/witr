@@ -1,6 +1,7 @@
 package source
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -61,10 +62,12 @@ func detectShell(ancestry []model.Process) *model.Source {
 		base := filepath.Base(cmd)
 
 		if shells[base] {
-			return &model.Source{
+			src := &model.Source{
 				Type: model.SourceShell,
 				Name: base,
 			}
+			enrichMultiplexer(src, ancestry)
+			return src
 		}
 
 		// Normalize for Windows by stripping common executable extensions for the map lookup
@@ -78,19 +81,71 @@ func detectShell(ancestry []model.Process) *model.Source {
 		}
 
 		if userTools[lookupName] {
-			return &model.Source{
+			src := &model.Source{
 				Type: model.SourceShell,
 				Name: base,
 			}
+			enrichMultiplexer(src, ancestry)
+			return src
 		}
 
 		// Prefix matches for interpreters with versions or paths
 		if strings.HasPrefix(base, "python") || strings.HasPrefix(base, "node") {
-			return &model.Source{
+			src := &model.Source{
 				Type: model.SourceShell,
 				Name: base,
 			}
+			enrichMultiplexer(src, ancestry)
+			return src
 		}
 	}
 	return nil
+}
+
+// enrichMultiplexer checks if tmux or screen is in the ancestry and adds
+// session details to the source description.
+func enrichMultiplexer(src *model.Source, ancestry []model.Process) {
+	for i := 0; i < len(ancestry)-1; i++ {
+		base := filepath.Base(ancestry[i].Command)
+
+		if base == "tmux" || strings.HasPrefix(base, "tmux:") {
+			session := findEnvVar(ancestry, "TMUX")
+			desc := "tmux session"
+			if session != "" {
+				// TMUX env var format: /tmp/tmux-1000/default,12345,0
+				// The session name is between the last "/" and the first ","
+				if parts := strings.Split(session, ","); len(parts) >= 1 {
+					path := parts[0]
+					if idx := strings.LastIndex(path, "/"); idx >= 0 {
+						desc = fmt.Sprintf("tmux session '%s'", path[idx+1:])
+					}
+				}
+			}
+			src.Description = desc
+			return
+		}
+
+		if base == "screen" || strings.HasPrefix(base, "SCREEN") {
+			session := findEnvVar(ancestry, "STY")
+			desc := "screen session"
+			if session != "" {
+				desc = fmt.Sprintf("screen session '%s'", session)
+			}
+			src.Description = desc
+			return
+		}
+	}
+}
+
+// findEnvVar searches the ancestry chain (target first) for an environment variable.
+func findEnvVar(ancestry []model.Process, key string) string {
+	for i := len(ancestry) - 1; i >= 0; i-- {
+		for _, entry := range ancestry[i].Env {
+			k, v, ok := strings.Cut(entry, "=")
+			if ok && k == key {
+				return v
+			}
+		}
+	}
+	return ""
 }
