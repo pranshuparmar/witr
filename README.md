@@ -3,11 +3,11 @@
 # witr
 
 ### Why is this running?
+*with* [**Interactive TUI Mode**](#3-interactive-mode-tui) ✨
 
 [![Go Version](https://img.shields.io/github/go-mod/go-version/pranshuparmar/witr?style=flat-square)](https://github.com/pranshuparmar/witr/blob/main/go.mod) [![Go Report Card](https://goreportcard.com/badge/github.com/pranshuparmar/witr?style=flat-square)](https://goreportcard.com/report/github.com/pranshuparmar/witr) [![Release](https://img.shields.io/github/actions/workflow/status/pranshuparmar/witr/release.yml?style=flat-square)](https://github.com/pranshuparmar/witr/actions/workflows/release.yml) [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows%20%7C%20freebsd-blue?style=flat-square)](#6-platform-support) <br>
 [![Latest Release](https://img.shields.io/github/v/release/pranshuparmar/witr?label=Latest%20Release&style=flat-square)](https://github.com/pranshuparmar/witr/releases/latest) [![Package Managers](https://img.shields.io/badge/Package%20Managers-brew%20|%20conda%20|%20aur%20|%20winget%20|%20npm%20|%20ports%20|%20...%20-blue?style=flat-square)](https://repology.org/project/witr/versions)
 
-✨ *Introducing the new* [**Interactive TUI Mode**](#3-interactive-mode-tui)<br>
 📖 Read the [story](https://medium.com/@pranshu.parmar/witr-why-is-this-running-a9a97cbedd18) behind witr
 
 <img width="1232" height="693" alt="witr_banner" src="https://github.com/user-attachments/assets/e9c19ef0-1391-4a5f-a015-f4003d3697a9" />
@@ -430,6 +430,38 @@ man witr
 </details>
 
 <details>
+<summary><strong>Shell Completions</strong></summary>
+<br>
+
+`witr` supports tab completion for all flags. To enable it, add the appropriate line to your shell configuration:
+
+**Bash**
+```bash
+echo 'eval "$(witr completion bash)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Zsh**
+```zsh
+echo 'eval "$(witr completion zsh)"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Fish**
+```fish
+witr completion fish | source
+# To make it permanent:
+witr completion fish > ~/.config/fish/completions/witr.fish
+```
+
+**PowerShell**
+```powershell
+witr completion powershell | Out-String | Invoke-Expression
+# To make it permanent, add the above line to your $PROFILE
+```
+</details>
+
+<details>
 <summary><strong>Uninstallation</strong></summary>
 <br>
 
@@ -469,23 +501,25 @@ Running `witr` without any arguments or with the `-i` flag launches the **Intera
 ## 4. Flags & Options
 
 ```
-      --env           show environment variables for the process
-  -x, --exact         use exact name matching (no substring search)
-  -f, --file string   file path to find process for
-  -h, --help          help for witr
-  -i, --interactive   interactive mode (TUI)
-      --json          show result as JSON
-      --no-color      disable colorized output
-  -p, --pid string    pid to look up
-  -o, --port string   port to look up
-  -s, --short         show only ancestry
-  -t, --tree          show only ancestry as a tree
-      --verbose       show extended process information
-  -v, --version       version for witr
-      --warnings      show only warnings
+      --env              show environment variables for the process
+  -x, --exact            use exact name matching (no substring search)
+  -f, --file strings     file path(s) to find process for (repeatable)
+  -h, --help             help for witr
+  -i, --interactive      interactive mode (TUI)
+      --json             show result as JSON
+      --no-color         disable colorized output
+  -p, --pid strings      pid(s) to look up (repeatable)
+  -o, --port strings     port(s) to look up (repeatable)
+  -s, --short            show only ancestry
+  -t, --tree             show only ancestry as a tree
+      --verbose          show extended process information
+  -v, --version          version for witr
+      --warnings         show only warnings
 ```
 
-A single positional argument (without flags) is treated as a process or service name. By default, name matching uses substring matching (fuzzy search). Use `--exact` to match only processes with the exact name.
+Positional arguments (without flags) are treated as process or service names. Multiple names can be passed. By default, name matching uses substring matching (fuzzy search). Use `--exact` to match only processes with the exact name.
+
+All target flags (`--pid`, `--port`, `--file`) are repeatable and can be mixed with each other and with positional name arguments. When multiple targets are provided, results are shown sequentially with labeled dividers. All output modes (standard, short, tree, JSON, env, warnings, verbose) work with multiple inputs.
 
 The TUI is launched if no arguments or relevant flags (`--pid`, `--port`, `--file`) are provided, or if the `--interactive` flag is explicitly used.
 
@@ -593,6 +627,33 @@ Explains the process holding a file open.
 
 ---
 
+### 5.6 Multiple Inputs
+
+```bash
+witr nginx --port 5432 --pid 1234
+```
+
+```
+----- [name: nginx] -----
+Target      : nginx
+Process     : nginx (pid 2311)
+...
+
+----- [port: 5432] -----
+Target      : postgres
+Process     : postgres (pid 891)
+...
+
+----- [pid: 1234] -----
+Target      : node
+Process     : node (pid 1234)
+...
+```
+
+All target flags are repeatable and can be mixed. Results appear in the order you typed them. All output modes (`--short`, `--tree`, `--json`, `--env`, `--warnings`, `--verbose`) work with multiple inputs.
+
+---
+
 ## 6. Platform Support
 
 - **Linux** (x86_64, arm64) - Full feature support (`/proc`).
@@ -611,6 +672,7 @@ Explains the process holding a file open.
 | By PID | ✅ | ✅ | ✅ | ✅ | |
 | By Port | ✅ | ✅ | ✅ | ✅ | |
 | By File | ✅ | ✅ | ❌ | ✅ | |
+| Multiple/mixed inputs | ✅ | ✅ | ✅ | ✅ | Repeatable flags, mixed types. |
 | Exact Match | ✅ | ✅ | ✅ | ✅ | |
 | Full command line | ✅ | ✅ | ✅ | ✅ | |
 | Process start time | ✅ | ✅ | ✅ | ✅ | |
@@ -626,12 +688,17 @@ Explains the process holding a file open.
 | Configuration Source | ✅ | ✅ | ✅ | ✅ | Linux: Unit File, macOS: Plist, Windows: Registry Key, FreeBSD: Rc Script |
 | Supervisor | ✅ | ✅ | ✅ | ✅ | |
 | Containers | ✅ | ✅ | ✅ | ✅ | Docker (plus Compose mappings), Podman, K8s (Kubepods), Containerd. Colima on macOS/Linux. Jails on FreeBSD. |
+| SSH session detection | ✅ | ✅ | ✅ | ✅ | Detects remote IP and terminal. |
+| tmux/screen detection | ✅ | ✅ | ❌ | ✅ | Shows session name in source. |
+| Schedule detection | ✅ | ✅ | ❌ | ❌ | Linux: systemd timers, macOS: launchd intervals/calendar. |
+| Snap/Flatpak detection | ✅ | ❌ | ❌ | ❌ | |
 | **Health & Diagnostics** |
 | CPU usage detection | ✅ | ✅ | ✅ | ✅ | |
 | Memory usage detection | ✅ | ✅ | ✅ | ✅ | |
 | Health status detection | ✅ | ✅ | ✅ | ✅ | |
 | Open Files / Handles | ✅ | ✅ | ⚠️ | ✅ | Windows: count only. |
 | Deleted binary detection | ✅ | ✅ | ✅ | ✅ | Warns if executable is missing. |
+| Capability warnings | ✅ | ❌ | ❌ | ❌ | Warns about dangerous capabilities on non-root processes. |
 | **Context** |
 | Git repo/branch detection | ✅ | ✅ | ✅ | ✅ | |
 | **Interactive Mode (TUI)** |
@@ -734,6 +801,8 @@ witr returns meaningful exit codes for use in scripts, CI pipelines, and monitor
 | 3 | Permission denied: insufficient privileges |
 | 4 | Invalid input: bad arguments or ambiguous match |
 
+#### Example Usage:
+
 ```bash
 witr nginx --short
 case $? in
@@ -741,6 +810,7 @@ case $? in
   1) echo "Warnings detected" ;;
   2) echo "Process not running" ;;
   3) echo "Need elevated privileges" ;;
+  4) echo "Invalid input or ambiguous match" ;;
 esac
 ```
 
@@ -767,13 +837,14 @@ The primary system responsible for starting or supervising the process (best eff
 
 Examples:
 
-- systemd unit (Linux)
-- launchd service (macOS)
+- systemd unit with schedule info for timer-triggered services (Linux)
+- launchd service with schedule/trigger details (macOS)
 - SSH session (with remote IP and terminal)
 - docker container
 - pm2
 - cron
-- interactive shell
+- interactive shell (detects tmux/screen sessions)
+- Snap/Flatpak sandbox (Linux)
 
 Only **one primary source** is selected.
 
@@ -789,10 +860,12 @@ Only **one primary source** is selected.
 Non‑blocking observations such as:
 
 - Process is running as root
+- Dangerous Linux capabilities on non-root processes (CAP_SYS_ADMIN, etc.)
 - Process is listening on a public interface (0.0.0.0 / ::)
 - Restarted multiple times (warning only if above threshold)
 - Process is using high memory (>1GB RSS)
 - Process has been running for over 90 days
+- Deleted binary, library injection indicators (LD_PRELOAD, DYLD_*)
 
 ---
 

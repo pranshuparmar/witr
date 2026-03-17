@@ -6,7 +6,7 @@ witr - Why is this running?
 
 
 .SH SYNOPSIS
-\fBwitr [process name] [flags]\fP
+\fBwitr [process name...] [flags]\fP
 
 
 .SH DESCRIPTION
@@ -22,8 +22,8 @@ witr explains why a process or port is running by tracing its ancestry.
 	use exact name matching (no substring search)
 
 .PP
-\fB-f\fP, \fB--file\fP=""
-	file path to find process for
+\fB-f\fP, \fB--file\fP=[]
+	file path(s) to find process for (repeatable)
 
 .PP
 \fB-h\fP, \fB--help\fP[=false]
@@ -42,12 +42,12 @@ witr explains why a process or port is running by tracing its ancestry.
 	disable colorized output
 
 .PP
-\fB-p\fP, \fB--pid\fP=""
-	pid to look up
+\fB-p\fP, \fB--pid\fP=[]
+	pid(s) to look up (repeatable)
 
 .PP
-\fB-o\fP, \fB--port\fP=""
-	port to look up
+\fB-o\fP, \fB--port\fP=[]
+	port(s) to look up (repeatable)
 
 .PP
 \fB-s\fP, \fB--short\fP[=false]
@@ -107,5 +107,13 @@ witr explains why a process or port is running by tracing its ancestry.
 
   # Combine flags: inspect port, show environment variables, output JSON
   witr --port 8080 --env --json
+
+  # Multiple inputs
+  witr nginx node
+  witr --port 8080 --port 3000
+  witr --pid 1234 --pid 5678
+
+  # Mixed inputs
+  witr nginx --pid 1234 --port 8080
 
 .EE
