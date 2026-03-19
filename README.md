@@ -150,7 +150,7 @@ winget install -e --id PranshuParmar.witr
 </details>
 
 <details>
-<summary><strong>NPM (Cross-platform)</strong> <a href="https://www.npmjs.com/package/@pranshuparmar/witr"><img src="https://img.shields.io/static/v1?label=npm&message=v0.3.0&color=blue&style=flat-square" alt="NPM"></a></summary>
+<summary><strong>NPM (Cross-platform)</strong> <a href="https://www.npmjs.com/package/@pranshuparmar/witr"><img src="https://img.shields.io/npm/v/@pranshuparmar/witr?label=npm&color=blue&style=flat-square" alt="NPM"></a></summary>
 <br>
 
 You can install **witr** using [npm](https://www.npmjs.com/package/@pranshuparmar/witr):
@@ -257,7 +257,7 @@ aqua i pranshuparmar/witr
 </details>
 
 <details>
-<summary><strong>Brioche (Linux)</strong> <a href="https://github.com/brioche-dev/brioche-packages/tree/main/packages/witr"><img src="https://img.shields.io/static/v1?label=brioche&message=v0.2.7&color=blue&style=flat-square" alt="Brioche"></a></summary>
+<summary><strong>Brioche (Linux)</strong> <a href="https://github.com/brioche-dev/brioche-packages/tree/main/packages/witr"><img src="https://img.shields.io/static/v1?label=brioche&message=v0.3.0&color=blue&style=flat-square" alt="Brioche"></a></summary>
 <br>
 
 You can install **witr** using [brioche](https://brioche.dev/):
