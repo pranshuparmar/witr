@@ -275,11 +275,11 @@ You can install **witr** using [mise](https://mise.jdx.dev/):
 
 Latest version:
 ```bash
-mise use go:github.com/pranshuparmar/witr/cmd/witr
+mise use github:pranshuparmar/witr
 ```
 Specific version:
 ```bash
-mise use go:github.com/pranshuparmar/witr/cmd/witr@v.0.3.1
+mise use github:pranshuparmar/witr@v.0.3.1
 ```
 </details>
 
