@@ -268,6 +268,22 @@ brioche install -r witr
 </details>
 
 <details>
+<summary><strong>Mise (macOS, Linux & Windows)</strong></summary>
+<br>
+
+You can install **witr** using [mise](https://mise.jdx.dev/):
+
+Latest version:
+```bash
+mise use go:github.com/pranshuparmar/witr/cmd/witr
+```
+Specific version:
+```bash
+mise use go:github.com/pranshuparmar/witr/cmd/witr@v.0.3.1
+```
+</details>
+
+<details>
 <summary><strong>Prebuilt Packages (deb, rpm, apk)</strong></summary>
 <br>
 
