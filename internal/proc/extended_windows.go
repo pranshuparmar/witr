@@ -4,62 +4,103 @@ package proc
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
+	"syscall"
+	"unsafe"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
-// ReadExtendedInfo reads extended process information for verbose output.
-// Child PID discovery is handled by the caller to avoid redundant process scans.
+var (
+	modpsapi                  = syscall.NewLazyDLL("psapi.dll")
+	procGetProcessMemoryInfo  = modpsapi.NewProc("GetProcessMemoryInfo")
+	procGetProcessIoCounters  = modkernel32.NewProc("GetProcessIoCounters")
+	procGetProcessHandleCount = modkernel32.NewProc("GetProcessHandleCount")
+)
+
+// processMemoryCountersEx mirrors PROCESS_MEMORY_COUNTERS_EX. The CB field
+// must be set to sizeof(struct) before GetProcessMemoryInfo so Windows can
+// distinguish it from the non-EX variant.
+type processMemoryCountersEx struct {
+	CB                         uint32
+	PageFaultCount             uint32
+	PeakWorkingSetSize         uintptr
+	WorkingSetSize             uintptr
+	QuotaPeakPagedPoolUsage    uintptr
+	QuotaPagedPoolUsage        uintptr
+	QuotaPeakNonPagedPoolUsage uintptr
+	QuotaNonPagedPoolUsage     uintptr
+	PagefileUsage              uintptr
+	PeakPagefileUsage          uintptr
+	PrivateUsage               uintptr
+}
+
+type ioCounters struct {
+	ReadOperationCount  uint64
+	WriteOperationCount uint64
+	OtherOperationCount uint64
+	ReadTransferCount   uint64
+	WriteTransferCount  uint64
+	OtherTransferCount  uint64
+}
+
+// ReadExtendedInfo returns memory, I/O, thread, and handle counters for a
+// PID. File descriptors and FD limit are zero-valued on Windows.
 func ReadExtendedInfo(pid int) (model.MemoryInfo, model.IOStats, []string, int, uint64, int, error) {
 	var memInfo model.MemoryInfo
 	var ioStats model.IOStats
-	var fileDescs []string
 	var threadCount int
 	var fdCount int
-	var fdLimit uint64
 
-	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ProcessId=%d\" | ForEach-Object { \"HandleCount=$($_.HandleCount)\"; \"ReadOperationCount=$($_.ReadOperationCount)\"; \"ReadTransferCount=$($_.ReadTransferCount)\"; \"ThreadCount=$($_.ThreadCount)\"; \"VirtualSize=$($_.VirtualSize)\"; \"WorkingSetSize=$($_.WorkingSetSize)\"; \"WriteOperationCount=$($_.WriteOperationCount)\"; \"WriteTransferCount=$($_.WriteTransferCount)\" }", pid)
-	out, err := runPowerShell(psScript)
+	// Full access first, falling back to limited access for protected processes.
+	handle, err := syscall.OpenProcess(PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, false, uint32(pid))
 	if err != nil {
-		return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, fmt.Errorf("powershell extended info: %w", err)
-	}
-
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		val := strings.TrimSpace(parts[1])
-
-		switch key {
-		case "ReadOperationCount":
-			ioStats.ReadOps, _ = strconv.ParseUint(val, 10, 64)
-		case "ReadTransferCount":
-			ioStats.ReadBytes, _ = strconv.ParseUint(val, 10, 64)
-		case "WriteOperationCount":
-			ioStats.WriteOps, _ = strconv.ParseUint(val, 10, 64)
-		case "WriteTransferCount":
-			ioStats.WriteBytes, _ = strconv.ParseUint(val, 10, 64)
-		case "ThreadCount":
-			threadCount, _ = strconv.Atoi(val)
-		case "VirtualSize":
-			memInfo.VMS, _ = strconv.ParseUint(val, 10, 64)
-			memInfo.VMSMB = float64(memInfo.VMS) / (1024 * 1024)
-		case "WorkingSetSize":
-			memInfo.RSS, _ = strconv.ParseUint(val, 10, 64)
-			memInfo.RSSMB = float64(memInfo.RSS) / (1024 * 1024)
-		case "HandleCount":
-			fdCount, _ = strconv.Atoi(val)
+		handle, err = syscall.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+		if err != nil {
+			return memInfo, ioStats, nil, 0, 0, 0, fmt.Errorf("OpenProcess(%d): %w", pid, err)
 		}
 	}
+	defer syscall.CloseHandle(handle)
 
-	return memInfo, ioStats, fileDescs, fdCount, fdLimit, threadCount, nil
+	var pmc processMemoryCountersEx
+	pmc.CB = uint32(unsafe.Sizeof(pmc))
+	if ret, _, _ := procGetProcessMemoryInfo.Call(
+		uintptr(handle),
+		uintptr(unsafe.Pointer(&pmc)),
+		uintptr(pmc.CB),
+	); ret != 0 {
+		memInfo.RSS = uint64(pmc.WorkingSetSize)
+		memInfo.RSSMB = float64(memInfo.RSS) / (1024 * 1024)
+		memInfo.VMS = uint64(pmc.PrivateUsage)
+		memInfo.VMSMB = float64(memInfo.VMS) / (1024 * 1024)
+	}
+
+	var io ioCounters
+	if ret, _, _ := procGetProcessIoCounters.Call(
+		uintptr(handle),
+		uintptr(unsafe.Pointer(&io)),
+	); ret != 0 {
+		ioStats.ReadOps = io.ReadOperationCount
+		ioStats.ReadBytes = io.ReadTransferCount
+		ioStats.WriteOps = io.WriteOperationCount
+		ioStats.WriteBytes = io.WriteTransferCount
+	}
+
+	var hCount uint32
+	if ret, _, _ := procGetProcessHandleCount.Call(
+		uintptr(handle),
+		uintptr(unsafe.Pointer(&hCount)),
+	); ret != 0 {
+		fdCount = int(hCount)
+	}
+
+	if procs, err := enumerateProcesses(); err == nil {
+		for _, p := range procs {
+			if p.PID == pid {
+				threadCount = p.Threads
+				break
+			}
+		}
+	}
+
+	return memInfo, ioStats, nil, fdCount, 0, threadCount, nil
 }

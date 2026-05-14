@@ -2,21 +2,18 @@
 
 package proc
 
-import (
-	"fmt"
-	"strings"
-)
-
-// GetCmdline returns the command line for a given PID. Bounded by a short
-// PowerShell timeout so a stalled WMI provider can't hang the caller.
+// GetCmdline returns a best-effort identifier for a PID using the exe
+// basename from the ToolHelp32 snapshot. Used as a fallback in multi-match
+// output when ReadProcess itself failed.
 func GetCmdline(pid int) string {
-	out, err := runPowerShell(fmt.Sprintf("Get-CimInstance -ClassName Win32_Process -Filter \"ProcessId=%d\" | Select-Object -ExpandProperty CommandLine", pid))
+	procs, err := enumerateProcesses()
 	if err != nil {
 		return "(unknown)"
 	}
-	val := strings.TrimSpace(string(out))
-	if val == "" {
-		return "(unknown)"
+	for _, p := range procs {
+		if p.PID == pid && p.Exe != "" {
+			return p.Exe
+		}
 	}
-	return val
+	return "(unknown)"
 }

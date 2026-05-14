@@ -3,10 +3,8 @@
 package proc
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/pranshuparmar/witr/pkg/model"
 )
@@ -56,15 +54,11 @@ func isWindowsBinaryDeleted(path string) bool {
 	return os.IsNotExist(err)
 }
 
-// detectWindowsServiceSource checks if a PID belongs to a Windows Service via
-// Get-CimInstance. Bounded by a short timeout so a stalled WMI provider can't
-// hang the report — on timeout we return an empty string and the Service line
-// is just omitted.
+// detectWindowsServiceSource returns the Windows service name that owns the PID, if any.
 func detectWindowsServiceSource(pid int) string {
-	psScript := fmt.Sprintf("Get-CimInstance -ClassName Win32_Service -Filter \"ProcessId=%d\" | Select-Object -ExpandProperty Name", pid)
-	out, err := runPowerShell(psScript)
+	services, err := serviceMapForPIDs()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return services[pid]
 }
