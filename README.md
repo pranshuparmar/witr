@@ -663,7 +663,7 @@ All target flags are repeatable and can be mixed. Results appear in the order yo
 
 ---
 
-### 5.1 Feature Compatibility Matrix
+### 6.1 Feature Compatibility Matrix
 
 | Feature | Linux | macOS | Windows | FreeBSD | Notes |
 |---------|:-----:|:-----:|:-------:|:-------:|-------|
@@ -711,7 +711,7 @@ All target flags are repeatable and can be mixed. Results appear in the order yo
 
 ---
 
-### 5.2 Permissions Note
+### 6.2 Permissions Note
 
 #### Linux/FreeBSD
 
