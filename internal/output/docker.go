@@ -143,6 +143,14 @@ func RenderContainerFallback(w io.Writer, targetLabel string, match *model.Conta
 			out.Printf("Started     : %s (%s)\n", rel, dtStr)
 		}
 	}
+	if !match.CreatedAt.IsZero() && (match.StartedAt.IsZero() || !match.CreatedAt.Equal(match.StartedAt)) {
+		_, dtStr := FormatStartedAt(match.CreatedAt)
+		if colorEnabled {
+			out.Printf("%sCreated%s     : %s\n", ColorBlue, ColorReset, dtStr)
+		} else {
+			out.Printf("Created     : %s\n", dtStr)
+		}
+	}
 
 	if networks != "" {
 		if colorEnabled {
@@ -288,6 +296,7 @@ func ContainerFallbackToJSON(targetLabel string, match *model.ContainerMatch) (s
 		State             string `json:",omitempty"`
 		Status            string `json:",omitempty"`
 		Health            string `json:",omitempty"`
+		CreatedAt         string `json:",omitempty"`
 		StartedAt         string `json:",omitempty"`
 		Networks          string `json:",omitempty"`
 		Mounts            string `json:",omitempty"`
@@ -301,6 +310,10 @@ func ContainerFallbackToJSON(targetLabel string, match *model.ContainerMatch) (s
 		Note              string
 	}
 
+	created := ""
+	if !match.CreatedAt.IsZero() {
+		created = match.CreatedAt.Format("Mon 2006-01-02 15:04:05 -07:00")
+	}
 	started := ""
 	if !match.StartedAt.IsZero() {
 		started = match.StartedAt.Format("Mon 2006-01-02 15:04:05 -07:00")
@@ -316,6 +329,7 @@ func ContainerFallbackToJSON(targetLabel string, match *model.ContainerMatch) (s
 		State:             match.State,
 		Status:            match.Status,
 		Health:            match.Health,
+		CreatedAt:         created,
 		StartedAt:         started,
 		Networks:          match.Networks,
 		Mounts:            match.Mounts,

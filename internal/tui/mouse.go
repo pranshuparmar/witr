@@ -85,3 +85,65 @@ func (m *MainModel) handlePortHeaderClick(x int) {
 		}
 	}
 }
+
+func (m *MainModel) handleContainerHeaderClick(x int) {
+	cols := m.containerTable.Columns()
+	colIdx := m.getColumnAtX(x, cols)
+
+	if colIdx >= 0 {
+		newCol := ""
+		switch colIdx {
+		case 0:
+			newCol = "id"
+		case 1:
+			newCol = "name"
+		case 2:
+			newCol = "runtime"
+		case 3:
+			newCol = "image"
+		case 4:
+			newCol = "status"
+		}
+
+		if newCol != "" {
+			if m.sortContainerCol == newCol {
+				m.sortContainerDesc = !m.sortContainerDesc
+			} else {
+				m.sortContainerCol = newCol
+				m.sortContainerDesc = false
+			}
+			m.updateContainerTable()
+		}
+	}
+}
+
+func (m *MainModel) handleLockHeaderClick(x int) {
+	cols := m.lockTable.Columns()
+	colIdx := m.getColumnAtX(x, cols)
+
+	if colIdx >= 0 {
+		newCol := ""
+		switch colIdx {
+		case 0:
+			newCol = "pid"
+		case 1:
+			newCol = "process"
+		case 2:
+			newCol = "type"
+		case 3:
+			newCol = "mode"
+		case 4:
+			newCol = "path"
+		}
+
+		if newCol != "" {
+			if m.sortLockCol == newCol {
+				m.sortLockDesc = !m.sortLockDesc
+			} else {
+				m.sortLockCol = newCol
+				m.sortLockDesc = false
+			}
+			m.updateLockTable()
+		}
+	}
+}

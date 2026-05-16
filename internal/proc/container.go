@@ -55,7 +55,7 @@ func ResolveContainerByPort(port int) *model.ContainerMatch {
 		State:             parts[4],
 		Status:            parts[5],
 		Health:            healthFromStatus(parts[5]),
-		StartedAt:         parseDockerTime(parts[6]),
+		CreatedAt:         parseDockerTime(parts[6]),
 		Networks:          parts[7],
 		Mounts:            parts[8],
 		Ports:             parts[9],
@@ -71,30 +71,31 @@ func resolveContainerName(id, runtime string) string {
 	var cmd *exec.Cmd
 	var prefix string
 
+	ctx := context.Background()
 	switch runtime {
 	case "docker":
 		if _, err := exec.LookPath("docker"); err != nil {
 			return ""
 		}
-		cmd = exec.Command("docker", "inspect", id, "--format", "{{.Name}}|{{index .Config.Labels \"com.docker.compose.project\"}}|{{index .Config.Labels \"com.docker.compose.service\"}}")
+		cmd = exec.CommandContext(ctx, "docker", "inspect", id, "--format", "{{.Name}}|{{index .Config.Labels \"com.docker.compose.project\"}}|{{index .Config.Labels \"com.docker.compose.service\"}}")
 		prefix = "docker: "
 	case "podman":
 		if _, err := exec.LookPath("podman"); err != nil {
 			return ""
 		}
-		cmd = exec.Command("podman", "inspect", id, "--format", "{{.Name}}")
+		cmd = commandAsOriginalUser(ctx, "podman", "inspect", id, "--format", "{{.Name}}")
 		prefix = "podman: "
 	case "crictl":
 		if _, err := exec.LookPath("crictl"); err != nil {
 			return ""
 		}
-		cmd = exec.Command("crictl", "inspect", id, "-o", "go-template", "--template", "{{.status.metadata.name}}")
+		cmd = exec.CommandContext(ctx, "crictl", "inspect", id, "-o", "go-template", "--template", "{{.status.metadata.name}}")
 		prefix = "" // crictl names are usually clean
 	case "nerdctl":
 		if _, err := exec.LookPath("nerdctl"); err != nil {
 			return ""
 		}
-		cmd = exec.Command("nerdctl", "inspect", id, "--format", "{{.Name}}")
+		cmd = commandAsOriginalUser(ctx, "nerdctl", "inspect", id, "--format", "{{.Name}}")
 		prefix = "containerd: "
 	default:
 		return ""

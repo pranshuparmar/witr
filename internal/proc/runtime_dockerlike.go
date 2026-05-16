@@ -24,6 +24,14 @@ var (
 	}
 )
 
+// rootlessBins are runtime binaries whose container state is per-user
+// (rootless). When witr runs under sudo, we drop privileges back to the
+// original user for these so the user's containers stay visible.
+var rootlessBins = map[string]bool{
+	"podman":  true,
+	"nerdctl": true,
+}
+
 func dockerLikeList(bin, runtime string) []*model.ContainerMatch {
 	ctx, cancel := context.WithTimeout(context.Background(), runtimeQueryTimeout)
 	defer cancel()
@@ -45,7 +53,7 @@ func dockerLikeList(bin, runtime string) []*model.ContainerMatch {
 		"{{.Ports}}",
 		"{{.Labels}}",
 	}, "|")
-	out, err := exec.CommandContext(ctx, bin, "ps", "--no-trunc", "--format", format).Output()
+	out, err := runtimeCommand(ctx, bin, "ps", "--no-trunc", "--format", format).Output()
 	if err != nil {
 		return nil
 	}
@@ -70,7 +78,7 @@ func dockerLikeList(bin, runtime string) []*model.ContainerMatch {
 			State:             parts[4],
 			Status:            parts[5],
 			Health:            healthFromStatus(parts[5]),
-			StartedAt:         parseDockerTime(parts[6]),
+			CreatedAt:         parseDockerTime(parts[6]),
 			Networks:          parts[7],
 			Mounts:            parts[8],
 			Ports:             parts[9],
@@ -131,12 +139,46 @@ func parseDockerTime(s string) time.Time {
 func dockerLikeHostPID(bin, id string) int {
 	ctx, cancel := context.WithTimeout(context.Background(), runtimeQueryTimeout)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, bin, "inspect", "-f", "{{.State.Pid}}", id).Output()
+	out, err := runtimeCommand(ctx, bin, "inspect", "-f", "{{.State.Pid}}", id).Output()
 	if err != nil {
 		return 0
 	}
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(out)))
 	return pid
+}
+
+// dockerLikeEnrich fills in the container's actual start time via
+// `<bin> inspect --format '{{.State.StartedAt}}'`. The list scan only gives
+// us creation time, which is misleading for any container that was stopped
+// and restarted later.
+func dockerLikeEnrich(bin string, match *model.ContainerMatch) {
+	if match == nil || match.ID == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), runtimeQueryTimeout)
+	defer cancel()
+	out, err := runtimeCommand(ctx, bin, "inspect", "-f", "{{.State.StartedAt}}", match.ID).Output()
+	if err != nil {
+		return
+	}
+	s := strings.TrimSpace(string(out))
+	if s == "" || s == "0001-01-01T00:00:00Z" {
+		return
+	}
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		match.StartedAt = t
+	}
+}
+
+// runtimeCommand wraps exec.CommandContext but, for rootless-typical runtimes
+// (podman, nerdctl), drops privileges back to the original user when invoked
+// under sudo. Daemon-based runtimes (docker) are left as-is so users who rely
+// on `sudo` for docker socket access still work.
+func runtimeCommand(ctx context.Context, bin string, args ...string) *exec.Cmd {
+	if rootlessBins[bin] {
+		return commandAsOriginalUser(ctx, bin, args...)
+	}
+	return exec.CommandContext(ctx, bin, args...)
 }
 
 func binAvailable(name string) bool {

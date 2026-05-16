@@ -11,6 +11,7 @@ type ContainerMatch struct {
 	State             string
 	Status            string
 	Health            string
+	CreatedAt         time.Time
 	StartedAt         time.Time
 	Networks          string
 	Mounts            string
