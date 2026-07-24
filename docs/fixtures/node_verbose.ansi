@@ -1,0 +1,32 @@
+[94mTarget[0m      : node
+
+[94mProcess[0m     : [92mnode[0m ([90mpid 14233[0m)
+[94mUser[0m        : deploy
+[94mCommand[0m     : node /srv/expense-manager/index.js
+[95mStarted[0m     : 2 days ago (Tue 2026-07-21 09:20:40 +00:00)
+[95mRestarts[0m    : 3
+
+[95mWhy It Exists[0m :
+  systemd[0m ([90mpid 1[0m) [95m→[0m PM2 v5.3.1: God[0m ([90mpid 5034[0m) [95m→[0m [92mnode[0m ([90mpid 14233[0m)
+
+[96mSource[0m      : pm2-deploy.service (systemd)
+[96mDescription[0m : PM2 process manager for user deploy (app: expense-manager)
+[96mUnit File[0m   : /etc/systemd/system/pm2-deploy.service
+
+[96mWorking Dir[0m : /srv/expense-manager
+[96mGit Repo[0m    : expense-manager (main)
+[92mSockets[0m     : 127.0.0.1:5000 (TCP | LISTENING)
+
+
+[92mMemory[0m:
+  Virtual  : 1.1 GB
+  Resident : 179.0 MB
+  Shared   : 40.0 MB
+
+[92mI/O Statistics[0m:
+  Read  : 15.0 MB (2140 ops)
+  Write : 4.0 MB (512 ops)
+
+[92mFile Descriptors[0m: 34/1024
+
+[92mThreads[0m: 11

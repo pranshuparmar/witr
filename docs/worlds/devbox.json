@@ -1,0 +1,107 @@
+{
+  "id": "devbox",
+  "name": "Developer laptop",
+  "hostname": "devbox",
+  "promptUser": "pranshu",
+  "promptHost": "devbox",
+  "kernel": "6.10.4-arch1-1",
+  "distro": "Arch Linux",
+  "arch": "x86_64",
+  "memTotalBytes": 17179869184,
+  "description": "A messy dev laptop: VS Code, a Vite dev server, a docker-compose shop stack, a zombie, a runaway ffmpeg, and a git lock nobody released.",
+  "processes": [
+    { "pid": 1, "cpuPercent": 0.1, "memory": { "vms": 178257920, "rss": 13631488, "shared": 8388608 }, "ppid": 0, "command": "systemd", "cmdline": "/sbin/init", "user": "root", "startedAgo": 259200,
+      "source": { "type": "init", "name": "systemd", "description": "PID 1, the system and service manager" } },
+    { "pid": 700, "cpuPercent": 0.0, "memory": { "vms": 16777216, "rss": 8388608, "shared": 6291456 }, "ppid": 1, "command": "sshd", "cmdline": "sshd: /usr/sbin/sshd -D [listener]", "user": "root", "startedAgo": 259200,
+      "sockets": [ { "address": "0.0.0.0", "port": 22, "protocol": "TCP", "state": "LISTEN" } ],
+      "source": { "type": "systemd", "name": "sshd.service", "unitFile": "/usr/lib/systemd/system/sshd.service", "description": "OpenSSH Daemon" } },
+    { "pid": 900, "cpuPercent": 0.3, "memory": { "vms": 1520435200, "rss": 54525952, "shared": 20971520 }, "ppid": 1, "command": "containerd", "cmdline": "/usr/bin/containerd", "user": "root", "startedAgo": 259200,
+      "source": { "type": "systemd", "name": "containerd.service", "description": "containerd container runtime" } },
+    { "pid": 950, "cpuPercent": 0.8, "memory": { "vms": 2097152000, "rss": 102760448, "shared": 35651584 }, "ppid": 1, "command": "dockerd", "cmdline": "/usr/bin/dockerd -H fd://", "user": "root", "startedAgo": 259200,
+      "source": { "type": "systemd", "name": "docker.service", "unitFile": "/usr/lib/systemd/system/docker.service", "description": "Docker Application Container Engine" } },
+
+    { "pid": 2200, "cpuPercent": 0.0, "memory": { "vms": 25165824, "rss": 11534336, "shared": 7340032 }, "ppid": 1, "command": "systemd", "cmdline": "/lib/systemd/systemd --user", "user": "pranshu", "startedAgo": 86400,
+      "source": { "type": "systemd", "name": "user@1000.service", "description": "User Manager for UID 1000" } },
+    { "pid": 2260, "cpuPercent": 1.2, "memory": { "vms": 94371840, "rss": 19922944, "shared": 12582912 }, "ppid": 2200, "command": "pipewire", "cmdline": "/usr/bin/pipewire", "user": "pranshu", "startedAgo": 86400 },
+    { "pid": 2280, "cpuPercent": 0.5, "memory": { "vms": 754974720, "rss": 71303168, "shared": 31457280 }, "ppid": 2200, "command": "gnome-terminal-", "cmdline": "/usr/lib/gnome-terminal-server", "user": "pranshu", "startedAgo": 82800,
+      "source": { "type": "systemd", "name": "gnome-terminal-server.service", "description": "GNOME Terminal Server" } },
+    { "pid": 2281, "cpuPercent": 0.0, "memory": { "vms": 12582912, "rss": 6291456, "shared": 4194304 }, "ppid": 2280, "command": "bash", "cmdline": "bash", "user": "pranshu", "startedAgo": 82800, "workingDir": "/home/pranshu/projects/shop" },
+    { "pid": 2400, "cpuPercent": 3.1, "ppid": 2281, "command": "node", "cmdline": "node /home/pranshu/projects/shop/node_modules/.bin/vite",
+      "user": "pranshu", "startedAgo": 5400, "workingDir": "/home/pranshu/projects/shop", "gitRepo": "shop", "gitBranch": "feat/checkout",
+      "sockets": [ { "address": "::", "port": 5173, "protocol": "TCP", "state": "LISTEN" }, { "address": "127.0.0.1", "port": 5173, "protocol": "TCP", "state": "LISTEN" } ],
+      "threadCount": 7, "fdCount": 61, "fdLimit": 1024,
+      "memory": { "vms": 987654321, "rss": 268435456, "shared": 33554432 },
+      "env": ["NODE_ENV=development", "VITE_API_URL=http://localhost:8080", "PATH=/usr/local/bin:/usr/bin:/bin"],
+      "source": { "type": "shell", "name": "bash", "description": "Started from an interactive shell (pid 2281) via npm run dev" } },
+    { "pid": 2455, "cpuPercent": 1.4, "memory": { "vms": 67108864, "rss": 35651584, "shared": 6291456 }, "ppid": 2400, "command": "esbuild", "cmdline": "/home/pranshu/projects/shop/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.23.0 --ping", "user": "pranshu", "startedAgo": 5400 },
+
+    { "pid": 3400, "cpuPercent": 1.8, "memory": { "vms": 1258291200, "rss": 199229440, "shared": 83886080 }, "ppid": 2200, "command": "code", "cmdline": "/usr/share/code/code --unity-launch", "user": "pranshu", "startedAgo": 79200,
+      "source": { "type": "systemd", "name": "app-code@autostart.service", "description": "Visual Studio Code" } },
+    { "pid": 3410, "cpuPercent": 0.0, "memory": { "vms": 293601280, "rss": 44040192, "shared": 31457280 }, "ppid": 3400, "command": "code", "cmdline": "/usr/share/code/code --type=zygote", "user": "pranshu", "startedAgo": 79200 },
+    { "pid": 3455, "cpuPercent": 2.6, "memory": { "vms": 713031680, "rss": 123731968, "shared": 54525952 }, "ppid": 3400, "command": "code", "cmdline": "/usr/share/code/code --type=gpu-process", "user": "pranshu", "startedAgo": 79200 },
+    { "pid": 3470, "cpuPercent": 4.2, "memory": { "vms": 1572864000, "rss": 356515840, "shared": 99614720 }, "ppid": 3400, "command": "code", "cmdline": "/usr/share/code/code --type=renderer", "user": "pranshu", "startedAgo": 79200 },
+    { "pid": 3520, "cpuPercent": 2.1, "memory": { "vms": 1310720000, "rss": 272629760, "shared": 73400320 }, "ppid": 3400, "command": "code", "cmdline": "/usr/share/code/code --type=extensionHost", "user": "pranshu", "startedAgo": 79200 },
+    { "pid": 3560, "cpuPercent": 1.7, "memory": { "vms": 943718400, "rss": 178257920, "shared": 41943040 }, "ppid": 3520, "command": "node", "cmdline": "node /home/pranshu/.vscode/extensions/typescript/tsserver.js", "user": "pranshu", "startedAgo": 79200,
+      "source": { "type": "shell", "name": "code", "description": "TypeScript language server spawned by a VS Code extension host (pid 3520)" } },
+
+    { "pid": 6001, "memory": { "vms": 2411724800, "rss": 492830720, "shared": 41943040 }, "ppid": 2281, "command": "ffmpeg", "cmdline": "ffmpeg -i input.mov -c:v libx264 -preset veryslow out.mp4",
+      "user": "pranshu", "startedAgo": 900, "health": "high-cpu", "cpuPercent": 98.4, "workingDir": "/home/pranshu/videos",
+      "threadCount": 16,
+      "warnings": ["Process is using high CPU (>2h total)"],
+      "source": { "type": "shell", "name": "bash", "description": "Started from an interactive shell (pid 2281)" } },
+
+    { "pid": 6100, "cpuPercent": 0.0, "memory": { "vms": 10485760, "rss": 4194304, "shared": 3145728 }, "ppid": 2281, "command": "build.sh", "cmdline": "/bin/bash ./build.sh", "user": "pranshu", "startedAgo": 600, "workingDir": "/home/pranshu/projects/shop" },
+    { "pid": 6120, "ppid": 6100, "command": "python3", "cmdline": "<defunct>", "user": "pranshu", "startedAgo": 480, "health": "zombie",
+      "warnings": ["Process is a zombie (defunct)"],
+      "source": { "type": "shell", "name": "build.sh", "description": "Child of a shell script (pid 6100) that never called wait()" } },
+
+    { "pid": 7300, "cpuPercent": 0.0, "memory": { "vms": 188743680, "rss": 15728640, "shared": 9437184 }, "ppid": 2281, "command": "git", "cmdline": "git commit -m wip", "user": "pranshu", "startedAgo": 300, "workingDir": "/home/pranshu/projects/shop",
+      "lockedFiles": ["/home/pranshu/projects/shop/.git/index.lock (WRITE)"],
+      "source": { "type": "shell", "name": "bash", "description": "Started from an interactive shell (pid 2281)" } }
+  ],
+  "containers": [
+    { "runtime": "docker", "id": "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90",
+      "name": "shop-web-1", "image": "nginx:1.27-alpine", "command": "nginx -g 'daemon off;'",
+      "state": "running", "status": "Up 2 hours", "health": "",
+      "createdAgo": 7300, "startedAgo": 7200, "networks": "shop_default", "mounts": "/home/pranshu/projects/shop/nginx.conf:/etc/nginx/nginx.conf:ro",
+      "ports": "0.0.0.0:8080->80/tcp", "composeProject": "shop", "composeService": "web",
+      "composeConfigFile": "/home/pranshu/projects/shop/docker-compose.yml", "composeWorkingDir": "/home/pranshu/projects/shop" },
+    { "runtime": "docker", "id": "b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1",
+      "name": "shop-api-1", "image": "node:20-alpine", "command": "node server.js",
+      "state": "running", "status": "Up 2 hours (healthy)", "health": "healthy",
+      "createdAgo": 7300, "startedAgo": 7200, "networks": "shop_default", "mounts": "shop_api-data:/data",
+      "ports": "0.0.0.0:3000->3000/tcp", "composeProject": "shop", "composeService": "api",
+      "composeConfigFile": "/home/pranshu/projects/shop/docker-compose.yml", "composeWorkingDir": "/home/pranshu/projects/shop" },
+    { "runtime": "docker", "id": "c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2",
+      "name": "shop-db-1", "image": "postgres:16-alpine", "command": "postgres",
+      "state": "running", "status": "Up 2 hours (healthy)", "health": "healthy",
+      "createdAgo": 7300, "startedAgo": 7200, "networks": "shop_default", "mounts": "shop_db-data:/var/lib/postgresql/data",
+      "ports": "127.0.0.1:5432->5432/tcp", "composeProject": "shop", "composeService": "db",
+      "composeConfigFile": "/home/pranshu/projects/shop/docker-compose.yml", "composeWorkingDir": "/home/pranshu/projects/shop" },
+    { "runtime": "docker", "id": "d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3",
+      "name": "shop-cache-1", "image": "redis:7-alpine", "command": "redis-server",
+      "state": "restarting", "status": "Restarting (1) 8 seconds ago", "health": "",
+      "createdAgo": 7300, "startedAgo": 30, "networks": "shop_default", "mounts": "",
+      "ports": "", "composeProject": "shop", "composeService": "cache",
+      "composeConfigFile": "/home/pranshu/projects/shop/docker-compose.yml", "composeWorkingDir": "/home/pranshu/projects/shop" }
+  ],
+  "locks": [
+    { "pid": 2400, "process": "node", "path": "/home/pranshu/projects/shop/node_modules/.vite/deps/_metadata.json", "type": "FLOCK", "mode": "WRITE" },
+    { "pid": 7300, "process": "git", "path": "/home/pranshu/projects/shop/.git/index.lock", "type": "FLOCK", "mode": "WRITE" }
+  ],
+  "socketOverrides": {
+    "5173": { "state": "LISTEN", "explanation": "A process is accepting new connections on this port.", "workaround": "" },
+    "8080": { "state": "LISTEN", "explanation": "A socket was found for the port, but the owning process runs inside a container namespace.", "workaround": "This port is published by the docker container shop-web-1." }
+  },
+  "fs": {
+    "/home/pranshu": ["projects/", "videos/", ".vscode/", ".config/", ".bashrc"],
+    "/home/pranshu/projects": ["shop/"],
+    "/home/pranshu/projects/shop": ["src/", "node_modules/", "docker-compose.yml", "package.json", "build.sh", ".git/"],
+    "/home/pranshu/videos": ["input.mov", "out.mp4"],
+    "/": ["bin/", "boot/", "dev/", "etc/", "home/", "opt/", "proc/", "root/", "run/", "srv/", "usr/", "var/"]
+  },
+  "files": {
+    "/home/pranshu/projects/shop/docker-compose.yml": "services:\n  web:   { image: nginx:1.27-alpine, ports: ['8080:80'] }\n  api:   { image: node:20-alpine, command: node server.js, ports: ['3000:3000'] }\n  db:    { image: postgres:16-alpine, ports: ['127.0.0.1:5432:5432'] }\n  cache: { image: redis:7-alpine }\n",
+    "/home/pranshu/projects/shop/build.sh": "#!/bin/bash\n# fires off a helper and forgets to wait for it -> zombie\npython3 ./tools/prewarm.py &\nnpm run build\n"
+  }
+}

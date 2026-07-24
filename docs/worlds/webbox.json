@@ -1,0 +1,129 @@
+{
+  "id": "webbox",
+  "name": "Web server box",
+  "hostname": "webbox",
+  "promptUser": "deploy",
+  "promptHost": "webbox",
+  "kernel": "6.8.0-45-generic",
+  "distro": "Ubuntu 24.04.1 LTS",
+  "arch": "x86_64",
+  "memTotalBytes": 4294967296,
+  "description": "A small production box: an Nginx front-end, a PM2-managed Node app, Postgres, a Redis container, and a stuck apt lock.",
+  "processes": [
+    {
+      "pid": 1, "cpuPercent": 0.1, "memory": { "vms": 176160768, "rss": 13631488, "shared": 8388608 }, "ppid": 0, "command": "systemd", "cmdline": "/sbin/init",
+      "user": "root", "startedAgo": 1814400,
+      "source": { "type": "init", "name": "systemd", "description": "PID 1, the system and service manager" }
+    },
+    { "pid": 402, "cpuPercent": 0.2, "memory": { "vms": 67108864, "rss": 16777216, "shared": 12582912 }, "ppid": 1, "command": "systemd-journald", "cmdline": "/lib/systemd/systemd-journald", "user": "root", "startedAgo": 1814400,
+      "source": { "type": "systemd", "name": "systemd-journald.service", "unitFile": "/lib/systemd/system/systemd-journald.service", "description": "Journal Service" } },
+    { "pid": 455, "cpuPercent": 0.0, "memory": { "vms": 25165824, "rss": 8388608, "shared": 6291456 }, "ppid": 1, "command": "systemd-logind", "cmdline": "/lib/systemd/systemd-logind", "user": "root", "startedAgo": 1814400,
+      "source": { "type": "systemd", "name": "systemd-logind.service", "unitFile": "/lib/systemd/system/systemd-logind.service", "description": "User Login Management" } },
+    { "pid": 690, "cpuPercent": 0.0, "memory": { "vms": 16777216, "rss": 4194304, "shared": 3145728 }, "ppid": 1, "command": "cron", "cmdline": "/usr/sbin/cron -f -P", "user": "root", "startedAgo": 1814400,
+      "source": { "type": "systemd", "name": "cron.service", "unitFile": "/lib/systemd/system/cron.service", "description": "Regular background program processing daemon" } },
+
+    { "pid": 711, "cpuPercent": 0.0, "memory": { "vms": 16777216, "rss": 8388608, "shared": 6291456 }, "ppid": 1, "command": "sshd", "cmdline": "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups",
+      "user": "root", "startedAgo": 1814400,
+      "sockets": [ { "address": "0.0.0.0", "port": 22, "protocol": "TCP", "state": "LISTEN" }, { "address": "::", "port": 22, "protocol": "TCP", "state": "LISTEN" } ],
+      "capabilities": ["CAP_NET_BIND_SERVICE", "CAP_SYS_CHROOT"],
+      "source": { "type": "systemd", "name": "ssh.service", "unitFile": "/lib/systemd/system/ssh.service", "description": "OpenBSD Secure Shell server" } },
+    { "pid": 40122, "cpuPercent": 0.0, "memory": { "vms": 18874368, "rss": 10485760, "shared": 7340032 }, "ppid": 711, "command": "sshd", "cmdline": "sshd: deploy [priv]", "user": "root", "startedAgo": 10800 },
+    { "pid": 40140, "cpuPercent": 0.1, "memory": { "vms": 18874368, "rss": 7340032, "shared": 5242880 }, "ppid": 40122, "command": "sshd", "cmdline": "sshd: deploy@pts/0", "user": "deploy", "startedAgo": 10800 },
+    { "pid": 40141, "cpuPercent": 0.0, "memory": { "vms": 12582912, "rss": 5242880, "shared": 3145728 }, "ppid": 40140, "command": "bash", "cmdline": "-bash", "user": "deploy", "startedAgo": 10800,
+      "workingDir": "/home/deploy",
+      "source": { "type": "ssh", "name": "sshd", "description": "Interactive shell from an SSH login session (sshd pid 40140)" } },
+    { "pid": 8123, "cpuPercent": 0.1, "memory": { "vms": 33554432, "rss": 23068672, "shared": 8388608 }, "ppid": 40141, "command": "python3", "cmdline": "python3 -m http.server 8000", "user": "deploy",
+      "startedAgo": 2400, "workingDir": "/home/deploy/share", "forked": "forked",
+      "sockets": [ { "address": "0.0.0.0", "port": 8000, "protocol": "TCP", "state": "LISTEN" } ],
+      "warnings": ["Process is listening on a public interface"],
+      "source": { "type": "shell", "name": "bash", "description": "Backgrounded from an interactive shell (pid 40141)" } },
+
+    { "pid": 1201, "cpuPercent": 0.0, "memory": { "vms": 67108864, "rss": 12582912, "shared": 5242880 }, "ppid": 1, "command": "nginx", "cmdline": "nginx: master process /usr/sbin/nginx -g daemon off;",
+      "user": "root", "startedAgo": 518400,
+      "sockets": [ { "address": "0.0.0.0", "port": 80, "protocol": "TCP", "state": "LISTEN" }, { "address": "0.0.0.0", "port": 443, "protocol": "TCP", "state": "LISTEN" } ],
+      "capabilities": ["CAP_NET_BIND_SERVICE"],
+      "source": { "type": "systemd", "name": "nginx.service", "unitFile": "/lib/systemd/system/nginx.service", "description": "A high performance web server and a reverse proxy server" } },
+    { "pid": 1202, "cpuPercent": 0.3, "memory": { "vms": 71303168, "rss": 17825792, "shared": 5242880 }, "ppid": 1201, "command": "nginx", "cmdline": "nginx: worker process", "user": "www-data", "startedAgo": 518400 },
+    { "pid": 1203, "cpuPercent": 0.2, "memory": { "vms": 71303168, "rss": 16777216, "shared": 5242880 }, "ppid": 1201, "command": "nginx", "cmdline": "nginx: worker process", "user": "www-data", "startedAgo": 518400 },
+
+    { "pid": 5034, "cpuPercent": 0.4, "memory": { "vms": 650117120, "rss": 65011712, "shared": 23068672 }, "ppid": 1, "command": "PM2 v5.3.1: God", "cmdline": "PM2 v5.3.1: God Daemon (/home/deploy/.pm2)",
+      "user": "deploy", "startedAgo": 432000,
+      "source": { "type": "systemd", "name": "pm2-deploy.service", "unitFile": "/etc/systemd/system/pm2-deploy.service", "description": "PM2 process manager for user deploy" } },
+    { "pid": 14233, "cpuPercent": 2.3, "ppid": 5034, "command": "node", "cmdline": "node /srv/expense-manager/index.js",
+      "user": "deploy", "startedAgo": 172800,
+      "workingDir": "/srv/expense-manager", "gitRepo": "expense-manager", "gitBranch": "main",
+      "sockets": [ { "address": "127.0.0.1", "port": 5000, "protocol": "TCP", "state": "LISTEN" } ],
+      "threadCount": 11, "fdCount": 34, "fdLimit": 1024,
+      "memory": { "vms": 1198765568, "rss": 187650048, "shared": 41943040 },
+      "io": { "readBytes": 15728640, "writeBytes": 4194304, "readOps": 2140, "writeOps": 512 },
+      "env": [
+        "NODE_ENV=production",
+        "PORT=5000",
+        "PM2_HOME=/home/deploy/.pm2",
+        "PM2_USAGE=CLI",
+        "DATABASE_URL=postgres://app@127.0.0.1:5432/expenses",
+        "REDIS_URL=redis://127.0.0.1:6379",
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "PWD=/srv/expense-manager"
+      ],
+      "source": { "type": "systemd", "name": "pm2-deploy.service", "unitFile": "/etc/systemd/system/pm2-deploy.service", "description": "PM2 process manager for user deploy (app: expense-manager)", "details": { "NRestarts": "3" } } },
+    { "pid": 14290, "cpuPercent": 0.6, "memory": { "vms": 786432000, "rss": 37748736, "shared": 14680064 }, "ppid": 40141, "command": "ngrok", "cmdline": "ngrok http 5000", "user": "deploy", "startedAgo": 3000,
+      "forked": "forked", "workingDir": "/home/deploy",
+      "sockets": [ { "address": "127.0.0.1", "port": 4040, "protocol": "TCP", "state": "LISTEN" } ],
+      "source": { "type": "shell", "name": "bash", "description": "Started from an interactive shell (pid 40141)" } },
+
+    { "pid": 1450, "cpuPercent": 0.4, "memory": { "vms": 1468006400, "rss": 50331648, "shared": 20971520 }, "ppid": 1, "command": "containerd", "cmdline": "/usr/bin/containerd", "user": "root", "startedAgo": 1814400,
+      "source": { "type": "systemd", "name": "containerd.service", "unitFile": "/lib/systemd/system/containerd.service", "description": "containerd container runtime" } },
+    { "pid": 1480, "cpuPercent": 0.7, "memory": { "vms": 1992294400, "rss": 96468992, "shared": 33554432 }, "ppid": 1, "command": "dockerd", "cmdline": "/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock", "user": "root", "startedAgo": 1814400,
+      "sockets": [ { "address": "0.0.0.0", "port": 2375, "protocol": "TCP", "state": "LISTEN" } ],
+      "source": { "type": "systemd", "name": "docker.service", "unitFile": "/lib/systemd/system/docker.service", "description": "Docker Application Container Engine" } },
+
+    { "pid": 2010, "cpuPercent": 0.5, "memory": { "vms": 230686720, "rss": 27262976, "shared": 16777216 }, "ppid": 1, "command": "postgres", "cmdline": "/usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/main",
+      "user": "postgres", "startedAgo": 518400,
+      "sockets": [ { "address": "127.0.0.1", "port": 5432, "protocol": "TCP", "state": "LISTEN" } ],
+      "source": { "type": "systemd", "name": "postgresql@16-main.service", "unitFile": "/lib/systemd/system/postgresql@.service", "description": "PostgreSQL Cluster 16-main" } },
+    { "pid": 2011, "cpuPercent": 0.3, "memory": { "vms": 232783872, "rss": 18874368, "shared": 10485760 }, "ppid": 2010, "command": "postgres", "cmdline": "postgres: 16/main: checkpointer", "user": "postgres", "startedAgo": 518400 },
+    { "pid": 2012, "cpuPercent": 0.2, "memory": { "vms": 231735296, "rss": 12582912, "shared": 10485760 }, "ppid": 2010, "command": "postgres", "cmdline": "postgres: 16/main: background writer", "user": "postgres", "startedAgo": 518400 },
+    { "pid": 2013, "cpuPercent": 0.1, "memory": { "vms": 231735296, "rss": 11534336, "shared": 10485760 }, "ppid": 2010, "command": "postgres", "cmdline": "postgres: 16/main: walwriter", "user": "postgres", "startedAgo": 518400 },
+
+    { "pid": 33871, "cpuPercent": 3.8, "memory": { "vms": 125829120, "rss": 60817408, "shared": 18874368 }, "ppid": 1, "command": "unattended-upgr", "cmdline": "/usr/bin/python3 /usr/bin/unattended-upgrade --download-only",
+      "user": "root", "startedAgo": 240,
+      "lockedFiles": ["/var/lib/dpkg/lock-frontend (WRITE)", "/var/lib/dpkg/lock (WRITE)"],
+      "source": { "type": "systemd", "name": "apt-daily-upgrade.service", "unitFile": "/lib/systemd/system/apt-daily-upgrade.service", "description": "Daily apt upgrade and clean activities" } }
+  ],
+  "containers": [
+    {
+      "runtime": "docker", "id": "3f9a1c2b7d4e8a5c1f0b2d3e4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b",
+      "name": "expense-manager-cache-1", "image": "redis:7-alpine",
+      "command": "docker-entrypoint.sh redis-server --appendonly yes",
+      "state": "running", "status": "Up 5 days (healthy)", "health": "healthy",
+      "createdAgo": 432600, "startedAgo": 432000,
+      "networks": "expense-manager_default", "mounts": "expense-manager_redis-data:/data",
+      "ports": "127.0.0.1:6379->6379/tcp",
+      "composeProject": "expense-manager", "composeService": "cache",
+      "composeConfigFile": "/srv/expense-manager/docker-compose.yml",
+      "composeWorkingDir": "/srv/expense-manager"
+    }
+  ],
+  "locks": [
+    { "pid": 33871, "process": "unattended-upgr", "path": "/var/lib/dpkg/lock-frontend", "type": "FLOCK", "mode": "WRITE" },
+    { "pid": 33871, "process": "unattended-upgr", "path": "/var/lib/dpkg/lock", "type": "POSIX", "mode": "WRITE" },
+    { "pid": 2010, "process": "postgres", "path": "/var/lib/postgresql/16/main/postmaster.pid", "type": "FLOCK", "mode": "WRITE" },
+    { "pid": 14233, "process": "node", "path": "/srv/expense-manager/.pid.lock", "type": "FLOCK", "mode": "WRITE" }
+  ],
+  "socketOverrides": {
+    "5000": { "state": "LISTEN", "explanation": "A process is accepting new connections on this port.", "workaround": "" },
+    "8000": { "state": "LISTEN", "explanation": "A process is accepting new connections on this port.", "workaround": "This is a throwaway python http.server bound to 0.0.0.0 — stop it with: kill 8123" }
+  },
+  "fs": {
+    "/home/deploy": ["share/", "app/", ".pm2/", ".bashrc", ".ssh/", "notes.txt"],
+    "/home/deploy/share": ["report.pdf", "backup.tar.gz"],
+    "/srv/expense-manager": ["index.js", "package.json", "ecosystem.config.js", "docker-compose.yml", ".git/", "node_modules/"],
+    "/": ["bin/", "boot/", "dev/", "etc/", "home/", "opt/", "proc/", "root/", "run/", "srv/", "usr/", "var/"]
+  },
+  "files": {
+    "/home/deploy/notes.txt": "Things to fix on webbox:\n- that python http.server on :8000 is still up (pid 8123). kill it.\n- pm2 restarted node 3x last week — check the logs\n- apt keeps grabbing the dpkg lock at odd hours (unattended-upgrades)\n- move redis off the default compose network\n",
+    "/srv/expense-manager/ecosystem.config.js": "module.exports = {\n  apps: [{\n    name: 'expense-manager',\n    script: 'index.js',\n    cwd: '/srv/expense-manager',\n    env: { NODE_ENV: 'production', PORT: 5000 }\n  }]\n};\n",
+    "/srv/expense-manager/docker-compose.yml": "services:\n  cache:\n    image: redis:7-alpine\n    command: redis-server --appendonly yes\n    ports:\n      - '127.0.0.1:6379:6379'\n    volumes:\n      - redis-data:/data\nvolumes:\n  redis-data:\n"
+  }
+}

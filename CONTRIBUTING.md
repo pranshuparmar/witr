@@ -105,6 +105,40 @@ Enhancement suggestions are tracked as [GitHub issues](https://github.com/pransh
 5. **Review**: Wait for a maintainer to review your PR. Address any feedback promptly.
 6. **Merge**: Once approved, a maintainer will merge your PR. We **strictly use Squash and Merge** to keep the `main` history clean.
 
+#### Validating the PR Check Locally
+
+You can validate the PR check workflow before pushing, either by running the commands manually or by using [`act`](https://github.com/nektos/act) to simulate GitHub Actions.
+
+**Option 1: Manual validation (fastest)**
+
+```bash
+# Check formatting
+test -z $(gofmt -l .)
+
+# Run static analysis
+go vet ./...
+
+# Run tests
+go test -v ./...
+
+# Verify cross-compilation
+GOOS=linux  GOARCH=amd64 go build -v ./cmd/witr
+GOOS=linux  GOARCH=arm64 go build -v ./cmd/witr
+GOOS=darwin GOARCH=amd64 go build -v ./cmd/witr
+GOOS=darwin GOARCH=arm64 go build -v ./cmd/witr
+```
+
+**Option 2: Using `act` (Docker required)**
+
+```bash
+# Run the specific job
+act -j validate
+act -j build
+
+# Or run the whole workflow for a pull_request event
+act pull_request
+```
+
 ### Improving Documentation
 
 Documentation improvements are always welcome! If you find a typo or want to clarify a section, feel free to open a PR.

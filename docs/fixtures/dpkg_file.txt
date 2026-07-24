@@ -1,0 +1,13 @@
+Target      : unattended-upgr
+
+Process     : unattended-upgr (pid 33871)
+User        : root
+Command     : /usr/bin/python3 /usr/bin/unattended-upgrade --download-only
+Started     : 4 min ago (Thu 2026-07-23 09:16:40 +00:00)
+
+Why It Exists :
+  systemd (pid 1) → unattended-upgr (pid 33871)
+
+Source      : apt-daily-upgrade.service (systemd)
+Description : Daily apt upgrade and clean activities
+Unit File   : /lib/systemd/system/apt-daily-upgrade.service

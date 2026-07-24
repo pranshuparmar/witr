@@ -1,0 +1,31 @@
+name: Playground
+
+# Fidelity guard for the interactive playground (docs/). The in-browser JS
+# engine must reproduce witr's real output byte-for-byte; golden fixtures were
+# generated from witr's own output package (docs/fixtures/gen). This replays the
+# engine against them on every change.
+#
+# Deployment is handled by GitHub Pages directly (Settings → Pages → Deploy from
+# a branch → main /docs), so there is no deploy job here.
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', '.github/workflows/playground.yml']
+  pull_request:
+    paths: ['docs/**', '.github/workflows/playground.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fidelity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check the engine against witr's golden fixtures
+        run: node docs/scripts/check-fixtures.mjs

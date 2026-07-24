@@ -1,0 +1,7 @@
+systemd[0m ([90mpid 1[0m)
+  [95m└─ [0msshd[0m ([90mpid 711[0m)
+    [95m└─ [0msshd[0m ([90mpid 40122[0m)
+      [95m└─ [0msshd[0m ([90mpid 40140[0m)
+        [95m└─ [0m[92mbash[0m ([90mpid 40141[0m)
+          [95m├─ [0mpython3 ([90mpid 8123[0m)
+          [95m└─ [0mngrok ([90mpid 14290[0m)

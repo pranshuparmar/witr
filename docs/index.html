@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>witr playground — why is this running?</title>
+  <meta name="description" content="An interactive, in-browser playground for witr. Investigate a simulated Linux box, learn every feature as a small mystery, and watch the causal chain light up." />
+  <meta property="og:title" content="witr playground" />
+  <meta property="og:description" content="Investigate a simulated Linux box with witr — a zero-install tutorial and sandbox for 'why is this running?'" />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <a class="brand-mark" href="https://github.com/pranshuparmar/witr" target="_blank" rel="noopener" title="witr on GitHub">witr</a>
+      <span class="brand-tag">playground</span>
+    </div>
+    <div class="host-chip" title="You are on a simulated machine">
+      <span class="host-dot"></span>
+      <span id="host-name">deploy@webbox</span>
+      <span class="host-sep">·</span>
+      <span id="host-distro" class="host-distro">Ubuntu · 0 procs</span>
+      <span class="sim-pill">simulated</span>
+    </div>
+    <nav class="top-actions">
+      <button id="btn-theme" class="btn btn-ghost btn-icon" title="Toggle light / dark theme" aria-label="Toggle theme">🌙</button>
+      <button id="btn-tutorial" class="btn btn-ghost" title="Toggle the guided tutorial">Tutorial</button>
+      <div class="top-menu" id="top-menu">
+        <button id="btn-tui" class="btn btn-ghost" title="Open the live TUI (or type witr)">⊞ TUI</button>
+        <button id="btn-scenario" class="btn btn-ghost" title="Switch the machine">Scenario</button>
+        <button id="btn-reset" class="btn btn-ghost" title="Clear the screen">Reset</button>
+        <button id="btn-install" class="btn btn-ghost" title="Install witr on your machine">⬇ Install</button>
+        <a class="btn btn-star" href="https://github.com/pranshuparmar/witr" target="_blank" rel="noopener" title="Star witr on GitHub">★ Star</a>
+      </div>
+      <button id="btn-menu" class="btn btn-ghost btn-icon" title="Menu" aria-label="Menu" aria-expanded="false">☰</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <div class="terminal-wrap area-term">
+      <div class="term-titlebar">
+        <span class="tdots"><i></i><i></i><i></i></span>
+        <span class="term-title" id="term-title">deploy@webbox: ~</span>
+        <span class="term-flag">bash</span>
+      </div>
+      <div id="terminal" tabindex="0"></div>
+      <div id="chips" class="chips"></div>
+      <div class="stats-note">anonymous, cookieless <a href="https://witr.goatcounter.com" target="_blank" rel="noopener">visit stats</a> — nothing is stored in your browser</div>
+    </div>
+
+    <div class="right-col">
+      <div id="tutorial" class="tutorial-panel"></div>
+      <div id="vsplit" class="vsplit" title="Drag to resize"><span class="vsplit-grip"></span></div>
+
+      <div class="view-panel" id="view-panel">
+        <div class="view-head">
+          <span class="view-title">processes · <span id="view-hint">click a row to inspect it</span></span>
+          <div class="view-toggle" role="group" aria-label="View">
+            <button class="vt active" data-view="tree" title="Readable, scrollable tree">Tree</button>
+            <button class="vt" data-view="map" title="3D constellation">Constellation</button>
+          </div>
+        </div>
+        <div id="tree-view" class="tree-view"></div>
+        <div class="map-wrap">
+          <canvas id="map-canvas"></canvas>
+          <div id="map-labels" class="map-labels"></div>
+          <div class="map-legend">
+            <button class="lg-item" data-legend="root" title="Highlight PID 1"><i class="lg lg-root"></i> pid 1</button>
+            <button class="lg-item" data-legend="listener" title="Highlight listeners"><i class="lg lg-listener"></i> listener</button>
+            <button class="lg-item" data-legend="proc" title="Highlight processes"><i class="lg lg-proc"></i> process</button>
+            <button class="lg-item" data-legend="warn" title="Highlight warnings"><i class="lg lg-warn"></i> warning</button>
+            <span class="lg-static"><i class="lg lg-hl"></i> active chain</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="scenario-modal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <h2>Pick a machine</h2>
+      <p class="modal-sub">Every scenario is a self-contained, simulated system. Switching resets the screen.</p>
+      <div class="scenario-grid">
+        <button class="scenario-card" data-scenario="webbox">
+          <span class="sc-name">Web server box</span>
+          <span class="sc-host">deploy@webbox · Ubuntu 24.04</span>
+          <span class="sc-desc">Nginx, a PM2-managed Node app, Postgres, a Redis container and a stuck apt lock. Ships with the guided tutorial.</span>
+          <span class="sc-tag">tutorial</span>
+        </button>
+        <button class="scenario-card" data-scenario="devbox">
+          <span class="sc-name">Developer laptop</span>
+          <span class="sc-host">pranshu@devbox · Arch Linux</span>
+          <span class="sc-desc">VS Code, a Vite dev server, a docker-compose stack, a zombie, a runaway ffmpeg and a git lock nobody released.</span>
+          <span class="sc-tag">sandbox</span>
+        </button>
+      </div>
+      <button class="modal-close" data-close-scenario>Close</button>
+    </div>
+  </div>
+
+  <div id="install-modal" class="modal" aria-hidden="true">
+    <div class="modal-card install-card">
+      <h2>Install witr</h2>
+      <p class="modal-sub">A single static binary for Linux, macOS, Windows &amp; FreeBSD. Pick your platform — click a command to copy it.</p>
+      <div class="install-grid">
+        <div class="install-os">
+          <div class="io-name">🐧 Linux</div>
+          <button class="io-cmd" data-copy="curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh | bash"><span class="io-label">Install script</span><code>curl -fsSL …/install.sh | bash</code><span class="io-copyicon">⧉</span></button>
+          <button class="io-cmd" data-copy="brew install witr"><span class="io-label">Homebrew</span><code>brew install witr</code><span class="io-copyicon">⧉</span></button>
+          <button class="io-cmd" data-copy="sudo apt install witr"><span class="io-label">APT · Debian/Ubuntu</span><code>sudo apt install witr</code><span class="io-copyicon">⧉</span></button>
+        </div>
+        <div class="install-os">
+          <div class="io-name">🍎 macOS</div>
+          <button class="io-cmd" data-copy="brew install witr"><span class="io-label">Homebrew</span><code>brew install witr</code><span class="io-copyicon">⧉</span></button>
+          <button class="io-cmd" data-copy="sudo port install witr"><span class="io-label">MacPorts</span><code>sudo port install witr</code><span class="io-copyicon">⧉</span></button>
+          <button class="io-cmd" data-copy="curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh | bash"><span class="io-label">Install script</span><code>curl -fsSL …/install.sh | bash</code><span class="io-copyicon">⧉</span></button>
+        </div>
+        <div class="install-os">
+          <div class="io-name">🪟 Windows</div>
+          <button class="io-cmd" data-copy="winget install -e --id PranshuParmar.witr"><span class="io-label">Winget</span><code>winget install -e --id PranshuParmar.witr</code><span class="io-copyicon">⧉</span></button>
+          <button class="io-cmd" data-copy="irm https://raw.githubusercontent.com/pranshuparmar/witr/main/install.ps1 | iex"><span class="io-label">PowerShell script</span><code>irm …/install.ps1 | iex</code><span class="io-copyicon">⧉</span></button>
+          <button class="io-cmd" data-copy="scoop install main/witr"><span class="io-label">Scoop</span><code>scoop install main/witr</code><span class="io-copyicon">⧉</span></button>
+        </div>
+        <div class="install-os">
+          <div class="io-name">😈 FreeBSD</div>
+          <button class="io-cmd" data-copy="pkg install witr"><span class="io-label">pkg</span><code>pkg install witr</code><span class="io-copyicon">⧉</span></button>
+          <button class="io-cmd" data-copy="curl -fsSL https://raw.githubusercontent.com/pranshuparmar/witr/main/install.sh | bash"><span class="io-label">Install script</span><code>curl -fsSL …/install.sh | bash</code><span class="io-copyicon">⧉</span></button>
+        </div>
+      </div>
+      <div class="install-foot">
+        <a class="install-more" href="https://github.com/pranshuparmar/witr#2-installation" target="_blank" rel="noopener">More methods &amp; package managers on GitHub →</a>
+        <button class="modal-close" data-close-install>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tui" class="tui" aria-hidden="true"></div>
+
+  <script type="module" src="js/app.js"></script>
+  <script data-goatcounter="https://witr.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+  <script>
+    // Close-scenario button (non-module handler for simplicity).
+    document.querySelector('[data-close-scenario]')?.addEventListener('click', () => {
+      document.getElementById('scenario-modal').classList.remove('open');
+    });
+  </script>
+</body>
+</html>

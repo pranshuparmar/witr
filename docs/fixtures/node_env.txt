@@ -1,0 +1,11 @@
+Process     : node (pid 14233)
+Command     : node /srv/expense-manager/index.js
+Environment :
+  NODE_ENV=production
+  PORT=5000
+  PM2_HOME=/home/deploy/.pm2
+  PM2_USAGE=CLI
+  DATABASE_URL=postgres://app@127.0.0.1:5432/expenses
+  REDIS_URL=redis://127.0.0.1:6379
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  PWD=/srv/expense-manager

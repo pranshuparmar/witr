@@ -1,0 +1,13 @@
+[94mTarget[0m      : unattended-upgr
+
+[94mProcess[0m     : [92munattended-upgr[0m ([90mpid 33871[0m)
+[94mUser[0m        : root
+[94mCommand[0m     : /usr/bin/python3 /usr/bin/unattended-upgrade --download-only
+[95mStarted[0m     : 4 min ago (Thu 2026-07-23 09:16:40 +00:00)
+
+[95mWhy It Exists[0m :
+  systemd[0m ([90mpid 1[0m) [95m→[0m [92munattended-upgr[0m ([90mpid 33871[0m)
+
+[96mSource[0m      : apt-daily-upgrade.service (systemd)
+[96mDescription[0m : Daily apt upgrade and clean activities
+[96mUnit File[0m   : /lib/systemd/system/apt-daily-upgrade.service

@@ -1,0 +1,26 @@
+[94mTarget[0m      : postgres
+
+[94mProcess[0m     : [92mpostgres[0m ([90mpid 2010[0m)
+[94mUser[0m        : postgres
+[94mCommand[0m     : /usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/main
+[95mStarted[0m     : 6 days ago (Fri 2026-07-17 09:20:40 +00:00)
+
+[95mWhy It Exists[0m :
+  systemd[0m ([90mpid 1[0m) [95m→[0m [92mpostgres[0m ([90mpid 2010[0m)
+
+[96mSource[0m      : postgresql@16-main.service (systemd)
+[96mDescription[0m : PostgreSQL Cluster 16-main
+[96mUnit File[0m   : /lib/systemd/system/postgresql@.service
+[92mSockets[0m     : 127.0.0.1:5432 (TCP | LISTENING)
+
+
+[92mMemory[0m:
+  Virtual  : 220.0 MB
+  Resident : 26.0 MB
+  Shared   : 16.0 MB
+[92mSocket[0m      : LISTENING
+
+[92mChildren[0m of postgres ([90mpid 2010[0m):
+  [95m├─ [0mpostgres ([90mpid 2011[0m)
+  [95m├─ [0mpostgres ([90mpid 2012[0m)
+  [95m└─ [0mpostgres ([90mpid 2013[0m)

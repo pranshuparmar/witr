@@ -1,0 +1,4 @@
+Process     : python3 (pid 8123)
+Command     : python3 -m http.server 8000
+Warnings    :
+  • Process is listening on a public interface

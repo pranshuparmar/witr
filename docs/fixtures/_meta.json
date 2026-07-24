@@ -1,0 +1,62 @@
+{
+  "cases": [
+    {
+      "kind": "name",
+      "mode": "standard",
+      "name": "node_standard",
+      "pid": "14233",
+      "value": "node"
+    },
+    {
+      "kind": "name",
+      "mode": "verbose",
+      "name": "node_verbose",
+      "pid": "14233",
+      "value": "node"
+    },
+    {
+      "kind": "port",
+      "mode": "short",
+      "name": "port5000_short",
+      "pid": "14233",
+      "value": "5000"
+    },
+    {
+      "kind": "pid",
+      "mode": "tree",
+      "name": "pid40141_tree",
+      "pid": "40141",
+      "value": "40141"
+    },
+    {
+      "kind": "file",
+      "mode": "standard",
+      "name": "dpkg_file",
+      "pid": "33871",
+      "value": "/var/lib/dpkg/lock"
+    },
+    {
+      "kind": "pid",
+      "mode": "warnings",
+      "name": "python_warnings",
+      "pid": "8123",
+      "value": "8123"
+    },
+    {
+      "kind": "pid",
+      "mode": "env",
+      "name": "node_env",
+      "pid": "14233",
+      "value": "14233"
+    },
+    {
+      "kind": "port",
+      "mode": "verbose",
+      "name": "postgres_port_verbose",
+      "pid": "2010",
+      "value": "5432"
+    }
+  ],
+  "generatedAtMs": 1784798440836,
+  "world": "webbox"
+}

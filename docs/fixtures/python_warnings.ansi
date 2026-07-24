@@ -1,0 +1,4 @@
+[94mProcess[0m     : [92mpython3[0m ([90mpid 8123[0m)
+[94mCommand[0m     : python3 -m http.server 8000
+[91mWarnings[0m    :
+  • Process is listening on a public interface
