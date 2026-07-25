@@ -105,7 +105,24 @@ const (
 	tabPorts
 	tabContainers
 	tabLocks
+	tabNetwork
 )
+
+// networkScope filters Host / Docker rows on the Network tab.
+type networkScope int
+
+const (
+	networkScopeAll networkScope = iota
+	networkScopeHost
+	networkScopeDocker
+)
+
+// networkEntry is one row in the combined Host + Docker network table.
+type networkEntry struct {
+	IsHost bool
+	Host   model.HostInterface
+	Net    model.DockerNetwork
+}
 
 type modelState int
 
@@ -156,10 +173,21 @@ type MainModel struct {
 	containers         []*model.ContainerMatch
 	filteredContainers []*model.ContainerMatch
 	selectedContainer  *model.ContainerMatch
+	selectedNetwork    *model.DockerNetwork
 	lockTable          table.Model
 	lockInput          textinput.Model
 	locks              []*model.LockedFile
 	filteredLocks      []*model.LockedFile
+	networkTable       table.Model
+	networkDetailTable table.Model
+	networkInput       textinput.Model
+	networks           []model.DockerNetwork
+	hostIfaces         []model.HostInterface
+	networkEntries     []networkEntry // combined Host + Docker rows
+	filteredEntries    []networkEntry
+	vethByBridge       map[string][]string
+	networkErr         string
+	networkHostSrc     string // "ipconfig", "ip addr", …
 	statusMsg          string // transient status/error message shown in status line
 	width              int
 	height             int
@@ -175,10 +203,14 @@ type MainModel struct {
 	sortContainerDesc bool
 	sortLockCol       string
 	sortLockDesc      bool
+	sortNetworkCol    string
+	sortNetworkDesc   bool
 	showAllPorts      bool
 	showAllFiles      bool
-	showCmdCol        bool
-	version           string
+	// networkScope filters the combined Network table: all | host | docker.
+	networkScope networkScope
+	showCmdCol   bool
+	version      string
 
 	// Mouse double-click tracking
 	lastClickTime time.Time
@@ -285,6 +317,34 @@ func InitialModel(version string) MainModel {
 	)
 	lt.SetStyles(s)
 
+	networkColumns := []table.Column{
+		{Title: "Source", Width: 8},
+		{Title: "Name", Width: 20},
+		{Title: "Kind", Width: 12},
+		{Title: "State", Width: 10},
+		{Title: "Address", Width: 22},
+		{Title: "Extra", Width: 18},
+	}
+	nt := table.New(
+		table.WithColumns(networkColumns),
+		table.WithFocused(true),
+		table.WithHeight(20),
+	)
+	nt.SetStyles(s)
+
+	ndCols := []table.Column{
+		{Title: "Status", Width: 8},
+		{Title: "Name", Width: 18},
+		{Title: "IP", Width: 20},
+		{Title: "MAC", Width: 18},
+	}
+	ndt := table.New(
+		table.WithColumns(ndCols),
+		table.WithFocused(false),
+		table.WithHeight(20),
+	)
+	ndt.SetStyles(s)
+
 	li := textinput.New()
 	li.Placeholder = "Search PID, Process, Type, Mode, Path..."
 	li.CharLimit = 156
@@ -292,6 +352,14 @@ func InitialModel(version string) MainModel {
 	li.Prompt = "> "
 	li.PromptStyle = promptStyle
 	li.Blur()
+
+	ni := textinput.New()
+	ni.Placeholder = "Search Name, Driver, Subnet, Gateway, Bridge..."
+	ni.CharLimit = 156
+	ni.Width = 50
+	ni.Prompt = "> "
+	ni.PromptStyle = promptStyle
+	ni.Blur()
 
 	ci := textinput.New()
 	ci.Placeholder = "Search ID, Name, Runtime, Image, Status, Ports, Command..."
@@ -333,33 +401,40 @@ func InitialModel(version string) MainModel {
 	ri.Blur()
 
 	return MainModel{
-		state:             stateList,
-		table:             t,
-		portTable:         pt,
-		portDetailTable:   pdt,
-		containerTable:    ct,
-		containerInput:    ci,
-		lockTable:         lt,
-		lockInput:         li,
-		input:             ti,
-		portInput:         pi,
-		viewport:          vp,
-		treeViewport:      tvp,
-		envViewport:       evp,
-		reniceInput:       ri,
-		detailFocus:       focusDetail,
-		listFocus:         focusMain,
-		activeTab:         tabProcesses,
-		sortCol:           "mem",
-		sortDesc:          true,
-		sortPortCol:       "port",
-		sortPortDesc:      false,
-		sortContainerCol:  "name",
-		sortContainerDesc: false,
-		sortLockCol:       "pid",
-		sortLockDesc:      false,
-		version:           version,
-		refreshEvery:      refreshInterval,
+		state:              stateList,
+		table:              t,
+		portTable:          pt,
+		portDetailTable:    pdt,
+		containerTable:     ct,
+		containerInput:     ci,
+		lockTable:          lt,
+		lockInput:          li,
+		networkTable:       nt,
+		networkDetailTable: ndt,
+		networkInput:       ni,
+		input:              ti,
+		portInput:          pi,
+		viewport:           vp,
+		treeViewport:       tvp,
+		envViewport:        evp,
+		reniceInput:        ri,
+		detailFocus:        focusDetail,
+		listFocus:          focusMain,
+		activeTab:          tabProcesses,
+		sortCol:            "mem",
+		sortDesc:           true,
+		sortPortCol:        "port",
+		sortPortDesc:       false,
+		sortContainerCol:   "name",
+		sortContainerDesc:  false,
+		sortLockCol:        "pid",
+		sortLockDesc:       false,
+		sortNetworkCol:     "name",
+		sortNetworkDesc:    false,
+		// Combined Host + Docker by default.
+		networkScope: networkScopeAll,
+		version:      version,
+		refreshEvery: refreshInterval,
 	}
 }
 

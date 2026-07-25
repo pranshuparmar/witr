@@ -27,7 +27,7 @@ func sized(t *testing.T, w, h int) MainModel {
 
 func TestViewListRendersEveryTab(t *testing.T) {
 	for _, sz := range [][2]int{{120, 40}, {80, 24}} {
-		for _, tabName := range []tab{tabProcesses, tabPorts, tabContainers, tabLocks} {
+		for _, tabName := range []tab{tabProcesses, tabPorts, tabContainers, tabLocks, tabNetwork} {
 			m := sized(t, sz[0], sz[1])
 			m.activeTab = tabName
 			out := m.View()

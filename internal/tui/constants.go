@@ -5,7 +5,7 @@ import "time"
 // Timing constants for the interactive TUI.
 const (
 	// refreshInterval is the auto-refresh cadence for the process/port/
-	// container/lock tabs. 3s mirrors top's default.
+	// container/lock/network tabs. 3s mirrors top's default.
 	refreshInterval = 3 * time.Second
 
 	// selectionDebounce delays the detail/tree fetch after the selection
@@ -22,9 +22,10 @@ const (
 // view renderer; keeping them in one place stops those three from drifting
 // apart (which would make clicks land on the wrong pane).
 const (
-	listPaneRatio   = 0.7 // process list vs. ancestry tree
-	detailPaneRatio = 0.7 // detail view vs. environment view
-	portPaneRatio   = 0.5 // port list vs. port detail
+	listPaneRatio    = 0.7 // process list vs. ancestry tree
+	detailPaneRatio  = 0.7 // detail view vs. environment view
+	portPaneRatio    = 0.5 // port list vs. port detail
+	networkPaneRatio = 0.5 // network list vs. attached containers
 )
 
 // Adaptive auto-refresh. The background-refresh cadence starts at

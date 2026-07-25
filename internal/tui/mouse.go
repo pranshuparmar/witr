@@ -147,3 +147,36 @@ func (m *MainModel) handleLockHeaderClick(x int) {
 		}
 	}
 }
+
+func (m *MainModel) handleNetworkHeaderClick(x int) {
+	cols := m.networkTable.Columns()
+	colIdx := m.getColumnAtX(x, cols)
+
+	if colIdx >= 0 {
+		newCol := ""
+		switch colIdx {
+		case 0:
+			newCol = "source"
+		case 1:
+			newCol = "name"
+		case 2:
+			newCol = "kind"
+		case 3:
+			newCol = "state"
+		case 4:
+			newCol = "address"
+		case 5:
+			newCol = "extra"
+		}
+
+		if newCol != "" {
+			if m.sortNetworkCol == newCol {
+				m.sortNetworkDesc = !m.sortNetworkDesc
+			} else {
+				m.sortNetworkCol = newCol
+				m.sortNetworkDesc = false
+			}
+			m.updateNetworkTable()
+		}
+	}
+}
