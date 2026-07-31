@@ -21,7 +21,9 @@ func ListProcesses() ([]model.Process, error) {
 	// "Microsoft Teams") which breaks the strings.Fields column parse used below;
 	// it is fetched separately via readPIDCommMap() so the display name is taken
 	// from an unambiguous source rather than re-derived from the space-joined args.
-	out, err := exec.Command("ps", "-axo", "pid,ppid,user,lstart,%cpu,rss,%mem,args").Output()
+	cmd := exec.Command("ps", "-axo", "pid,ppid,user,lstart,%cpu,rss,%mem,args")
+	cmd.Env = buildEnvForPS()
+	out, err := cmd.Output()
 	if err != nil {
 		// Fallback to fast snapshot if ps fails
 		return ListProcessSnapshot()
