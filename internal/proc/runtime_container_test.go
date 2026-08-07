@@ -167,6 +167,20 @@ func TestAppleContainerEnrichNil(t *testing.T) {
 	r.Enrich(&model.ContainerMatch{ID: ""})
 }
 
+func TestParseAppleContainerInspectJSON(t *testing.T) {
+	sample := `[{"status":{"startedDate":"2024-06-15T10:30:00Z"}}]`
+	entries, err := parseAppleContainerEntries([]byte(sample))
+	if err != nil {
+		t.Fatalf("failed to unmarshal inspect JSON: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if entries[0].Status.StartedDate != "2024-06-15T10:30:00Z" {
+		t.Errorf("StartedDate = %q, want 2024-06-15T10:30:00Z", entries[0].Status.StartedDate)
+	}
+}
+
 func TestAppleContainerListJSONParsing(t *testing.T) {
 	// Validate the JSON schema we expect from `container ls --format json --all`.
 	sample := `[{
@@ -176,7 +190,7 @@ func TestAppleContainerListJSONParsing(t *testing.T) {
 			"platform": {"os": "linux", "architecture": "aarch64"},
 			"initProcess": {"executable": "/usr/sbin/nginx", "arguments": ["-g", "daemon off;"]},
 			"resources": {"cpus": 2, "memoryInBytes": 1073741824},
-			"mounts": [{"hostPath": "/tmp/host", "containerPath": "/data"}],
+			"mounts": [{"source": "/tmp/host", "destination": "/data"}],
 			"publishedPorts": [{"hostPort": 8080, "containerPort": 80, "proto": "tcp"}],
 			"networks": [{"network": "bridge"}],
 			"creationDate": "2024-06-15T10:00:00Z"
@@ -216,7 +230,7 @@ func TestAppleContainerListJSONParsing(t *testing.T) {
 	if e.Configuration.Resources.MemoryInBytes != 1073741824 {
 		t.Errorf("Resources.MemoryInBytes = %d, want 1073741824", e.Configuration.Resources.MemoryInBytes)
 	}
-	if len(e.Configuration.Mounts) != 1 || e.Configuration.Mounts[0].HostPath != "/tmp/host" {
+	if len(e.Configuration.Mounts) != 1 || e.Configuration.Mounts[0].HostPath != "/tmp/host" || e.Configuration.Mounts[0].ContainerPath != "/data" {
 		t.Errorf("Mounts = %+v", e.Configuration.Mounts)
 	}
 	if len(e.Configuration.PublishedPorts) != 1 || e.Configuration.PublishedPorts[0].HostPort != 8080 {

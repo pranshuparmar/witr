@@ -38,12 +38,12 @@ func (appleContainerRuntime) Enrich(match *model.ContainerMatch) {
 	if err != nil {
 		return
 	}
-	var raw appleContainerEntry
-	if err := json.Unmarshal(out, &raw); err != nil {
+	entries, err := parseAppleContainerEntries(out)
+	if err != nil || len(entries) == 0 {
 		return
 	}
-	if raw.Status.StartedDate != "" {
-		if t, err := time.Parse(time.RFC3339Nano, raw.Status.StartedDate); err == nil {
+	if entries[0].Status.StartedDate != "" {
+		if t, err := time.Parse(time.RFC3339Nano, entries[0].Status.StartedDate); err == nil {
 			match.StartedAt = t
 		}
 	}
@@ -91,8 +91,8 @@ type appleResources struct {
 }
 
 type appleMount struct {
-	HostPath      string `json:"hostPath"`
-	ContainerPath string `json:"containerPath"`
+	HostPath      string `json:"source"`
+	ContainerPath string `json:"destination"`
 }
 
 type applePublishedPort struct {
@@ -131,8 +131,8 @@ func appleContainerList() []*model.ContainerMatch {
 		return nil
 	}
 
-	var entries []appleContainerEntry
-	if err := json.Unmarshal(out, &entries); err != nil {
+	entries, err := parseAppleContainerEntries(out)
+	if err != nil {
 		return nil
 	}
 
@@ -158,6 +158,14 @@ func appleContainerList() []*model.ContainerMatch {
 		matches = append(matches, m)
 	}
 	return matches
+}
+
+func parseAppleContainerEntries(data []byte) ([]appleContainerEntry, error) {
+	var entries []appleContainerEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return nil, err
+	}
+	return entries, nil
 }
 
 // ---------------------------------------------------------------------------
