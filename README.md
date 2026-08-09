@@ -823,7 +823,45 @@ Non‑blocking observations such as:
 
 ---
 
-## 8. Platform Support
+## 8. Using witr with AI Agents
+
+AI coding agents (Claude Code, Codex, Cursor, etc.) constantly hit port-in-use
+errors, zombie servers, and container confusion during local development.
+Instead of chaining `lsof` / `ps` / `netstat` / `docker ps` manually, point the
+agent at witr — the causal chain, source and warnings come back in one call.
+
+`--json` is the machine-output flag: a single structured line the agent can
+parse directly. Exit codes are already scriptable (see [7.2 Exit Codes](#72-exit-codes)).
+
+### AGENTS.md / CLAUDE.md snippet
+
+Add this to your project's agent instructions:
+
+```markdown
+Process/port debugging: use witr before manual lsof/ps/netstat chains.
+- Port conflict:   witr --port <PORT> --json
+- Stuck process:   witr <name> --json   or   witr --pid <PID> --tree
+- Container issue: witr --container <name> --verbose --json
+```
+
+### Claude Code slash command (optional)
+
+Save as `.claude/commands/witr.md` in your project:
+
+```markdown
+Run `witr $ARGUMENTS --json` and summarize the causal chain, source, and any
+warnings (e.g. running as root, public interface, deleted binary).
+```
+
+### Why not an MCP wrapper?
+
+Claude Code, Codex and similar agents already have shell access — `witr --json`
+is the one-line structured call. An MCP server would only reimplement it with
+extra protocol overhead. This is a discoverability gap, not a missing feature.
+
+---
+
+## 9. Platform Support
 
 - **Linux** (x86_64, arm64) - Full feature support (`/proc`).
 - **macOS** (x86_64, arm64) - Uses `ps`, `lsof`, `sysctl`, `pgrep`.
@@ -918,7 +956,7 @@ On Windows, witr talks directly to Win32 APIs (ToolHelp32, PSAPI, Service Contro
 
 ---
 
-## 9. Success Criteria
+## 10. Success Criteria
 
 witr is successful if:
 
@@ -929,7 +967,7 @@ witr is successful if:
 
 ---
 
-## 10. Sponsors
+## 11. Sponsors
 
 Special thanks to the people who supported **witr** ❤️
 
