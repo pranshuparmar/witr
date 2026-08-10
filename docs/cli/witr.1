@@ -82,6 +82,9 @@ witr explains why a process or port is running by tracing its ancestry.
   # Find the process listening on a specific port
   witr --port 5432
 
+  # Force-release a local port
+  witr free 3000
+
   # Find the process holding a file open
   witr --file /var/lib/dpkg/lock
 
@@ -124,3 +127,7 @@ witr explains why a process or port is running by tracing its ancestry.
   witr nginx --pid 1234 --port 8080
 
 .EE
+
+
+.SH SEE ALSO
+\fBwitr-free(1)\fP
