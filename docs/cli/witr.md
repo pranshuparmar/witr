@@ -23,6 +23,9 @@ witr [process name...] [flags]
   # Find the process listening on a specific port
   witr --port 5432
 
+  # Force-release a local port
+  witr free 3000
+
   # Find the process holding a file open
   witr --file /var/lib/dpkg/lock
 
@@ -84,4 +87,8 @@ witr [process name...] [flags]
       --verbose             show extended process information
       --warnings            show only warnings
 ```
+
+### SEE ALSO
+
+* [witr free](witr_free.md)	 - Force-release a local port
 

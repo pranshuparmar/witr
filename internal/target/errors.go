@@ -7,6 +7,10 @@ import "errors"
 // depends on exact prose silently breaks when a message is reworded or differs
 // across platforms.
 var (
+	// ErrPortNotBound means no process owns a listening TCP or bound UDP
+	// socket on the requested local port.
+	ErrPortNotBound = errors.New("no process bound to port")
+
 	// ErrSocketOwnerUnknown means a socket is bound to the port but no
 	// host-visible process owns it (systemd socket activation, a container
 	// runtime, etc.). It triggers the container/socket fallback.

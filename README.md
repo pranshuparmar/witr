@@ -547,6 +547,21 @@ Running `witr` without any arguments or with the `-i` flag launches the **Intera
 
 ## 4. Flags & Options
 
+To immediately release a local port on Linux, macOS, FreeBSD, or Windows,
+forcibly terminate every process that owns a TCP listener or bound UDP socket:
+
+```bash
+witr free 3000
+```
+
+The command verifies that the port is free before returning. If a service
+manager or container runtime restarts the process, `witr` reports the new PID
+instead of reporting success. Processes owned by another user may require
+elevated privileges (`sudo witr free 3000` on Unix, or an Administrator shell
+on Windows). Unix uses `SIGKILL`; Windows uses forced process termination.
+Neither allows process cleanup, so use this command only when immediate
+termination is intended.
+
 ```
   -c, --container strings container(s) to look up (repeatable)
       --env              show environment variables for the process
