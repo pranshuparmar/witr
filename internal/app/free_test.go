@@ -117,3 +117,13 @@ func TestFreeCommandRejectsInvalidPort(t *testing.T) {
 		t.Fatalf("error = %v, want ExitInvalidInput", err)
 	}
 }
+
+func TestFreeCommandRequiresPort(t *testing.T) {
+	cmd := newFreeCommand(freePortRunner{})
+	cmd.SetArgs(nil)
+	err := cmd.Execute()
+	var exitErr *exitCodeError
+	if !errors.As(err, &exitErr) || exitErr.code != ExitInvalidInput {
+		t.Fatalf("error = %v, want ExitInvalidInput", err)
+	}
+}

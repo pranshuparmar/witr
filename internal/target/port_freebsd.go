@@ -67,6 +67,7 @@ func ResolvePort(port int) ([]int, error) {
 // processes with established connections become discoverable.
 func sockstatPortLookup(port int, listenersOnly bool) (map[string][]int, error) {
 	addressToPIDs := make(map[string][]int)
+	var queryErr error
 
 	for _, proto := range []string{"tcp", "udp"} {
 		for _, flag := range []string{"-4", "-6"} {
@@ -76,6 +77,12 @@ func sockstatPortLookup(port int, listenersOnly bool) (map[string][]int, error) 
 			}
 			out, err := exec.Command("sockstat", args...).Output()
 			if err != nil {
+				if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+					continue
+				}
+				if queryErr == nil {
+					queryErr = err
+				}
 				continue
 			}
 
@@ -102,6 +109,9 @@ func sockstatPortLookup(port int, listenersOnly bool) (map[string][]int, error) 
 		}
 	}
 
+	if queryErr != nil {
+		return addressToPIDs, fmt.Errorf("query sockstat: %w", queryErr)
+	}
 	return addressToPIDs, nil
 }
 

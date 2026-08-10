@@ -21,6 +21,7 @@ func ResolveBoundPort(port int) ([]int, error) {
 func parseWindowsBoundPortOutput(port int, output string) ([]int, error) {
 	portSuffix := fmt.Sprintf(":%d", port)
 	pidSet := make(map[int]struct{})
+	protectedOwner := false
 
 	for _, line := range strings.Split(output, "\n") {
 		fields := strings.Fields(line)
@@ -46,6 +47,10 @@ func parseWindowsBoundPortOutput(port int, output string) ([]int, error) {
 		}
 
 		if pid, err := strconv.Atoi(pidText); err == nil && pid > 0 {
+			if pid == 4 {
+				protectedOwner = true
+				continue
+			}
 			pidSet[pid] = struct{}{}
 		}
 	}
@@ -56,6 +61,9 @@ func parseWindowsBoundPortOutput(port int, output string) ([]int, error) {
 	}
 	sort.Ints(result)
 	if len(result) == 0 {
+		if protectedOwner {
+			return nil, ErrSocketOwnerUnknown
+		}
 		return nil, fmt.Errorf("%w %d", ErrPortNotBound, port)
 	}
 	return result, nil

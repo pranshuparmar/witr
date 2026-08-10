@@ -45,6 +45,12 @@ func ResolveBoundPort(port int) ([]int, error) {
 
 	result := make([]int, 0, len(pidSet))
 	for pid := range pidSet {
+		// PID 1 may own a systemd socket-activation fd. Never terminate the
+		// init process from a convenience command; report the owner as hidden
+		// instead so callers can handle it explicitly.
+		if pid == 1 {
+			continue
+		}
 		result = append(result, pid)
 	}
 	sort.Ints(result)
