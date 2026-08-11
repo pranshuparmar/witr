@@ -1,0 +1,18 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "witr-gui",
+  "outputfilename": "witr-gui",
+  "frontend:build": "",
+  "frontend:install": "",
+  "author": {
+    "name": "witr contributors",
+    "email": "info@witr.dev"
+  },
+  "info": {
+    "companyName": "witr",
+    "productName": "witr GUI",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright 2026",
+    "comments": "Why is this running? Desktop GUI"
+  }
+}

@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+*.syso
 
 # Test binary, built with `go test -c`
 *.test
@@ -16,6 +17,7 @@ profile.cov
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+node_modules/
 
 # Go workspace file
 go.work
@@ -24,16 +26,24 @@ go.work.sum
 # env file
 .env
 
-# Editor/IDE
+# Editor/IDE and Agent configuration
 .idea/
 .vscode/
+.agent/
+.gemini/
+walkthrough.md
+implementation_plan.md
 
 # Nix
 result
 
 # Binary files
 /witr
+/witr-gui
 
 # Ignore build artifacts
 dist/
 pkg-dist/
+build/bin/
+cmd/witr-gui/build/bin/
+
