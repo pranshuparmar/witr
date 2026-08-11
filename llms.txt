@@ -1,0 +1,22 @@
+# witr
+
+> A single static-binary CLI (Linux, macOS, Windows, FreeBSD) that answers "why is this running?" by tracing any process, port, container, or open file back to the exact causal chain that started it — supervisors, containers, services, shells — as a human-readable tree, JSON, or an interactive TUI.
+
+## Getting Started
+
+- [Purpose](https://github.com/pranshuparmar/witr#1-purpose): what problem witr solves and how it differs from `ps`, `top`, `lsof`, `ss`, `systemctl`, `docker ps`.
+- [Installation](https://github.com/pranshuparmar/witr#2-installation): quick-install script, package managers (Homebrew, APT, Conda, MacPorts, etc.), and manual/source install.
+- [Interactive tutorial](https://pranshuparmar.github.io/witr/): browser-based guided tour and free-play sandbox, no install required.
+
+## Reference
+
+- [Flags & Options](https://github.com/pranshuparmar/witr#4-flags--options): full CLI flag reference (`--pid`, `--port`, `--file`, `--container`, `--json`, `--tree`, `--short`, `--exact`, `--verbose`, `--warnings`, etc.), all repeatable and combinable.
+- [Core Concept](https://github.com/pranshuparmar/witr#5-core-concept): how witr maps ports/services/containers/commands to PIDs and builds the causal chain.
+- [Example Outputs](https://github.com/pranshuparmar/witr#6-example-outputs): name-based, short, tree, container, file, and multi-target query examples.
+- [Output Behavior](https://github.com/pranshuparmar/witr#7-output-behavior): output principles, exit codes, and standard output sections.
+- [Interactive Mode (TUI)](https://github.com/pranshuparmar/witr#3-interactive-mode-tui): key features of the dashboard mode.
+
+## Optional
+
+- [Platform Support](https://github.com/pranshuparmar/witr#8-platform-support): feature compatibility matrix and permissions notes across OSes.
+- [License](https://github.com/pranshuparmar/witr/blob/main/LICENSE): Apache License 2.0.

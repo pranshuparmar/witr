@@ -107,6 +107,7 @@ if [[ "$need_sudo" == "1" ]]; then
 fi
 
 # Install
+${SUDO[@]+"${SUDO[@]}"} mkdir -p "$INSTALL_BIN_DIR"
 ${SUDO[@]+"${SUDO[@]}"} install -m 755 "$TMP" "$INSTALL_PATH"
 
 # Install man page
