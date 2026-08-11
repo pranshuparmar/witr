@@ -21,9 +21,9 @@ one command, machine-readable JSON, or an [interactive TUI](#3-interactive-mode-
 
 <div align="center">
 
-[**Purpose**](#1-purpose) • [**Installation**](#2-installation) • [**TUI**](#3-interactive-mode-tui) • [**Flags**](#4-flags--options) • [**Core Concept**](#5-core-concept) • [**Examples**](#6-example-outputs)
+[**Purpose**](#1-purpose) • [**Installation**](#2-installation) • [**Desktop GUI**](#3-desktop-gui-app) • [**TUI**](#4-interactive-mode-tui) • [**Flags**](#5-flags--options) • [**Core Concept**](#6-core-concept) • [**Examples**](#7-example-outputs)
 <br>
-[**Output Behavior**](#7-output-behavior) • [**Platforms**](#8-platform-support) • [**Success Criteria**](#9-success-criteria) • [**Sponsors**](#10-sponsors)
+[**Output Behavior**](#8-output-behavior) • [**Platforms**](#9-platform-support) • [**Success Criteria**](#10-success-criteria)
 
 </div>
 
@@ -527,7 +527,36 @@ Remove-Item -Recurse -Force "$env:LocalAppData\witr"
 
 ---
  
-## 3. Interactive Mode (TUI)
+## 3. Desktop GUI App (`witr-gui`)
+
+In addition to the CLI and TUI, **witr** includes a dedicated, cross-platform **Desktop GUI Application (`witr-gui`)** built with [Wails v2](https://wails.io/) and native Webview2 rendering.
+
+### Key Features:
+- **Universal Process Search & Interactive Table**: Instant real-time filtering as you type, sortable table headers (`PID`, `Name`, `User`, `CPU%`, `Mem`), and tech monospaced typography (`JetBrains Mono` / `Fira Code`).
+- **Causality & Explanation Engine**: Built-in explanation panel displaying exact process ancestry chains, execution origins, and color-coded command syntax highlighting.
+- **Multi-Tab Process Inspector**:
+  - **Overview & Metrics**: CPU %, Resident Mem (RSS), Virtual Mem (VMS), disk I/O read/write ops, thread count, handle/FD count, and start timestamps.
+  - **Network Sockets**: Live list of bound listening and active network sockets with IP, port, and state.
+  - **Environment Variables**: Complete key-value inspection of process environment variables.
+- **Native Desktop Integration**: Maximized window on launch, clean split-grid layout, and Win32 PE application icon bundling with high-contrast terminal prompt (`>_`) icons.
+
+### Launching & Building the GUI:
+
+Run the compiled executable directly or build from source using the Wails CLI:
+
+```powershell
+# Launch pre-compiled GUI binary
+.\witr-gui.exe
+
+# Or build from source
+cd cmd/witr-gui
+go-winres make
+wails build -o witr-gui.exe
+```
+
+---
+
+## 4. Interactive Mode (TUI)
 
 Running `witr` without any arguments or with the `-i` flag launches the **Interactive Mode (TUI)**. This provides a real-time, terminal-based dashboard with four tabs for exploring processes, ports, containers, and file locks.
 
@@ -544,7 +573,7 @@ Running `witr` without any arguments or with the `-i` flag launches the **Intera
 
 ---
 
-## 4. Flags & Options
+## 5. Flags & Options
 
 ```
   -c, --container strings container(s) to look up (repeatable)
@@ -574,7 +603,7 @@ The TUI is launched if no arguments or relevant flags (`--pid`, `--port`, `--fil
 
 ---
 
-## 5. Core Concept
+## 6. Core Concept
 
 witr treats **everything as a process question**.
 
@@ -589,7 +618,7 @@ At its core, witr answers:
 
 ---
 
-## 6. Example Outputs
+## 7. Example Outputs
 
 > 💡 Prefer learning by doing? The [interactive browser tutorial](https://pranshuparmar.github.io/witr/) walks you through outputs like these live on a simulated box — for a better feel of witr, no install required.
 
@@ -729,7 +758,7 @@ All target flags are repeatable and can be mixed. Results appear in the order yo
 
 ---
 
-## 7. Output Behavior
+## 8. Output Behavior
 
 ### 7.1 Output Principles
 
@@ -822,7 +851,7 @@ Non‑blocking observations such as:
 
 ---
 
-## 8. Platform Support
+## 9. Platform Support
 
 - **Linux** (x86_64, arm64) - Full feature support (`/proc`).
 - **macOS** (x86_64, arm64) - Uses `ps`, `lsof`, `sysctl`, `pgrep`.
@@ -872,6 +901,7 @@ Non‑blocking observations such as:
 | Capability warnings | ✅ | ❌ | ❌ | ❌ | Warns about dangerous capabilities on non-root processes. |
 | **Context** |
 | Git repo/branch detection | ✅ | ✅ | ✅ | ✅ | |
+| **Desktop GUI Application (`witr-gui`)** | ✅ | ✅ | ✅ | ✅ | Wails v2 + Webview2 native desktop app. |
 | **Interactive Mode (TUI)** |
 | Processes Tab | ✅ | ✅ | ✅ | ✅ | |
 | Ports Tab | ✅ | ✅ | ✅ | ✅ | |
@@ -917,7 +947,7 @@ On Windows, witr talks directly to Win32 APIs (ToolHelp32, PSAPI, Service Contro
 
 ---
 
-## 9. Success Criteria
+## 10. Success Criteria
 
 witr is successful if:
 
@@ -926,17 +956,4 @@ witr is successful if:
 - Output is understandable under stress
 - Users trust it during incidents
 
----
 
-## 10. Sponsors
-
-Special thanks to the people who supported **witr** ❤️
-
-<p>
-  <a href="https://github.com/timcolson" title="Tim Colson">
-    <img src="https://images.weserv.nl/?url=github.com/timcolson.png&mask=circle&w=80&h=80" width="80">
-  </a>
-  <a href="https://github.com/R-Bose" title="Rijurekh Bose">
-    <img src="https://images.weserv.nl/?url=github.com/R-Bose.png&mask=circle&w=80&h=80" width="80">
-  </a>
-</p>
