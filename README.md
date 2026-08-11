@@ -844,20 +844,12 @@ Process/port debugging: use witr before manual lsof/ps/netstat chains.
 - Container issue: witr --container <name> --verbose --json
 ```
 
-### Claude Code slash command (optional)
-
-Save as `.claude/commands/witr.md` in your project:
-
-```markdown
-Run `witr $ARGUMENTS --json` and summarize the causal chain, source, and any
-warnings (e.g. running as root, public interface, deleted binary).
-```
-
-### Why not an MCP wrapper?
-
-Claude Code, Codex and similar agents already have shell access — `witr --json`
-is the one-line structured call. An MCP server would only reimplement it with
-extra protocol overhead. This is a discoverability gap, not a missing feature.
+The output is structured for machine consumption: `--json` emits one line with
+the full process tree (pid, parent, command, user), the resolved cause, and any
+warnings (running as root, public interface, deleted binary, container
+mismatch). Non-zero exit codes signal the outcome — 2 for "no match found", so
+an agent can branch on empty-vs-found without parsing prose. Run `witr --help`
+for the complete flag list.
 
 ---
 
@@ -870,7 +862,7 @@ extra protocol overhead. This is a discoverability gap, not a missing feature.
 
 ---
 
-### 8.1 Feature Compatibility Matrix
+### 9.1 Feature Compatibility Matrix
 
 | Feature | Linux | macOS | Windows | FreeBSD | Notes |
 |---------|:-----:|:-----:|:-------:|:-------:|-------|
