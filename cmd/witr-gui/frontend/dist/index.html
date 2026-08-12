@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>witr — Why is this running?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- Header Bar with Terminal Icon and Universal Searchbar -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="terminal-icon">
+          <span class="term-prompt">&gt;_</span>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">witr</span>
+          <span class="brand-tagline">Why is this running?</span>
+        </div>
+      </div>
+
+      <!-- Universal Full-Width Searchbar -->
+      <form id="searchForm" class="header-search-form">
+        <div class="search-box">
+          <span class="search-prompt-sym">&gt;</span>
+          <input type="text" id="searchInput" placeholder="Universal Search: Type process name (e.g. node.exe), PID, port (:8080), file, or container..." autocomplete="off" autofocus />
+          <button type="button" id="clearSearchBtn" class="clear-btn" style="display:none;">&times;</button>
+        </div>
+
+        <div class="target-pills" id="targetTypeSelector">
+          <button type="button" class="type-pill active" data-type="auto">Auto</button>
+          <button type="button" class="type-pill" data-type="name">Name</button>
+          <button type="button" class="type-pill" data-type="pid">PID</button>
+          <button type="button" class="type-pill" data-type="port">Port</button>
+          <button type="button" class="type-pill" data-type="file">File</button>
+          <button type="button" class="type-pill" data-type="container">Container</button>
+        </div>
+      </form>
+
+      <div class="header-actions">
+        <label class="checkbox-label" title="Exact match mode">
+          <input type="checkbox" id="exactMatchCheck" />
+          <span>Exact</span>
+        </label>
+        <button id="refreshBtn" class="btn btn-secondary btn-sm" title="Refresh System Processes & Ports">
+          <svg id="refreshIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Accurate System Analytics Metrics Bar -->
+    <section class="analytics-bar">
+      <div class="metric-card">
+        <span class="metric-label">Active Processes</span>
+        <span id="metricTotalProc" class="metric-value">--</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">User Applications</span>
+        <span id="metricUserProc" class="metric-value text-emerald">--</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">System Services</span>
+        <span id="metricSysProc" class="metric-value text-sky">--</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Listening Ports / Sockets</span>
+        <span id="metricPorts" class="metric-value text-amber">--</span>
+      </div>
+    </section>
+
+    <!-- Main Viewport Split: Left (Active Processes & Filters) | Right (Why & Details) -->
+    <main class="main-split-grid">
+      <!-- LEFT COLUMN: Active Processes with Category Filter Pills -->
+      <section class="card left-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">
+            <span class="term-sym">&gt;</span> Active Processes
+          </h3>
+          <span id="processCountBadge" class="count-badge">0 Listed</span>
+        </div>
+
+        <!-- Category Filter Bar -->
+        <div class="category-filter-bar" id="categoryFilterBar">
+          <button type="button" class="cat-filter-btn active" data-filter="all">All</button>
+          <button type="button" class="cat-filter-btn" data-filter="user">User Apps</button>
+          <button type="button" class="cat-filter-btn" data-filter="system">System Services</button>
+          <button type="button" class="cat-filter-btn" data-filter="ports">Listening Ports</button>
+        </div>
+
+        <div class="process-scroll-container">
+          <table class="data-table">
+            <thead>
+              <tr id="tableHeaderRow">
+                <th class="sortable-th active" data-sort="pid" style="width: 65px; cursor: pointer;">PID <span class="sort-icon">▲</span></th>
+                <th class="sortable-th" data-sort="name" style="cursor: pointer;">Name <span class="sort-icon"></span></th>
+                <th class="sortable-th" data-sort="user" style="cursor: pointer;">User <span class="sort-icon"></span></th>
+                <th class="sortable-th" data-sort="cpu" style="width: 65px; text-align: right; cursor: pointer;">CPU% <span class="sort-icon"></span></th>
+                <th class="sortable-th" data-sort="mem" style="width: 85px; text-align: right; cursor: pointer;">Mem <span class="sort-icon"></span></th>
+                <th style="width: 60px; text-align: center;">Trace</th>
+              </tr>
+            </thead>
+            <tbody id="processTableBody">
+              <tr><td colspan="6" class="table-loading">Loading system process list...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Why is this running? + Causality Chain + Deep Details Tabs -->
+      <section class="right-panel">
+        <!-- Hero Why Answer Banner -->
+        <div id="whyHeroCard" class="card why-hero-card">
+          <div class="why-hero-header">
+            <div class="why-title">
+              <span class="prompt-green">$ witr explain</span>
+              <span id="targetNameTag" class="target-pill">No Target Selected</span>
+            </div>
+            <span id="sourceBadge" class="source-badge">Causality Engine</span>
+          </div>
+          <div id="whyExplanationText" class="why-hero-text">
+            Select any process from the left table or type in the universal search bar above to explain why it is running.
+          </div>
+        </div>
+
+        <!-- Split Causality & Multi-Tab Inspector -->
+        <div class="details-split">
+          <!-- Causality Chain -->
+          <div class="card sub-panel">
+            <div class="panel-header">
+              <h4 class="panel-sub-title">Execution Causality Chain</h4>
+            </div>
+            <div id="treeContainer" class="sub-panel-content">
+              <div class="placeholder-box">
+                <p>Execution origin timeline will appear here.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Deep Process Inspector with Rich Tabs -->
+          <div class="card sub-panel">
+            <div class="panel-header inspector-tab-bar" id="inspectorTabBar">
+              <button type="button" class="tab-btn active" data-tab="overview">Overview</button>
+              <button type="button" class="tab-btn" data-tab="sockets">Sockets (<span id="socketsTabCount">0</span>)</button>
+              <button type="button" class="tab-btn" data-tab="env">Env Vars (<span id="envTabCount">0</span>)</button>
+            </div>
+            <div id="detailContainer" class="sub-panel-content">
+              <div class="placeholder-box">
+                <p>Detailed CPU, Memory, I/O, Sockets, and Environment Variables will appear here.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>witr v1.0.0</span>
+      <span>•</span>
+      <span>Terminal Causality Inspector</span>
+      <span>•</span>
+      <span id="systemStatus">Ready</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

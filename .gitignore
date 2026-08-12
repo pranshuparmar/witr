@@ -42,8 +42,8 @@ result
 /witr-gui
 
 # Ignore build artifacts
-dist/
-pkg-dist/
+/dist/
+/pkg-dist/
 build/bin/
 cmd/witr-gui/build/bin/
 
