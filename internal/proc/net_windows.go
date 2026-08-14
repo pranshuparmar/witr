@@ -14,7 +14,10 @@ func ListOpenPorts() ([]model.OpenPort, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseOpenPorts(out), nil
+}
 
+func parseOpenPorts(out []byte) []model.OpenPort {
 	lines := strings.Split(string(out), "\n")
 	var ports []model.OpenPort
 	seen := make(map[string]bool)
@@ -39,10 +42,7 @@ func ListOpenPorts() ([]model.OpenPort, error) {
 			state = "LISTEN"
 		} else if len(fields) >= 5 {
 			pidStr = fields[4]
-			state = fields[3]
-			if state == "LISTENING" {
-				state = "LISTEN"
-			}
+			state = normalizeWindowsTCPState(fields[3], fields[2])
 		}
 
 		pid, err := strconv.Atoi(pidStr)
@@ -76,7 +76,7 @@ func ListOpenPorts() ([]model.OpenPort, error) {
 			}
 		}
 	}
-	return ports, nil
+	return ports
 }
 
 // GetSocketsForPID returns every IP socket owned by a PID, including
@@ -107,10 +107,7 @@ func GetSocketsForPID(pid int) []model.Socket {
 			if len(fields) < 5 {
 				continue
 			}
-			state = fields[3]
-			if state == "LISTENING" {
-				state = "LISTEN"
-			}
+			state = normalizeWindowsTCPState(fields[3], fields[2])
 			matchPID = fields[4]
 		} else if strings.HasPrefix(proto, "UDP") {
 			state = "OPEN"
@@ -151,4 +148,13 @@ func GetSocketsForPID(pid int) []model.Socket {
 		})
 	}
 	return sockets
+}
+
+func normalizeWindowsTCPState(state, remoteAddr string) string {
+	// netstat localizes state names, but a listening row is identifiable by
+	// its zero-port remote endpoint in every locale.
+	if state == "LISTENING" || strings.HasSuffix(remoteAddr, ":0") {
+		return "LISTEN"
+	}
+	return strings.ToValidUTF8(state, "?")
 }
