@@ -122,7 +122,9 @@ func getThermalState() string {
 
 func getCPUAndMemoryUsage(pid int) (float64, uint64, error) {
 	// Construct the command to execute
-	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "%cpu=,rss=").Output()
+	cmd := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "%cpu=,rss=")
+	cmd.Env = buildEnvForPS()
+	out, err := cmd.Output()
 
 	if err != nil {
 		return 0, 0, err
