@@ -54,6 +54,11 @@ func detectContainerFromCmdline(cmdline string) string {
 			return "containerd: " + name
 		}
 		return "containerd"
+	case strings.Contains(lowerCmd, "apple.container"):
+		if name := extractFlagValue(cmdline, "--name"); name != "" {
+			return "container: " + name
+		}
+		return "container"
 	}
 
 	return ""
