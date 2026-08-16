@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/muesli/reflow/wrap"
 	"github.com/pranshuparmar/witr/internal/proc"
 	"github.com/pranshuparmar/witr/pkg/model"
 )
@@ -47,6 +48,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleContainerList(msg)
 	case []*model.LockedFile:
 		return m.handleLockList(msg)
+	case model.NetworkSnapshot:
+		return m.handleNetworkSnapshot(msg)
 	case treeMsg:
 		return m.handleTree(msg)
 	case model.Result:
@@ -61,7 +64,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m MainModel) handleTick(msg tickMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	if m.state == stateList && !m.quitting && !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() && !m.lockInput.Focused() && m.refreshDue() {
+	if m.state == stateList && !m.quitting && !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() && !m.lockInput.Focused() && !m.networkInput.Focused() && m.refreshDue() {
 		m.lastRefresh = time.Now()
 		m.refreshStartedAt = m.lastRefresh
 		cmd = m.refreshProcesses()
@@ -72,6 +75,8 @@ func (m MainModel) handleTick(msg tickMsg) (tea.Model, tea.Cmd) {
 			cmd = tea.Batch(cmd, m.refreshContainers())
 		case tabLocks:
 			cmd = tea.Batch(cmd, m.refreshLocks())
+		case tabNetwork:
+			cmd = tea.Batch(cmd, m.refreshNetworks())
 		}
 	}
 	return m, tea.Batch(cmd, waitTick())
@@ -187,35 +192,57 @@ func (m MainModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		if m.lockInput.Focused() {
 			m.lockInput.Blur()
 		}
+		if m.networkInput.Focused() {
+			m.networkInput.Blur()
+		}
 	}
 
-	// Tabs. X ranges are inactiveTabStyle widths: "1. Processes"=14,
-	// "2. Ports"=10, "3. Containers"=15, "4. Locks"=10 (inc. 1ch padding).
+	// Tabs. Ranges are derived from inactive tab label widths (padding 0,1):
+	// "1. Processes"=14, "2. Ports"=10, "3. Containers"=15, "4. Locks"=10,
+	// "5. Network"=12. Title "witr" starts at X≈2 with brand padding → content
+	// from X=8. When Locks is hidden (Windows), Network shifts left.
 	if msg.Y == 1 && isClick {
-		if msg.X >= 8 && msg.X < 22 { // "1. Processes"
-			if m.activeTab != tabProcesses {
-				m.activeTab = tabProcesses
-				m.listFocus = focusMain
+		x := msg.X
+		// Brand title ~6 cells starting at 2 → tabs from 8.
+		cursor := 8
+		tabSpans := []struct {
+			tab   tab
+			width int
+		}{
+			{tabProcesses, 14},
+			{tabPorts, 10},
+			{tabContainers, 15},
+		}
+		if locksTabEnabled {
+			tabSpans = append(tabSpans, struct {
+				tab   tab
+				width int
+			}{tabLocks, 10})
+		}
+		tabSpans = append(tabSpans, struct {
+			tab   tab
+			width int
+		}{tabNetwork, 12})
+
+		for _, ts := range tabSpans {
+			if x >= cursor && x < cursor+ts.width {
+				if m.activeTab != ts.tab {
+					m.activeTab = ts.tab
+					m.listFocus = focusMain
+					switch ts.tab {
+					case tabPorts:
+						return m, m.refreshPorts()
+					case tabContainers:
+						return m, m.refreshContainers()
+					case tabLocks:
+						return m, m.refreshLocks()
+					case tabNetwork:
+						return m, m.refreshNetworks()
+					}
+				}
 				return m, nil
 			}
-		} else if msg.X >= 22 && msg.X < 32 { // "2. Ports"
-			if m.activeTab != tabPorts {
-				m.activeTab = tabPorts
-				m.listFocus = focusMain
-				return m, m.refreshPorts()
-			}
-		} else if msg.X >= 32 && msg.X < 47 { // "3. Containers"
-			if m.activeTab != tabContainers {
-				m.activeTab = tabContainers
-				m.listFocus = focusMain
-				return m, m.refreshContainers()
-			}
-		} else if locksTabEnabled && msg.X >= 47 && msg.X < 57 { // "4. Locks"
-			if m.activeTab != tabLocks {
-				m.activeTab = tabLocks
-				m.listFocus = focusMain
-				return m, m.refreshLocks()
-			}
+			cursor += ts.width
 		}
 	}
 
@@ -230,6 +257,8 @@ func (m MainModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.containerInput.Focus()
 		case tabLocks:
 			m.lockInput.Focus()
+		case tabNetwork:
+			m.networkInput.Focus()
 		}
 		return m, nil
 	}
@@ -250,6 +279,8 @@ func (m MainModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			return m.handleContainerAreaMouse(msg, contentX, isClick, isWheel, isDoubleClick)
 		case tabLocks:
 			return m.handleLockAreaMouse(msg, contentX, isClick, isWheel, isDoubleClick)
+		case tabNetwork:
+			return m.handleNetworkAreaMouse(msg, contentX, isClick, isWheel, isDoubleClick)
 		}
 	}
 	return m, nil
@@ -262,13 +293,13 @@ func (m MainModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 	case "1":
-		if !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() {
+		if !m.anySearchFocused() {
 			m.activeTab = tabProcesses
 			m.listFocus = focusMain
 			return m, nil
 		}
 	case "2":
-		if !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() {
+		if !m.anySearchFocused() {
 			m.activeTab = tabPorts
 			m.listFocus = focusMain
 			m.portTable.Focus()
@@ -276,16 +307,24 @@ func (m MainModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.refreshPorts()
 		}
 	case "3":
-		if !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() && !m.lockInput.Focused() {
+		if !m.anySearchFocused() {
 			m.activeTab = tabContainers
 			m.listFocus = focusMain
 			return m, m.refreshContainers()
 		}
 	case "4":
-		if locksTabEnabled && !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() && !m.lockInput.Focused() {
+		if locksTabEnabled && !m.anySearchFocused() {
 			m.activeTab = tabLocks
 			m.listFocus = focusMain
 			return m, m.refreshLocks()
+		}
+	case "5":
+		if !m.anySearchFocused() {
+			m.activeTab = tabNetwork
+			m.listFocus = focusMain
+			m.networkTable.Focus()
+			m.networkDetailTable.Blur()
+			return m, m.refreshNetworks()
 		}
 	}
 
@@ -444,6 +483,61 @@ func (m MainModel) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 		m.lockTable.SetColumns(lockCols)
 	}
 
+	// Network split pane (Host + Docker combined table).
+	netPaneWidth := int(float64(availableWidth) * networkPaneRatio)
+	if netPaneWidth < 0 {
+		netPaneWidth = 0
+	}
+	netTableWidth := netPaneWidth - tablePadding
+	if netTableWidth < 0 {
+		netTableWidth = 0
+	}
+	netCols := m.getNetworkColumns()
+	// Stretch Address column.
+	fixedNet := 0
+	addrIdx := 4
+	for i, c := range netCols {
+		if i == addrIdx {
+			continue
+		}
+		fixedNet += c.Width
+	}
+	if addrIdx < len(netCols) {
+		sw := netTableWidth - fixedNet - cellPadding*len(netCols)
+		if sw < 10 {
+			sw = 10
+		}
+		netCols[addrIdx].Width = sw
+	}
+	m.networkTable.SetColumns(netCols)
+	m.networkTable.SetWidth(netTableWidth)
+	m.networkTable.SetHeight(processListHeight)
+
+	netDetailWidth := availableWidth - netPaneWidth - 5
+	if netDetailWidth < 10 {
+		netDetailWidth = 10
+	}
+	m.ensureNetworkDetailKVColumns()
+	ndCols := m.networkDetailTable.Columns()
+	fixedNd := 0
+	flexIdx := 1
+	for i, c := range ndCols {
+		if i == flexIdx {
+			continue
+		}
+		fixedNd += c.Width
+	}
+	if flexIdx < len(ndCols) {
+		nw := netDetailWidth - fixedNd - cellPadding*len(ndCols)
+		if nw < 10 {
+			nw = 10
+		}
+		ndCols[flexIdx].Width = nw
+	}
+	m.networkDetailTable.SetColumns(ndCols)
+	m.networkDetailTable.SetWidth(netDetailWidth)
+	m.networkDetailTable.SetHeight(processListHeight - 2)
+
 	vpHeight := msg.Height - 9
 	if vpHeight < 0 {
 		vpHeight = 0
@@ -461,7 +555,18 @@ func (m MainModel) handleResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.envViewport.Height = vpHeight
 
 	m.updatePortDetails()
+	// Rebuild network rows after column widths change so HOST/NETWORKS data
+	// is not left on stale empty rows from before the first WindowSizeMsg.
+	if len(m.hostIfaces) > 0 || len(m.networks) > 0 {
+		m.updateNetworkTable()
+	} else {
+		m.updateNetworkDetails()
+	}
 	return m, nil
+}
+
+func (m MainModel) anySearchFocused() bool {
+	return m.input.Focused() || m.portInput.Focused() || m.containerInput.Focused() || m.lockInput.Focused() || m.networkInput.Focused()
 }
 
 func (m MainModel) handleProcessList(msg []model.Process) (tea.Model, tea.Cmd) {
@@ -559,6 +664,43 @@ func (m MainModel) handleLockList(msg []*model.LockedFile) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+func (m MainModel) handleNetworkSnapshot(msg model.NetworkSnapshot) (tea.Model, tea.Cmd) {
+	// Preserve selection by source+name across refresh.
+	var selSource, selName string
+	if e, ok := m.selectedNetworkEntry(); ok {
+		if e.IsHost {
+			selSource, selName = "Host", e.Host.Name
+		} else {
+			selSource, selName = "Docker", e.Net.Name
+		}
+	}
+
+	m.networks = msg.Networks
+	m.hostIfaces = msg.HostIfaces
+	m.vethByBridge = msg.VethByBridge
+	m.networkHostSrc = msg.HostSource
+	m.networkErr = msg.Error
+	if !msg.DockerOK && msg.Error == "" {
+		m.networkErr = "Docker not available"
+	}
+	m.updateNetworkTable()
+
+	if selName != "" {
+		for i, e := range m.filteredEntries {
+			src, name := "Docker", e.Net.Name
+			if e.IsHost {
+				src, name = "Host", e.Host.Name
+			}
+			if src == selSource && name == selName {
+				m.networkTable.SetCursor(i)
+				break
+			}
+		}
+		m.updateNetworkDetails()
+	}
+	return m, nil
+}
+
 func (m MainModel) handleTree(msg treeMsg) (tea.Model, tea.Cmd) {
 	selected := m.table.SelectedRow()
 	if len(selected) > 0 {
@@ -574,6 +716,7 @@ func (m MainModel) handleTree(msg treeMsg) (tea.Model, tea.Cmd) {
 func (m MainModel) handleResult(msg model.Result) (tea.Model, tea.Cmd) {
 	m.selectedDetail = &msg
 	m.selectedContainer = nil
+	m.selectedNetwork = nil
 	m.updateDetailViewport()
 	m.updateEnvViewport()
 	return m, nil
@@ -582,6 +725,7 @@ func (m MainModel) handleResult(msg model.Result) (tea.Model, tea.Cmd) {
 func (m MainModel) handleContainerDetail(msg *model.ContainerMatch) (tea.Model, tea.Cmd) {
 	m.selectedContainer = msg
 	m.selectedDetail = nil
+	m.selectedNetwork = nil
 	m.updateDetailViewport()
 	return m, nil
 }
@@ -591,6 +735,7 @@ func (m MainModel) handleError(msg error) (tea.Model, tea.Cmd) {
 	m.state = stateList
 	m.selectedDetail = nil
 	m.selectedContainer = nil
+	m.selectedNetwork = nil
 	m.statusMsg = fmt.Sprintf("Error: %v", msg)
 	return m, m.refreshProcesses()
 }
@@ -799,6 +944,100 @@ func (m MainModel) handleProcessAreaMouse(msg tea.MouseMsg, contentX int, isClic
 		}
 		return m, cmd
 	}
+}
+
+func (m MainModel) handleNetworkAreaMouse(msg tea.MouseMsg, contentX int, isClick, isWheel, isDoubleClick bool) (tea.Model, tea.Cmd) {
+	availableWidth := m.width - 6
+	netPaneWidth := int(float64(availableWidth) * networkPaneRatio)
+
+	if contentX < netPaneWidth {
+		if isClick {
+			m.listFocus = focusMain
+			m.networkDetailTable.Blur()
+			m.networkTable.Focus()
+			if msg.Y == 7 {
+				m.handleNetworkHeaderClick(contentX)
+				return m, nil
+			}
+		}
+
+		var cmd tea.Cmd
+		prevSelected := m.networkTable.Cursor()
+		if isWheel {
+			var keyMsg tea.KeyMsg
+			switch msg.Button {
+			case tea.MouseButtonWheelUp:
+				keyMsg = tea.KeyMsg{Type: tea.KeyUp}
+			case tea.MouseButtonWheelDown:
+				keyMsg = tea.KeyMsg{Type: tea.KeyDown}
+			}
+			m.networkTable, cmd = m.networkTable.Update(keyMsg)
+			if m.networkTable.Cursor() != prevSelected {
+				m.updateNetworkDetails()
+			}
+			return m, cmd
+		}
+
+		netMsg := msg
+		netMsg.X -= 2
+		netMsg.Y -= 7
+		if netMsg.X >= 0 && netMsg.Y >= 0 {
+			m.networkTable, cmd = m.networkTable.Update(netMsg)
+		}
+		if m.networkTable.Cursor() != prevSelected {
+			m.updateNetworkDetails()
+		}
+		if isDoubleClick && isClick && netMsg.Y > 0 {
+			if e, ok := m.selectedNetworkEntry(); ok {
+				m.state = stateDetail
+				m.selectedDetail = nil
+				m.selectedContainer = nil
+				if e.IsHost {
+					m.selectedNetwork = nil
+				} else {
+					net := e.Net
+					m.selectedNetwork = &net
+				}
+				if w := m.width - 6; w > 0 {
+					m.viewport.Width = w
+				}
+				content := m.networkDetailContent()
+				if m.viewport.Width > 0 {
+					content = wrap.String(content, m.viewport.Width)
+				}
+				m.viewport.SetContent(content)
+				m.viewport.GotoTop()
+				return m, nil
+			}
+		}
+		return m, cmd
+	}
+
+	// Side panel (interface details or attached containers)
+	if isClick {
+		m.listFocus = focusSide
+		m.networkTable.Blur()
+		m.networkDetailTable.Focus()
+	}
+	var cmd tea.Cmd
+	if isWheel {
+		var keyMsg tea.KeyMsg
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			keyMsg = tea.KeyMsg{Type: tea.KeyUp}
+		case tea.MouseButtonWheelDown:
+			keyMsg = tea.KeyMsg{Type: tea.KeyDown}
+		}
+		m.networkDetailTable, cmd = m.networkDetailTable.Update(keyMsg)
+		return m, cmd
+	}
+	sideMsg := msg
+	sideMsg.X -= netPaneWidth + 2
+	sideMsg.Y -= 8
+	if sideMsg.X >= 0 && sideMsg.Y >= 0 {
+		m.networkDetailTable, cmd = m.networkDetailTable.Update(sideMsg)
+	}
+	return m, cmd
 }
 
 func (m MainModel) handlePortAreaMouse(msg tea.MouseMsg, contentX int, isClick, isWheel, isDoubleClick bool) (tea.Model, tea.Cmd) {
@@ -1090,10 +1329,34 @@ func (m MainModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.state = stateDetail
 					m.selectedDetail = nil
 					m.selectedContainer = nil
+					m.selectedNetwork = nil
 					m.viewport.GotoTop()
 					m.envViewport.GotoTop()
 					return m, m.fetchProcessDetail(pid)
 				}
+			}
+		}
+		if m.activeTab == tabNetwork {
+			if e, ok := m.selectedNetworkEntry(); ok {
+				m.state = stateDetail
+				m.selectedDetail = nil
+				m.selectedContainer = nil
+				if e.IsHost {
+					m.selectedNetwork = nil
+				} else {
+					net := e.Net
+					m.selectedNetwork = &net
+				}
+				if w := m.width - 6; w > 0 {
+					m.viewport.Width = w
+				}
+				content := m.networkDetailContent()
+				if m.viewport.Width > 0 {
+					content = wrap.String(content, m.viewport.Width)
+				}
+				m.viewport.SetContent(content)
+				m.viewport.GotoTop()
+				return m, nil
 			}
 		}
 		if m.activeTab == tabContainers {
@@ -1152,7 +1415,7 @@ func (m MainModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Focus Switching
 	case "tab", "right", "left", "l", "L", "h", "H":
-		if m.input.Focused() || m.portInput.Focused() || m.containerInput.Focused() || m.lockInput.Focused() {
+		if m.anySearchFocused() {
 			break
 		}
 		// Tabs without a side panel — these keys are no-ops there.
@@ -1166,11 +1429,19 @@ func (m MainModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.portTable.Blur()
 					m.portDetailTable.Focus()
 				}
+				if m.activeTab == tabNetwork {
+					m.networkTable.Blur()
+					m.networkDetailTable.Focus()
+				}
 			} else {
 				m.listFocus = focusMain
 				if m.activeTab == tabPorts {
 					m.portDetailTable.Blur()
 					m.portTable.Focus()
+				}
+				if m.activeTab == tabNetwork {
+					m.networkDetailTable.Blur()
+					m.networkTable.Focus()
 				}
 			}
 		} else if msg.String() == "shift+tab" || msg.String() == "left" || msg.String() == "h" || msg.String() == "H" {
@@ -1180,17 +1451,25 @@ func (m MainModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.portDetailTable.Blur()
 					m.portTable.Focus()
 				}
+				if m.activeTab == tabNetwork {
+					m.networkDetailTable.Blur()
+					m.networkTable.Focus()
+				}
 			} else {
 				m.listFocus = focusSide
 				if m.activeTab == tabPorts {
 					m.portTable.Blur()
 					m.portDetailTable.Focus()
 				}
+				if m.activeTab == tabNetwork {
+					m.networkTable.Blur()
+					m.networkDetailTable.Focus()
+				}
 			}
 		}
 		return m, nil
 
-	// Toggle All Ports
+	// Toggle All Ports / open files / host ifaces
 	case "a", "A":
 		if m.activeTab == tabPorts {
 			m.showAllPorts = !m.showAllPorts
@@ -1205,10 +1484,27 @@ func (m MainModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.lockTable.SetCursor(0)
 			return m, m.refreshLocks()
 		}
+		if m.activeTab == tabNetwork {
+			// Cycle ALL → HOST → DOCKER → ALL
+			switch m.networkScope {
+			case networkScopeAll:
+				m.networkScope = networkScopeHost
+			case networkScopeHost:
+				m.networkScope = networkScopeDocker
+			default:
+				m.networkScope = networkScopeAll
+			}
+			m.listFocus = focusMain
+			m.networkTable.Focus()
+			m.networkDetailTable.Blur()
+			m.networkTable.SetCursor(0)
+			m.updateNetworkTable()
+			return m, nil
+		}
 
 	// Sorting Keys (union across all tabs; per-tab dispatch below picks the relevant ones)
 	case "c", "C", "p", "P", "n", "N", "m", "M", "t", "T", "u", "U", "s", "S",
-		"i", "I", "r", "R", "g", "G", "f", "F":
+		"i", "I", "r", "R", "g", "G", "f", "F", "d", "D", "b", "B", "k", "K":
 		if nm, cmd, handled := m.handleSortKey(msg); handled {
 			return nm, cmd
 		} else {
@@ -1330,12 +1626,36 @@ func (m MainModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Network and container detail are single-pane (no env split).
+	// Host network detail uses selectedNetwork==nil but stateDetail + viewport content.
+	if m.selectedNetwork != nil || m.selectedContainer != nil || (m.activeTab == tabNetwork && m.state == stateDetail && m.selectedDetail == nil) {
+		switch msg.String() {
+		case "esc", "q", "Q", "backspace":
+			m.state = stateList
+			m.selectedDetail = nil
+			m.selectedContainer = nil
+			m.selectedNetwork = nil
+			if m.activeTab == tabNetwork {
+				return m, m.refreshNetworks()
+			}
+			if m.activeTab == tabContainers {
+				return m, m.refreshContainers()
+			}
+			return m, nil
+		default:
+			var cmd tea.Cmd
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
+		}
+	}
+
 	// detail view navigation
 	switch msg.String() {
 	case "esc", "q", "Q", "backspace":
 		m.state = stateList
 		m.selectedDetail = nil
 		m.selectedContainer = nil
+		m.selectedNetwork = nil
 		m.detailFocus = focusDetail
 		m.actionMenuOpen = false
 		m.pendingAction = actionNone
@@ -1343,6 +1663,9 @@ func (m MainModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.reniceInput.Blur()
 		if m.activeTab == tabContainers {
 			return m, m.refreshContainers()
+		}
+		if m.activeTab == tabNetwork {
+			return m, m.refreshNetworks()
 		}
 		return m, m.refreshProcesses()
 	case "a", "A":
@@ -1375,7 +1698,27 @@ func (m MainModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m MainModel) handleListFilterInput(msg tea.KeyMsg) (MainModel, tea.Cmd, bool) {
-	if m.activeTab == tabLocks {
+	if m.activeTab == tabNetwork {
+		if m.networkInput.Focused() {
+			if msg.String() == "enter" || msg.String() == "esc" {
+				m.networkInput.Blur()
+				return m, nil, true
+			}
+			if msg.Type == tea.KeyUp || msg.Type == tea.KeyDown {
+				m.networkInput.Blur()
+			} else {
+				var inputCmd tea.Cmd
+				m.networkInput, inputCmd = m.networkInput.Update(msg)
+				m.updateNetworkTable()
+				m.networkTable.SetCursor(0)
+				return m, inputCmd, true
+			}
+		}
+		if msg.String() == "/" {
+			m.networkInput.Focus()
+			return m, textinput.Blink, true
+		}
+	} else if m.activeTab == tabLocks {
 		if m.lockInput.Focused() {
 			if msg.String() == "enter" || msg.String() == "esc" {
 				m.lockInput.Blur()
@@ -1590,6 +1933,33 @@ func (m MainModel) handleSortKey(msg tea.KeyMsg) (MainModel, tea.Cmd, bool) {
 			m.updateLockTable()
 			return m, nil, true
 		}
+
+	case tabNetwork:
+		newCol := ""
+		switch msg.String() {
+		case "s", "S":
+			newCol = "source"
+		case "n", "N":
+			newCol = "name"
+		case "k", "K":
+			newCol = "kind"
+		case "t", "T":
+			newCol = "state"
+		case "d", "D":
+			newCol = "address"
+		case "g", "G":
+			newCol = "extra"
+		}
+		if newCol != "" {
+			if m.sortNetworkCol == newCol {
+				m.sortNetworkDesc = !m.sortNetworkDesc
+			} else {
+				m.sortNetworkCol = newCol
+				m.sortNetworkDesc = false
+			}
+			m.updateNetworkTable()
+			return m, nil, true
+		}
 	}
 	return m, nil, false
 }
@@ -1627,6 +1997,13 @@ func (m MainModel) handleListNavKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else if m.activeTab == tabLocks {
 			m.lockTable, cmd = m.lockTable.Update(msg)
 			return m, cmd
+		} else if m.activeTab == tabNetwork {
+			prevSelected := m.networkTable.Cursor()
+			m.networkTable, cmd = m.networkTable.Update(msg)
+			if m.networkTable.Cursor() != prevSelected {
+				m.updateNetworkDetails()
+			}
+			return m, cmd
 		} else {
 			prevSelected := m.portTable.Cursor()
 			m.portTable, cmd = m.portTable.Update(msg)
@@ -1661,6 +2038,8 @@ func (m MainModel) handleListNavKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			default:
 				m.treeViewport, cmd = m.treeViewport.Update(msg)
 			}
+		} else if m.activeTab == tabNetwork {
+			m.networkDetailTable, cmd = m.networkDetailTable.Update(msg)
 		} else {
 			m.portDetailTable, cmd = m.portDetailTable.Update(msg)
 		}

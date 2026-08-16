@@ -65,6 +65,12 @@ func (m MainModel) refreshLocks() tea.Cmd {
 	}
 }
 
+func (m MainModel) refreshNetworks() tea.Cmd {
+	return func() tea.Msg {
+		return proc.ListNetworkSnapshot()
+	}
+}
+
 // mergeLocksAndOpenFiles returns the union of locks and open files. When the
 // same (pid, path) appears in both, the lock entry wins so the Type column
 // surfaces the lock kind (POSIX/FLOCK) and Mode reflects lock access rather
@@ -938,3 +944,409 @@ func (m *MainModel) updateLockTable() {
 }
 
 const openFilesDisplayCap = 100
+
+func (m *MainModel) getNetworkColumns() []table.Column {
+	cols := []table.Column{
+		{Title: "Source", Width: 8},
+		{Title: "Name", Width: 20},
+		{Title: "Kind", Width: 12},
+		{Title: "State", Width: 10},
+		{Title: "Address", Width: 22},
+		{Title: "Extra", Width: 18},
+	}
+	addArrow := func(idx int, col string) {
+		if m.sortNetworkCol == col {
+			arrow := " ↑"
+			if m.sortNetworkDesc {
+				arrow = " ↓"
+			}
+			cols[idx].Title += arrow
+		}
+	}
+	addArrow(0, "source")
+	addArrow(1, "name")
+	addArrow(2, "kind")
+	addArrow(3, "state")
+	addArrow(4, "address")
+	addArrow(5, "extra")
+	return cols
+}
+
+func (m *MainModel) rebuildNetworkEntries() {
+	entries := make([]networkEntry, 0, len(m.hostIfaces)+len(m.networks))
+	for _, h := range m.hostIfaces {
+		entries = append(entries, networkEntry{IsHost: true, Host: h})
+	}
+	for _, n := range m.networks {
+		entries = append(entries, networkEntry{IsHost: false, Net: n})
+	}
+	m.networkEntries = entries
+}
+
+func (m *MainModel) sortNetworkEntries(entries []networkEntry) {
+	sort.SliceStable(entries, func(i, j int) bool {
+		a, b := entries[i], entries[j]
+		key := func(e networkEntry) (source, name, kind, state, address, extra string) {
+			if e.IsHost {
+				ips := strings.Join(e.Host.IPv4, ", ")
+				gw := strings.Join(e.Host.Gateway, ", ")
+				return "Host", e.Host.Name, e.Host.Type, e.Host.State, ips, gw
+			}
+			return "Docker", e.Net.Name, e.Net.Driver, e.Net.Scope, e.Net.Subnet, e.Net.Gateway
+		}
+		as, an, ak, ast, aa, ae := key(a)
+		bs, bn, bk, bst, ba, be := key(b)
+		var n int
+		switch m.sortNetworkCol {
+		case "source":
+			n = cmp.Compare(as, bs)
+		case "kind":
+			n = cmp.Compare(strings.ToLower(ak), strings.ToLower(bk))
+		case "state":
+			n = cmp.Compare(strings.ToLower(ast), strings.ToLower(bst))
+		case "address":
+			n = cmp.Compare(aa, ba)
+		case "extra":
+			n = cmp.Compare(ae, be)
+		default: // name
+			n = cmp.Compare(strings.ToLower(an), strings.ToLower(bn))
+		}
+		if n == 0 {
+			// Host rows before Docker when equal; then name.
+			if a.IsHost != b.IsHost {
+				if a.IsHost {
+					return !m.sortNetworkDesc
+				}
+				return m.sortNetworkDesc
+			}
+			n = cmp.Compare(strings.ToLower(an), strings.ToLower(bn))
+		}
+		if m.sortNetworkDesc {
+			return n > 0
+		}
+		return n < 0
+	})
+}
+
+func (m *MainModel) updateNetworkTable() {
+	m.rebuildNetworkEntries()
+	m.sortNetworkEntries(m.networkEntries)
+
+	filter := strings.ToLower(strings.TrimSpace(m.networkInput.Value()))
+	existing := m.networkTable.Columns()
+	newCols := m.getNetworkColumns()
+	for i := range existing {
+		if i < len(newCols) && existing[i].Width > 0 {
+			newCols[i].Width = existing[i].Width
+		}
+	}
+	m.networkTable.SetColumns(newCols)
+
+	cols := m.networkTable.Columns()
+	w := func(i int) int {
+		if i < len(cols) {
+			return cols[i].Width
+		}
+		return 16
+	}
+
+	rows := make([]table.Row, 0, len(m.networkEntries))
+	filtered := make([]networkEntry, 0, len(m.networkEntries))
+	for _, e := range m.networkEntries {
+		if m.networkScope == networkScopeHost && !e.IsHost {
+			continue
+		}
+		if m.networkScope == networkScopeDocker && e.IsHost {
+			continue
+		}
+		var source, name, kind, state, address, extra string
+		if e.IsHost {
+			source = "Host"
+			name = e.Host.Name
+			kind = e.Host.Type
+			state = e.Host.State
+			address = strings.Join(e.Host.IPv4, ", ")
+			extra = strings.Join(e.Host.Gateway, ", ")
+			if extra == "" {
+				extra = e.Host.MAC
+			}
+		} else {
+			source = "Docker"
+			name = e.Net.Name
+			kind = e.Net.Driver
+			state = e.Net.Scope
+			if state == "" {
+				state = "—"
+			}
+			address = e.Net.Subnet
+			extra = e.Net.Gateway
+			if extra == "N/A" {
+				extra = e.Net.BridgeInterface
+			}
+		}
+		if filter != "" {
+			hay := strings.ToLower(fmt.Sprintf("%s %s %s %s %s %s %s",
+				source, name, kind, state, address, extra, e.Host.Description))
+			if !e.IsHost {
+				hay = strings.ToLower(fmt.Sprintf("%s %s %s %s %s %s %s",
+					source, name, kind, state, address, extra, e.Net.BridgeInterface))
+			}
+			if !strings.Contains(hay, filter) {
+				continue
+			}
+		}
+		filtered = append(filtered, e)
+		rows = append(rows, table.Row{
+			truncate(source, w(0)),
+			truncate(output.SanitizeTerminalLine(name), w(1)),
+			truncate(output.SanitizeTerminalLine(kind), w(2)),
+			truncate(output.SanitizeTerminalLine(state), w(3)),
+			truncate(output.SanitizeTerminalLine(address), w(4)),
+			truncate(output.SanitizeTerminalLine(extra), w(5)),
+		})
+	}
+	m.filteredEntries = filtered
+	m.networkTable.SetRows(rows)
+	m.updateNetworkDetails()
+}
+
+func (m *MainModel) updateNetworkDetails() {
+	idx := m.networkTable.Cursor()
+	if idx < 0 || idx >= len(m.filteredEntries) {
+		m.networkDetailTable.SetRows(nil)
+		return
+	}
+	e := m.filteredEntries[idx]
+	if e.IsHost {
+		m.updateHostIfaceDetails(e.Host)
+		return
+	}
+	m.ensureNetworkEndpointColumns()
+	net := e.Net
+	cols := m.networkDetailTable.Columns()
+	w := func(i int) int {
+		if i < len(cols) {
+			return cols[i].Width
+		}
+		return 16
+	}
+	rows := make([]table.Row, 0, len(net.Containers)+4)
+	// Network metadata first, then endpoints.
+	m.ensureNetworkDetailKVColumns()
+	// Prefer endpoint table when containers exist; always show KV meta in side panel.
+	// Use KV layout for a consistent host/docker experience.
+	kv := [][2]string{
+		{"Source", "Docker"},
+		{"Name", net.Name},
+		{"ID", net.ID},
+		{"Driver", net.Driver},
+		{"Scope", net.Scope},
+		{"Bridge", net.BridgeInterface},
+		{"Subnet", net.Subnet},
+		{"Gateway", net.Gateway},
+		{"Containers", fmt.Sprintf("%d", len(net.Containers))},
+	}
+	cols = m.networkDetailTable.Columns()
+	w0, w1 := 12, 36
+	if len(cols) > 0 {
+		w0 = cols[0].Width
+	}
+	if len(cols) > 1 {
+		w1 = cols[1].Width
+	}
+	for _, pair := range kv {
+		val := pair[1]
+		if val == "" {
+			val = "—"
+		}
+		rows = append(rows, table.Row{
+			truncate(output.SanitizeTerminalLine(pair[0]), w0),
+			truncate(output.SanitizeTerminalLine(val), w1),
+		})
+	}
+	for _, c := range net.Containers {
+		st := c.Status
+		if st == "" {
+			st = "?"
+		}
+		label := fmt.Sprintf("→ %s %s", st, c.Name)
+		rows = append(rows, table.Row{
+			truncate(output.SanitizeTerminalLine(label), w0),
+			truncate(output.SanitizeTerminalLine(c.IP), w1),
+		})
+	}
+	// silence unused
+	_ = w
+	m.networkDetailTable.SetRows(rows)
+}
+
+func (m *MainModel) ensureNetworkEndpointColumns() {
+	cols := m.networkDetailTable.Columns()
+	want := []table.Column{
+		{Title: "Status", Width: 8},
+		{Title: "Name", Width: 18},
+		{Title: "IP", Width: 20},
+		{Title: "MAC", Width: 18},
+	}
+	if len(cols) == 4 && cols[0].Title == "Status" {
+		return
+	}
+	// Preserve width budget from current table when possible.
+	if len(cols) == 4 {
+		for i := range want {
+			if cols[i].Width > 0 {
+				want[i].Width = cols[i].Width
+			}
+		}
+	}
+	m.networkDetailTable.SetColumns(want)
+}
+
+func (m *MainModel) ensureNetworkDetailKVColumns() {
+	want := []table.Column{
+		{Title: "Field", Width: 10},
+		{Title: "Value", Width: 36},
+	}
+	cols := m.networkDetailTable.Columns()
+	if len(cols) == 2 && cols[0].Title == "Field" {
+		return
+	}
+	if len(cols) >= 2 {
+		// Stretch value column from previous total width.
+		total := 0
+		for _, c := range cols {
+			total += c.Width
+		}
+		if total > 14 {
+			want[1].Width = total - want[0].Width
+		}
+	}
+	m.networkDetailTable.SetColumns(want)
+}
+
+func (m *MainModel) updateHostIfaceDetails(iface model.HostInterface) {
+	m.ensureNetworkDetailKVColumns()
+	cols := m.networkDetailTable.Columns()
+	w0, w1 := 12, 36
+	if len(cols) > 0 {
+		w0 = cols[0].Width
+	}
+	if len(cols) > 1 {
+		w1 = cols[1].Width
+	}
+	mtu := "n/a"
+	if iface.MTU > 0 {
+		mtu = fmt.Sprintf("%d", iface.MTU)
+	}
+	kv := [][2]string{
+		{"Source", "Host"},
+		{"Name", iface.Name},
+		{"Type", iface.Type},
+		{"State", iface.State},
+		{"Description", iface.Description},
+		{"MTU", mtu},
+		{"MAC", iface.MAC},
+		{"DHCP", iface.DHCP},
+		{"IPv4", strings.Join(iface.IPv4, ", ")},
+		{"IPv6", strings.Join(iface.IPv6, ", ")},
+		{"Gateway", strings.Join(iface.Gateway, ", ")},
+		{"DNS", strings.Join(iface.DNS, ", ")},
+		{"Index", fmt.Sprintf("%d", iface.IfIndex)},
+	}
+	rows := make([]table.Row, 0, len(kv))
+	for _, pair := range kv {
+		val := pair[1]
+		if val == "" {
+			val = "—"
+		}
+		rows = append(rows, table.Row{
+			truncate(output.SanitizeTerminalLine(pair[0]), w0),
+			truncate(output.SanitizeTerminalLine(val), w1),
+		})
+	}
+	m.networkDetailTable.SetRows(rows)
+}
+
+func (m *MainModel) selectedNetworkEntry() (networkEntry, bool) {
+	idx := m.networkTable.Cursor()
+	if idx < 0 || idx >= len(m.filteredEntries) {
+		return networkEntry{}, false
+	}
+	return m.filteredEntries[idx], true
+}
+
+func (m *MainModel) networkDetailContent() string {
+	e, ok := m.selectedNetworkEntry()
+	if !ok {
+		return "No network selected."
+	}
+	label := lipgloss.NewStyle().Foreground(colorSectionLabel).Bold(true)
+	muted := lipgloss.NewStyle().Foreground(colorMuted)
+	var b strings.Builder
+	if e.IsHost {
+		h := e.Host
+		fmt.Fprintf(&b, "%s\n", label.Render("Host interface"))
+		fmt.Fprintf(&b, "  Name        : %s\n", h.Name)
+		fmt.Fprintf(&b, "  Type        : %s\n", h.Type)
+		fmt.Fprintf(&b, "  State       : %s\n", h.State)
+		if h.Description != "" {
+			fmt.Fprintf(&b, "  Description : %s\n", h.Description)
+		}
+		fmt.Fprintf(&b, "  MAC         : %s\n", h.MAC)
+		if h.MTU > 0 {
+			fmt.Fprintf(&b, "  MTU         : %d\n", h.MTU)
+		}
+		if h.DHCP != "" {
+			fmt.Fprintf(&b, "  DHCP        : %s\n", h.DHCP)
+		}
+		fmt.Fprintf(&b, "  IPv4        : %s\n", orDash(strings.Join(h.IPv4, ", ")))
+		fmt.Fprintf(&b, "  IPv6        : %s\n", orDash(strings.Join(h.IPv6, ", ")))
+		fmt.Fprintf(&b, "  Gateway     : %s\n", orDash(strings.Join(h.Gateway, ", ")))
+		fmt.Fprintf(&b, "  DNS         : %s\n", orDash(strings.Join(h.DNS, ", ")))
+		if m.networkHostSrc != "" {
+			fmt.Fprintf(&b, "\n%s\n  %s\n", label.Render("Source tool"), muted.Render(m.networkHostSrc))
+		}
+		return b.String()
+	}
+	net := e.Net
+	fmt.Fprintf(&b, "%s\n", label.Render("Docker network"))
+	fmt.Fprintf(&b, "  Name     : %s\n", net.Name)
+	fmt.Fprintf(&b, "  ID       : %s\n", net.ID)
+	fmt.Fprintf(&b, "  Driver   : %s\n", net.Driver)
+	fmt.Fprintf(&b, "  Scope    : %s\n", net.Scope)
+	fmt.Fprintf(&b, "  Bridge   : %s\n", net.BridgeInterface)
+	fmt.Fprintf(&b, "  Subnet   : %s\n", net.Subnet)
+	fmt.Fprintf(&b, "  Gateway  : %s\n", net.Gateway)
+	fmt.Fprintf(&b, "\n%s\n", label.Render("Attached containers"))
+	if len(net.Containers) == 0 {
+		fmt.Fprintf(&b, "  %s\n", muted.Render("None"))
+	} else {
+		treeStyle := lipgloss.NewStyle().Foreground(colorTreeConn)
+		for i, c := range net.Containers {
+			prefix := "├──"
+			if i == len(net.Containers)-1 {
+				prefix = "└──"
+			}
+			st := c.Status
+			if st == "" {
+				st = "?"
+			}
+			fmt.Fprintf(&b, "  %s %s %s  %s\n",
+				treeStyle.Render(prefix), st, c.Name, c.IP)
+		}
+	}
+	if m.vethByBridge != nil {
+		if veths := m.vethByBridge[net.BridgeInterface]; len(veths) > 0 {
+			fmt.Fprintf(&b, "\n%s\n", label.Render("VETHs on bridge"))
+			fmt.Fprintf(&b, "  %s\n", strings.Join(veths, ", "))
+		}
+	}
+	return b.String()
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "—"
+	}
+	return s
+}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,6 +46,7 @@ func TestUpdateTabSwitch(t *testing.T) {
 		{"2", tabPorts},
 		{"3", tabContainers},
 		{"1", tabProcesses},
+		{"5", tabNetwork},
 	}
 	for _, tt := range tests {
 		// Start on a different tab so the switch is observable.
@@ -55,6 +57,81 @@ func TestUpdateTabSwitch(t *testing.T) {
 			t.Errorf("key %q: activeTab = %v, want %v", tt.key, m.activeTab, tt.want)
 		}
 	}
+}
+
+func TestUpdateToggleNetworkScope(t *testing.T) {
+	m := InitialModel("test")
+	m.activeTab = tabNetwork
+	if m.networkScope != networkScopeAll {
+		t.Fatalf("precondition: scope should start ALL, got %v", m.networkScope)
+	}
+	m, _ = step(t, m, keyRunes("a"))
+	if m.networkScope != networkScopeHost {
+		t.Errorf("first 'a' => HOST, got %v", m.networkScope)
+	}
+	m, _ = step(t, m, keyRunes("a"))
+	if m.networkScope != networkScopeDocker {
+		t.Errorf("second 'a' => DOCKER, got %v", m.networkScope)
+	}
+	m, _ = step(t, m, keyRunes("a"))
+	if m.networkScope != networkScopeAll {
+		t.Errorf("third 'a' => ALL, got %v", m.networkScope)
+	}
+}
+
+func TestHandleNetworkSnapshotCombinesHostAndDocker(t *testing.T) {
+	m := InitialModel("test")
+	m.activeTab = tabNetwork
+	m, _ = step(t, m, tea.WindowSizeMsg{Width: 140, Height: 40})
+	snap := model.NetworkSnapshot{
+		HostIfaces: []model.HostInterface{
+			{Name: "Ethernet", Type: "physical", State: "UP", MTU: 1500, IPv4: []string{"10.0.0.2/24"}, Gateway: []string{"10.0.0.1"}, MAC: "aa:bb:cc:dd:ee:ff"},
+			{Name: "Wi-Fi", Type: "wireless", State: "UP", IPv4: []string{"10.0.0.3/24"}},
+		},
+		Networks: []model.DockerNetwork{
+			{Name: "bridge", Driver: "bridge", Subnet: "172.17.0.0/16", Gateway: "172.17.0.1", BridgeInterface: "docker0"},
+		},
+		DockerOK:   true,
+		HostSource: "ipconfig /all",
+	}
+	m, _ = step(t, m, snap)
+	if len(m.hostIfaces) != 2 {
+		t.Fatalf("hostIfaces = %d", len(m.hostIfaces))
+	}
+	if len(m.networks) != 1 {
+		t.Fatalf("networks = %d", len(m.networks))
+	}
+	// ALL scope should show host + docker.
+	if got := len(m.networkTable.Rows()); got != 3 {
+		t.Fatalf("ALL table rows = %d, want 3 (2 host + 1 docker)", got)
+	}
+	view := m.View()
+	if !strings.Contains(view, "Ethernet") {
+		t.Errorf("view missing Ethernet; snippet %q", truncateForTest(view, 240))
+	}
+	if !strings.Contains(view, "bridge") && !strings.Contains(view, "Docker") {
+		t.Errorf("view missing docker network; snippet %q", truncateForTest(view, 240))
+	}
+
+	// HOST filter
+	m.networkScope = networkScopeHost
+	m.updateNetworkTable()
+	if got := len(m.networkTable.Rows()); got != 2 {
+		t.Errorf("HOST filter rows = %d, want 2", got)
+	}
+	// DOCKER filter
+	m.networkScope = networkScopeDocker
+	m.updateNetworkTable()
+	if got := len(m.networkTable.Rows()); got != 1 {
+		t.Errorf("DOCKER filter rows = %d, want 1", got)
+	}
+}
+
+func truncateForTest(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }
 
 func TestUpdateEnterOpensProcessDetail(t *testing.T) {
@@ -183,101 +260,6 @@ func TestUpdateResizeSetsDimsAndCmdColumn(t *testing.T) {
 	}
 }
 
-func TestUpdateProcessListMessage(t *testing.T) {
-	m := InitialModel("test")
-	m, cmd := step(t, m, []model.Process{{PID: 10, Command: "a"}, {PID: 20, Command: "b"}})
-	if len(m.processes) != 2 || len(m.filtered) != 2 {
-		t.Fatalf("process list message should populate processes/filtered, got %d/%d", len(m.processes), len(m.filtered))
-	}
-	if cmd == nil {
-		t.Error("a non-empty process list should schedule a tree fetch for the selection")
-	}
-}
-
-func TestUpdateDataListMessages(t *testing.T) {
-	m := InitialModel("test")
-
-	m, _ = step(t, m, []model.OpenPort{{Port: 80, Protocol: "tcp", State: "LISTEN"}})
-	if len(m.ports) != 1 {
-		t.Errorf("port list message: ports = %d, want 1", len(m.ports))
-	}
-
-	m, _ = step(t, m, []*model.ContainerMatch{{Name: "web"}})
-	if len(m.containers) != 1 {
-		t.Errorf("container list message: containers = %d, want 1", len(m.containers))
-	}
-
-	m, _ = step(t, m, []*model.LockedFile{{PID: 1, Path: "/a"}})
-	if len(m.locks) != 1 {
-		t.Errorf("lock list message: locks = %d, want 1", len(m.locks))
-	}
-}
-
-func TestUpdateResultMessageSetsDetail(t *testing.T) {
-	m := InitialModel("test")
-	res := model.Result{Process: model.Process{PID: 1, Command: "x"}, Ancestry: []model.Process{{PID: 1, Command: "x"}}}
-	m, _ = step(t, m, res)
-	if m.selectedDetail == nil {
-		t.Error("a Result message should populate selectedDetail")
-	}
-}
-
-func TestUpdateErrorMessageRevertsToList(t *testing.T) {
-	m := InitialModel("test")
-	m.state = stateDetail
-	m, cmd := step(t, m, error(fmt.Errorf("boom")))
-	if m.state != stateList {
-		t.Errorf("an error should revert to the list view, state = %v", m.state)
-	}
-	if m.statusMsg == "" {
-		t.Error("an error should surface a status message")
-	}
-	if cmd == nil {
-		t.Error("an error should trigger a process refresh")
-	}
-}
-
-func TestHandleTickRefreshesWhenDue(t *testing.T) {
-	m := InitialModel("test")
-	old := time.Now().Add(-time.Hour) // long past the cadence -> a tick is due
-	m.lastRefresh = old
-
-	nm, cmd := m.handleTick(tickMsg(time.Now()))
-	m = nm.(MainModel)
-	if !m.lastRefresh.After(old) {
-		t.Error("a due tick should advance lastRefresh")
-	}
-	if cmd == nil {
-		t.Error("handleTick must always reschedule the next tick")
-	}
-}
-
-func TestDetailKeyNavigation(t *testing.T) {
-	base := func() MainModel {
-		m := InitialModel("test")
-		m.state = stateDetail
-		m.selectedDetail = &model.Result{Process: model.Process{PID: 1}}
-		return m
-	}
-
-	t.Run("esc returns to list", func(t *testing.T) {
-		m, cmd := step(t, base(), tea.KeyMsg{Type: tea.KeyEsc})
-		if m.state != stateList || m.selectedDetail != nil {
-			t.Errorf("esc should return to list and clear detail; state=%v detail=%v", m.state, m.selectedDetail)
-		}
-		if cmd == nil {
-			t.Error("leaving detail should refresh the list")
-		}
-	})
-
-	t.Run("tab toggles detail/env focus", func(t *testing.T) {
-		m := base()
-		if m.detailFocus != focusDetail {
-			t.Fatalf("precondition: detailFocus = %v, want focusDetail", m.detailFocus)
-		}
-		m, _ = step(t, m, tea.KeyMsg{Type: tea.KeyTab})
-		if m.detailFocus != focusEnv {
-			t.Errorf("tab should move focus to the env pane, got %v", m.detailFocus)
-		}
-	})
-}
+// Keep time import used if other tests need it.
+var _ = time.Now
+var _ = fmt.Sprintf

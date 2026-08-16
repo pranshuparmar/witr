@@ -23,8 +23,15 @@ func (m MainModel) View() string {
 	case stateList:
 		return m.viewList(outerStyle)
 	case stateDetail:
-		if m.selectedDetail == nil && m.selectedContainer == nil {
+		if m.selectedDetail == nil && m.selectedContainer == nil && m.selectedNetwork == nil {
+			// Host network detail reuses the network detail view with viewport content set.
+			if m.activeTab == tabNetwork {
+				return m.viewNetworkDetail(outerStyle)
+			}
 			return m.viewDetailLoading(outerStyle)
+		}
+		if m.selectedNetwork != nil || (m.activeTab == tabNetwork && m.selectedDetail == nil && m.selectedContainer == nil) {
+			return m.viewNetworkDetail(outerStyle)
 		}
 		if m.selectedContainer != nil {
 			return m.viewContainerDetail(outerStyle)
@@ -57,6 +64,11 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 			status = "Mode: Searching (↑↓ to navigate, Esc/Enter to stop)"
 		}
 		inputView = m.lockInput.View()
+	case tabNetwork:
+		if m.networkInput.Focused() {
+			status = "Mode: Searching (↑↓ to navigate, Esc/Enter to stop)"
+		}
+		inputView = m.networkInput.View()
 	default:
 		if m.input.Focused() {
 			status = "Mode: Searching (↑↓ to navigate, Esc/Enter to stop)"
@@ -135,6 +147,57 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 		mainContent = lipgloss.NewStyle().Width(m.width - 4).Render(m.lockTable.View())
 	}
 
+	if m.activeTab == tabNetwork {
+		s1 := cachedTableStyles
+		s1.Header = s.Header
+		m.networkTable.SetStyles(s1)
+
+		sideBorderColor := dimBorderColor
+		sideHeaderColor := colorHeaderDim
+		if m.listFocus == focusSide {
+			sideBorderColor = activeBorderColor
+			sideHeaderColor = activeBorderColor
+		}
+		s2 := cachedTableStyles
+		if m.listFocus == focusSide {
+			s2.Header = tableHeaderStyle.BorderForeground(activeBorderColor)
+		} else {
+			s2.Header = tableHeaderStyle.BorderForeground(dimBorderColor)
+		}
+		m.networkDetailTable.SetStyles(s2)
+
+		detailContainerStyle := detailDividerStyle.
+			BorderForeground(sideBorderColor).
+			Height(m.networkTable.Height())
+
+		detailHeader := "Details"
+		if e, ok := m.selectedNetworkEntry(); ok {
+			if e.IsHost {
+				detailHeader = "Host Interface"
+			} else {
+				detailHeader = "Docker Network"
+			}
+		}
+		availableWidth := m.width - 6
+		netPaneWidth := int(float64(availableWidth) * networkPaneRatio)
+		headerWidth := availableWidth - netPaneWidth - 3
+
+		detailHeaderStyle := tableHeaderStyle.
+			Width(headerWidth).
+			Foreground(sideHeaderColor).
+			BorderForeground(sideBorderColor)
+
+		mainContent = lipgloss.JoinHorizontal(lipgloss.Top,
+			lipgloss.NewStyle().Width(netPaneWidth).Render(m.networkTable.View()),
+			detailContainerStyle.Render(
+				lipgloss.JoinVertical(lipgloss.Left,
+					detailHeaderStyle.Render(detailHeader),
+					m.networkDetailTable.View(),
+				),
+			),
+		)
+	}
+
 	if m.activeTab == tabPorts {
 		sideBorderColor := dimBorderColor
 		sideHeaderColor := colorHeaderDim
@@ -208,6 +271,25 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 			countText = fmt.Sprintf("%d of %d", shown, total)
 		}
 		helpText = fmt.Sprintf("%s [%s] | Enter: Detail | a: Toggle Open Files | p/n/t/m/f: Sort | /: Search | Esc/q: Quit | Up/Down: Scroll%s", countText, mode, suffix)
+	case tabNetwork:
+		mode := "ALL"
+		switch m.networkScope {
+		case networkScopeHost:
+			mode = "HOST"
+		case networkScopeDocker:
+			mode = "DOCKER"
+		}
+		total := len(m.networkTable.Rows())
+		src := ""
+		if m.networkHostSrc != "" {
+			src = " | via " + m.networkHostSrc
+		}
+		errHint := ""
+		if m.networkErr != "" && (m.networkScope == networkScopeDocker || m.networkScope == networkScopeAll) {
+			errHint = " | " + m.networkErr
+		}
+		helpText = fmt.Sprintf("Total: %d [%s]%s | Enter: Detail | a: Filter ALL/HOST/DOCKER | s/n/k: Sort | /: Search | Tab: Focus | Esc/q: Quit%s",
+			total, mode, src, errHint)
 	}
 	footerContent := helpText
 	if m.version != "" {
@@ -221,6 +303,7 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 	portsTab := inactiveTabStyle.Render("2. Ports")
 	containersTab := inactiveTabStyle.Render("3. Containers")
 	locksTab := inactiveTabStyle.Render("4. Locks")
+	networkTab := inactiveTabStyle.Render("5. Network")
 	switch m.activeTab {
 	case tabProcesses:
 		processesTab = activeTabStyle.Render("1. Processes")
@@ -230,6 +313,8 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 		containersTab = activeTabStyle.Render("3. Containers")
 	case tabLocks:
 		locksTab = activeTabStyle.Render("4. Locks")
+	case tabNetwork:
+		networkTab = activeTabStyle.Render("5. Network")
 	}
 
 	headerSegs := []string{
@@ -241,6 +326,7 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 	if locksTabEnabled {
 		headerSegs = append(headerSegs, locksTab)
 	}
+	headerSegs = append(headerSegs, networkTab)
 	header := lipgloss.JoinHorizontal(lipgloss.Top, headerSegs...)
 
 	return outerStyle.Render(
@@ -309,6 +395,59 @@ func (m MainModel) viewContainerDetail(outerStyle lipgloss.Style) string {
 	// and Height-pinned pane that contains the title row plus the
 	// scrollable viewport. The pane absorbs any content/scroll
 	// variation so the surrounding layout stays put.
+	paneWidth := m.width - 4
+	if paneWidth < 1 {
+		paneWidth = 1
+	}
+	contentPane := lipgloss.NewStyle().
+		Width(paneWidth).
+		Height(m.viewport.Height + 2).
+		Render(lipgloss.JoinVertical(lipgloss.Left,
+			detailHeader.Width(m.viewport.Width).Render(title),
+			paddedStyle.Render(m.viewport.View()),
+		))
+
+	return outerStyle.Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			lipgloss.JoinHorizontal(lipgloss.Center, headerComponents...),
+			spacerStyle.Render(""),
+			contentPane,
+			spacerStyle.Render(""),
+			footerStyle.Width(m.width-4).Render(footerContent),
+		),
+	)
+}
+
+func (m MainModel) viewNetworkDetail(outerStyle lipgloss.Style) string {
+	activeBorderColor := colorAccent
+	detailHeader := tableHeaderStyle.
+		BorderForeground(activeBorderColor).
+		Foreground(activeBorderColor)
+	title := "Network Detail"
+	if !m.viewport.AtTop() && !m.viewport.AtBottom() {
+		title += " ↕"
+	} else if !m.viewport.AtTop() {
+		title += " ↑"
+	} else if !m.viewport.AtBottom() {
+		title += " ↓"
+	}
+
+	headerComponents := []string{titleStyle.Render("witr")}
+	if m.selectedNetwork != nil && m.selectedNetwork.Name != "" {
+		headerComponents = append(headerComponents, pidStyle.Render(m.selectedNetwork.Name))
+	} else if e, ok := m.selectedNetworkEntry(); ok && e.IsHost {
+		headerComponents = append(headerComponents, pidStyle.Render(e.Host.Name))
+	}
+
+	helpText := "Esc/q: Back | Up/Down: Scroll"
+	footerContent := helpText
+	if m.version != "" {
+		gap := m.width - 6 - lipgloss.Width(helpText) - lipgloss.Width(m.version)
+		if gap > 0 {
+			footerContent = helpText + strings.Repeat(" ", gap) + m.version
+		}
+	}
+
 	paneWidth := m.width - 4
 	if paneWidth < 1 {
 		paneWidth = 1

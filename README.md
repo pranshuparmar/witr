@@ -530,18 +530,19 @@ Remove-Item -Recurse -Force "$env:LocalAppData\witr"
  
 ## 3. Interactive Mode (TUI)
 
-Running `witr` without any arguments or with the `-i` flag launches the **Interactive Mode (TUI)**. This provides a real-time, terminal-based dashboard with four tabs for exploring processes, ports, containers, and file locks.
+Running `witr` without any arguments or with the `-i` flag launches the **Interactive Mode (TUI)**. This provides a real-time, terminal-based dashboard with tabs for exploring processes, ports, containers, file locks, and Docker/host networking.
 
 ### Key Features:
 - **Processes Tab**: Live, sortable, filterable list of all running processes with a side panel showing the ancestry tree of the highlighted process.
 - **Ports Tab**: Open/listening ports with the owning processes attached in a side panel. Toggle between LISTEN-only and ALL with `a`.
 - **Containers Tab**: All running containers across Docker, Podman, nerdctl, K8s/crictl, Incus, LXC, LXD, and FreeBSD jails in one list - name, image, status, ports, command, plus a per-container detail view with mounts, networks, and compose project metadata.
 - **Locks Tab**: System-wide file locks (POSIX/FLOCK on Linux, lsof-derived on macOS/FreeBSD). Press `a` to switch into "all open files" mode, where locked entries are merged with every interesting open fd; type into `/` to search across the merged set.
+- **Network Tab**: Combined host machine adapters and Docker networks in one table (`Source` = Host or Docker). Host data comes from OS tools (`ipconfig /all` on Windows, `ip addr` on Linux, portable fallback elsewhere). Press `a` to filter ALL / HOST / DOCKER. Side panel shows interface details or Docker network metadata and endpoints.
 - **Process Details**: Deep-dive into a process to see its full ancestry tree, child processes, environment variables, working directory, sockets, file context, and more.
 - **Process Actions**: Send signals (Kill, Terminate, Pause, Resume) or Renice processes directly from the UI (Unix only).
 - **Mouse Support**: Navigate, sort columns, and click rows using your mouse.
 - **Adaptive Theme**: Colors adapt automatically to light and dark terminal backgrounds.
-- **Auto-Refresh**: The process, port, container, and lock lists refresh automatically on an adaptive cadence (starts at 3 seconds, backing off under load).
+- **Auto-Refresh**: The process, port, container, lock, and network lists refresh automatically on an adaptive cadence (starts at 3 seconds, backing off under load).
 
 ---
 
