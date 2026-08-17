@@ -150,10 +150,24 @@ func GetSocketsForPID(pid int) []model.Socket {
 	return sockets
 }
 
+// normalizeWindowsTCPState maps a netstat state token to the name the rest of
+// witr uses.
+//
+// netstat localizes the token, so a non-English console reports ABHÖREN or
+// ECOUTE rather than LISTENING, in the console's OEM code page. The zero-port
+// remote endpoint identifies a listener in every locale, but it is not unique
+// to one: BOUND and CLOSED rows also carry 0.0.0.0:0. So the English names are
+// matched first and the endpoint is only consulted for a token this build does
+// not recognize.
 func normalizeWindowsTCPState(state, remoteAddr string) string {
-	// netstat localizes state names, but a listening row is identifiable by
-	// its zero-port remote endpoint in every locale.
-	if state == "LISTENING" || strings.HasSuffix(remoteAddr, ":0") {
+	switch state {
+	case "LISTENING":
+		return "LISTEN"
+	case "ESTABLISHED", "TIME_WAIT", "CLOSE_WAIT", "SYN_SENT", "SYN_RECEIVED",
+		"FIN_WAIT_1", "FIN_WAIT_2", "LAST_ACK", "CLOSING", "CLOSED", "BOUND", "DELETE_TCB":
+		return state
+	}
+	if strings.HasSuffix(remoteAddr, ":0") {
 		return "LISTEN"
 	}
 	return strings.ToValidUTF8(state, "?")
