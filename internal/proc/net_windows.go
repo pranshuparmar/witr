@@ -14,7 +14,10 @@ func ListOpenPorts() ([]model.OpenPort, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseOpenPorts(out), nil
+}
 
+func parseOpenPorts(out []byte) []model.OpenPort {
 	lines := strings.Split(string(out), "\n")
 	var ports []model.OpenPort
 	seen := make(map[string]bool)
@@ -39,10 +42,7 @@ func ListOpenPorts() ([]model.OpenPort, error) {
 			state = "LISTEN"
 		} else if len(fields) >= 5 {
 			pidStr = fields[4]
-			state = fields[3]
-			if state == "LISTENING" {
-				state = "LISTEN"
-			}
+			state = normalizeWindowsTCPState(fields[3], fields[2])
 		}
 
 		pid, err := strconv.Atoi(pidStr)
@@ -76,7 +76,7 @@ func ListOpenPorts() ([]model.OpenPort, error) {
 			}
 		}
 	}
-	return ports, nil
+	return ports
 }
 
 // GetSocketsForPID returns every IP socket owned by a PID, including
@@ -107,10 +107,7 @@ func GetSocketsForPID(pid int) []model.Socket {
 			if len(fields) < 5 {
 				continue
 			}
-			state = fields[3]
-			if state == "LISTENING" {
-				state = "LISTEN"
-			}
+			state = normalizeWindowsTCPState(fields[3], fields[2])
 			matchPID = fields[4]
 		} else if strings.HasPrefix(proto, "UDP") {
 			state = "OPEN"
@@ -151,4 +148,27 @@ func GetSocketsForPID(pid int) []model.Socket {
 		})
 	}
 	return sockets
+}
+
+// normalizeWindowsTCPState maps a netstat state token to the name the rest of
+// witr uses.
+//
+// netstat localizes the token, so a non-English console reports ABHÖREN or
+// ECOUTE rather than LISTENING, in the console's OEM code page. The zero-port
+// remote endpoint identifies a listener in every locale, but it is not unique
+// to one: BOUND and CLOSED rows also carry 0.0.0.0:0. So the English names are
+// matched first and the endpoint is only consulted for a token this build does
+// not recognize.
+func normalizeWindowsTCPState(state, remoteAddr string) string {
+	switch state {
+	case "LISTENING":
+		return "LISTEN"
+	case "ESTABLISHED", "TIME_WAIT", "CLOSE_WAIT", "SYN_SENT", "SYN_RECEIVED",
+		"FIN_WAIT_1", "FIN_WAIT_2", "LAST_ACK", "CLOSING", "CLOSED", "BOUND", "DELETE_TCB":
+		return state
+	}
+	if strings.HasSuffix(remoteAddr, ":0") {
+		return "LISTEN"
+	}
+	return strings.ToValidUTF8(state, "?")
 }
