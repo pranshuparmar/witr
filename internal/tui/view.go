@@ -220,10 +220,14 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 		helpText = fmt.Sprintf("%s [%s]%s | Enter: Detail | a: Toggle Open Files | p/n/t/m/f: Sort | /: Search | Esc/q: Quit | Up/Down: Scroll", countText, mode, hint)
 	}
 	footerContent := helpText
+	if m.isReplay && len(m.snapshots) > 0 {
+		ts := m.snapshots[m.snapshotIndex].Timestamp.Format("2006-01-02 15:04:05")
+		footerContent = fmt.Sprintf("[%s] [/]: Step | %s", ts, helpText)
+	}
 	if m.version != "" {
-		gap := m.width - 6 - lipgloss.Width(helpText) - lipgloss.Width(m.version)
+		gap := m.width - 6 - lipgloss.Width(footerContent) - lipgloss.Width(m.version)
 		if gap > 0 {
-			footerContent = helpText + strings.Repeat(" ", gap) + m.version
+			footerContent = footerContent + strings.Repeat(" ", gap) + m.version
 		}
 	}
 	aboveFooter := spacerStyle.Render("")
@@ -247,8 +251,12 @@ func (m MainModel) viewList(outerStyle lipgloss.Style) string {
 		locksTab = activeTabStyle.Render("4. Locks")
 	}
 
+	titleText := "witr"
+	if m.isReplay && len(m.snapshots) > 0 {
+		titleText = fmt.Sprintf("witr [Replay %d/%d]", m.snapshotIndex+1, len(m.snapshots))
+	}
 	headerSegs := []string{
-		titleStyle.Render("witr"),
+		titleStyle.Render(titleText),
 		processesTab,
 		portsTab,
 		containersTab,

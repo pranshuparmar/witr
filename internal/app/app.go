@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pranshuparmar/witr/internal/output"
 	"github.com/pranshuparmar/witr/internal/pipeline"
@@ -172,6 +173,16 @@ func init() {
 	rootCmd.Flags().BoolP("exact", "x", false, "use exact name matching (no substring search)")
 	rootCmd.Flags().BoolP("interactive", "i", false, "interactive mode (TUI)")
 
+	rootCmd.AddCommand(newRecordCmd())
+	rootCmd.AddCommand(newReplayCmd())
+
+	rootCmd.Flags().StringVar(&recordOutputFlag, "record", "", "record system sample stream to file")
+	rootCmd.Flags().StringVar(&replayFileFlag, "replay", "", "replay recorded system sample stream from file")
+	rootCmd.Flags().DurationVar(&recordIntervalFlag, "interval", 2*time.Second, "sample capture interval for --record")
+	rootCmd.Flags().IntVar(&recordCountFlag, "count", 0, "sample count for --record")
+	rootCmd.Flags().IntVar(&replayStepFlag, "step", -1, "0-based step index of snapshot to replay")
+	rootCmd.Flags().StringVar(&replayTimestampFlag, "timestamp", "", "timestamp to seek in replay")
+	rootCmd.Flags().BoolVar(&replayAllFlag, "all", false, "evaluate target across all snapshots")
 }
 
 // appFlags holds all parsed CLI flags for convenience.
@@ -187,6 +198,19 @@ type appFlags struct {
 }
 
 func runApp(cmd *cobra.Command, args []string) error {
+	if recordPath, _ := cmd.Flags().GetString("record"); recordPath != "" {
+		interval, _ := cmd.Flags().GetDuration("interval")
+		count, _ := cmd.Flags().GetInt("count")
+		return executeRecord(cmd, recordPath, interval, count, 0)
+	}
+
+	if replayPath, _ := cmd.Flags().GetString("replay"); replayPath != "" {
+		step, _ := cmd.Flags().GetInt("step")
+		ts, _ := cmd.Flags().GetString("timestamp")
+		all, _ := cmd.Flags().GetBool("all")
+		return executeReplay(cmd, replayPath, args, step, ts, all)
+	}
+
 	interactiveFlag, _ := cmd.Flags().GetBool("interactive")
 	if interactiveFlag {
 		return runInteractive(orderedTargets(cmd, os.Args[1:], args), boolFlag(cmd, "exact"))

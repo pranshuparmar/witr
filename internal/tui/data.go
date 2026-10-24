@@ -15,11 +15,17 @@ import (
 	"github.com/pranshuparmar/witr/internal/output"
 	"github.com/pranshuparmar/witr/internal/pipeline"
 	"github.com/pranshuparmar/witr/internal/proc"
+	"github.com/pranshuparmar/witr/internal/record"
 	"github.com/pranshuparmar/witr/pkg/model"
 )
 
 func (m MainModel) refreshProcesses() tea.Cmd {
 	return func() tea.Msg {
+		if m.isReplay && len(m.snapshots) > 0 {
+			if m.snapshotIndex >= 0 && m.snapshotIndex < len(m.snapshots) {
+				return m.snapshots[m.snapshotIndex].Processes
+			}
+		}
 		procs, err := proc.ListProcesses()
 		if err != nil {
 			return err
@@ -42,6 +48,11 @@ func (m MainModel) refreshProcesses() tea.Cmd {
 
 func (m MainModel) refreshPorts() tea.Cmd {
 	return func() tea.Msg {
+		if m.isReplay && len(m.snapshots) > 0 {
+			if m.snapshotIndex >= 0 && m.snapshotIndex < len(m.snapshots) {
+				return m.snapshots[m.snapshotIndex].Ports
+			}
+		}
 		ports, err := proc.ListOpenPorts()
 		if err != nil {
 			return err
@@ -52,17 +63,40 @@ func (m MainModel) refreshPorts() tea.Cmd {
 
 func (m MainModel) refreshContainers() tea.Cmd {
 	return func() tea.Msg {
+		if m.isReplay && len(m.snapshots) > 0 {
+			if m.snapshotIndex >= 0 && m.snapshotIndex < len(m.snapshots) {
+				return m.snapshots[m.snapshotIndex].Containers
+			}
+		}
 		return proc.ListAllContainers()
 	}
 }
 
 func (m MainModel) refreshLocks() tea.Cmd {
 	return func() tea.Msg {
+		if m.isReplay && len(m.snapshots) > 0 {
+			if m.snapshotIndex >= 0 && m.snapshotIndex < len(m.snapshots) {
+				return m.snapshots[m.snapshotIndex].LockedFiles
+			}
+		}
 		if m.showAllFiles {
 			return mergeLocksAndOpenFiles(proc.ListLockedFiles(), proc.ListAllOpenFiles())
 		}
 		return proc.ListLockedFiles()
 	}
+}
+
+func (m MainModel) refreshReplayData() tea.Cmd {
+	cmds := []tea.Cmd{m.refreshProcesses()}
+	switch m.activeTab {
+	case tabPorts:
+		cmds = append(cmds, m.refreshPorts())
+	case tabContainers:
+		cmds = append(cmds, m.refreshContainers())
+	case tabLocks:
+		cmds = append(cmds, m.refreshLocks())
+	}
+	return tea.Batch(cmds...)
 }
 
 // mergeLocksAndOpenFiles returns the union of locks and open files. When the
@@ -116,6 +150,20 @@ func (m MainModel) fetchContainerDetail(match *model.ContainerMatch) tea.Cmd {
 
 func (m MainModel) fetchTree(p model.Process) tea.Cmd {
 	return func() tea.Msg {
+		if m.isReplay && len(m.snapshots) > 0 && m.snapshotIndex >= 0 && m.snapshotIndex < len(m.snapshots) {
+			res, err := record.AnalyzeSnapshot(m.snapshots[m.snapshotIndex], p.PID, pipeline.AnalyzeConfig{
+				PID:                  p.PID,
+				Verbose:              false,
+				Tree:                 true,
+				SkipContainerDetails: true,
+			})
+			if err != nil {
+				return treeMsg(model.Result{
+					Process: p,
+				})
+			}
+			return treeMsg(res)
+		}
 		res, err := pipeline.AnalyzePID(pipeline.AnalyzeConfig{
 			PID:                  p.PID,
 			Verbose:              false,
@@ -207,6 +255,17 @@ func (m MainModel) selectedPortNumber() int {
 
 func (m MainModel) fetchProcessDetail(pid int) tea.Cmd {
 	return func() tea.Msg {
+		if m.isReplay && len(m.snapshots) > 0 && m.snapshotIndex >= 0 && m.snapshotIndex < len(m.snapshots) {
+			res, err := record.AnalyzeSnapshot(m.snapshots[m.snapshotIndex], pid, pipeline.AnalyzeConfig{
+				PID:     pid,
+				Verbose: true,
+				Tree:    true,
+			})
+			if err != nil {
+				return err
+			}
+			return res
+		}
 		res, err := pipeline.AnalyzePID(pipeline.AnalyzeConfig{
 			PID:     pid,
 			Verbose: true,
