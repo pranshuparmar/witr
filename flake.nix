@@ -56,6 +56,13 @@
             nativeBuildInputs = [ pkgs.installShellFiles ];
             postInstall = ''
               installManPage ./docs/cli/witr.1
+            ''
+            # Completions come from running the built binary, which a cross build can't do.
+            + lib.optionalString (pkgs.stdenv.buildPlatform.canExecute pkgs.stdenv.hostPlatform) ''
+              installShellCompletion --cmd witr \
+                --bash <($out/bin/witr completion bash) \
+                --fish <($out/bin/witr completion fish) \
+                --zsh <($out/bin/witr completion zsh)
             '';
 
             meta = {
