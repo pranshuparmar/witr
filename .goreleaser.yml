@@ -2,6 +2,12 @@ version: 2
 
 project_name: witr
 
+before:
+  hooks:
+    # Shell completions for the packages below. GoReleaser runs hooks without a
+    # shell, so the loop and redirection need an explicit sh -c.
+    - sh -c 'mkdir -p completions && for sh in bash zsh fish; do go run ./cmd/witr completion "$sh" > "completions/witr.$sh"; done'
+
 builds:
   - id: witr
     main: ./cmd/witr
@@ -58,6 +64,30 @@ nfpms:
     contents:
       - src: docs/cli/witr.1
         dst: /usr/share/man/man1/witr.1
+        file_info:
+          mode: 0644
+      - src: completions/witr.bash
+        dst: /usr/share/bash-completion/completions/witr
+        file_info:
+          mode: 0644
+      # Debian's zsh searches vendor-completions; Fedora's and Alpine's search site-functions.
+      - src: completions/witr.zsh
+        dst: /usr/share/zsh/vendor-completions/_witr
+        packager: deb
+        file_info:
+          mode: 0644
+      - src: completions/witr.zsh
+        dst: /usr/share/zsh/site-functions/_witr
+        packager: rpm
+        file_info:
+          mode: 0644
+      - src: completions/witr.zsh
+        dst: /usr/share/zsh/site-functions/_witr
+        packager: apk
+        file_info:
+          mode: 0644
+      - src: completions/witr.fish
+        dst: /usr/share/fish/vendor_completions.d/witr.fish
         file_info:
           mode: 0644
 
