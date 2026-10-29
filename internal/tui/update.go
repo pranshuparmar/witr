@@ -271,13 +271,13 @@ func (m MainModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	switch msg.String() {
 	case "1":
-		if !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() {
+		if !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() && !m.lockInput.Focused() {
 			m.activeTab = tabProcesses
 			m.listFocus = focusMain
 			return m, nil
 		}
 	case "2":
-		if !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() {
+		if !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() && !m.lockInput.Focused() {
 			m.activeTab = tabPorts
 			m.listFocus = focusMain
 			m.portTable.Focus()
