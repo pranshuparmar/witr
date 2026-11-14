@@ -595,7 +595,7 @@ Running `witr` without any arguments or with the `-i` flag launches the **Intera
 - **Containers Tab**: All running containers across Docker, Podman, nerdctl, K8s/crictl, Incus, LXC, LXD, and FreeBSD jails in one list - name, image, status, ports, command, plus a per-container detail view with mounts, networks, and compose project metadata.
 - **Locks Tab**: System-wide file locks (POSIX/FLOCK on Linux, from `lsof` on macOS and `fstat` on FreeBSD). Press `a` to switch into "all open files" mode, where locked entries are merged with every interesting open fd; type into `/` to search across the merged set.
 - **Process Details**: Deep-dive into a process to see its full ancestry tree, child processes, environment variables, working directory, sockets, file context, and more.
-- **Process Actions**: Send signals (Kill, Terminate, Pause, Resume) or Renice processes directly from the UI (Unix only). Press `a` on a process in the list or in its detail view; the confirmation names the exact process before anything is sent.
+- **Process Actions**: Kill, Terminate, Pause, Resume or Renice processes directly from the UI (Unix; on Windows Kill/Terminate/Pause/Resume/Renice map to TerminateProcess, NtSuspendProcess/NtResumeProcess and priority classes). Press `a` on a process in the list or in its detail view; the confirmation names the exact process before anything is sent.
 - **Mouse Support**: Navigate, sort columns, and click rows using your mouse.
 - **Adaptive Theme**: Colors adapt automatically to light and dark terminal backgrounds.
 - **Auto-Refresh**: The process, port, container, and lock lists refresh automatically on an adaptive cadence (starts at 3 seconds, backing off under load).
