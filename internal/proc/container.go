@@ -224,7 +224,8 @@ func ContainerHealthcheckStatus(id, runtime string) string {
 // findLongHexID searches for a 64-character hexadecimal string in the input.
 func findLongHexID(s string) string {
 	for i := 0; i <= len(s)-64; i++ {
-		if s[i] < '0' || (s[i] > '9' && s[i] < 'a') {
+		c := s[i]
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
 			continue
 		}
 		sub := s[i : i+64]
