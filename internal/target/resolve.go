@@ -33,6 +33,9 @@ func addressOwnerPIDs(addressToPIDs map[string][]int) []int {
 // "/snap/core24/1349" because "core24" is a complete path segment.
 // Handles both forward slashes and backslashes as path separators.
 func matchesExactToken(cmdline, name string) bool {
+	if name == "" {
+		return false
+	}
 	for _, part := range strings.Fields(cmdline) {
 		if part == name {
 			return true
