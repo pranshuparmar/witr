@@ -41,3 +41,13 @@ func TestFormatStartedAtUsesLocalTime(t *testing.T) {
 		t.Errorf("FormatStartedAt = %q, want local time %q", abs, want)
 	}
 }
+
+func TestFormatStartedAtFutureTime(t *testing.T) {
+	rel, _ := FormatStartedAt(time.Now().Add(2 * time.Hour))
+	if rel == "just now" {
+		t.Fatal("future start time reported as just now")
+	}
+	if want := "in 2h"; rel != want {
+		t.Errorf("future start rel = %q, want %q", rel, want)
+	}
+}

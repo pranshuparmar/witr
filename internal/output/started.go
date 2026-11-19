@@ -13,6 +13,23 @@ func FormatStartedAt(t time.Time) (rel, absolute string) {
 		return "unknown", ""
 	}
 	dur := time.Since(t)
+	if dur < 0 {
+		// A start time ahead of the local clock (clock skew, or a container
+		// whose timestamp is slightly ahead) is not "just now".
+		ahead := -dur
+		switch {
+		case ahead < time.Minute:
+			rel = "in <1 min"
+		case ahead < time.Hour:
+			rel = fmt.Sprintf("in %d min", int(ahead.Minutes()))
+		case ahead < 24*time.Hour:
+			rel = fmt.Sprintf("in %dh", int(ahead.Hours()))
+		default:
+			rel = fmt.Sprintf("in %dd", int(ahead.Hours()/24))
+		}
+		absolute = t.Local().Format("Mon 2006-01-02 15:04:05 -07:00")
+		return rel, absolute
+	}
 	switch {
 	case dur.Hours() >= 48:
 		rel = fmt.Sprintf("%d days ago", int(dur.Hours())/24)
