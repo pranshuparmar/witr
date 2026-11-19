@@ -128,7 +128,10 @@ func ResolvePort(port int) ([]int, error) {
 
 			if rest, ok := strings.CutPrefix(link, "socket:["); ok {
 				inode, ok := strings.CutSuffix(rest, "]")
-				if _, hit := inodes[inode]; ok && hit {
+				if !ok {
+					continue
+				}
+				if socketInodeHasOwner(inodes, inode) {
 					pidSet[pid] = true
 					break
 				}
