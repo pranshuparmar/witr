@@ -1,6 +1,18 @@
 package proc
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
+
+// A profile name is an identifier, not a numeric argument such as a port.
+func validProfileName(s string) bool {
+	if s == "" {
+		return false
+	}
+	_, err := strconv.Atoi(s)
+	return err != nil
+}
 
 // detectContainerFromCmdline checks the command line for container runtime patterns.
 // Used by darwin, freebsd, and windows where cgroup-based detection is not available.
@@ -22,7 +34,7 @@ func detectContainerFromCmdline(cmdline string) string {
 		}
 		return "podman"
 	case strings.Contains(lowerCmd, "minikube"):
-		if profile := extractFlagValue(cmdline, "-p", "--profile"); profile != "" {
+		if profile := extractFlagValue(cmdline, "-p", "--profile"); validProfileName(profile) {
 			return "k8s: " + profile
 		}
 		return "kubernetes"
@@ -40,7 +52,7 @@ func detectContainerFromCmdline(cmdline string) string {
 		}
 		return "kubernetes"
 	case strings.Contains(lowerCmd, "colima"):
-		if profile := extractFlagValue(cmdline, "-p", "--profile"); profile != "" {
+		if profile := extractFlagValue(cmdline, "-p", "--profile"); validProfileName(profile) {
 			return "colima: " + profile
 		}
 		return "colima: default"
