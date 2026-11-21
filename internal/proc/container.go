@@ -257,8 +257,13 @@ func extractFlagValue(cmdline string, flags ...string) string {
 	args := splitCmdline(cmdline)
 	for i, arg := range args {
 		for _, flag := range flags {
+			// Both "--name value" and "--name=value" are accepted by the
+			// runtimes whose command lines we inspect.
 			if arg == flag && i+1 < len(args) {
 				return args[i+1]
+			}
+			if val, ok := strings.CutPrefix(arg, flag+"="); ok {
+				return val
 			}
 		}
 	}
