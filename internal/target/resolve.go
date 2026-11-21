@@ -33,7 +33,7 @@ func addressOwnerPIDs(addressToPIDs map[string][]int) []int {
 // "/snap/core24/1349" because "core24" is a complete path segment.
 // Handles both forward slashes and backslashes as path separators.
 func matchesExactToken(cmdline, name string) bool {
-	for _, part := range strings.Fields(cmdline) {
+	for _, part := range splitCmdlineTokens(cmdline) {
 		if part == name {
 			return true
 		}
@@ -46,6 +46,37 @@ func matchesExactToken(cmdline, name string) bool {
 		}
 	}
 	return false
+}
+
+// splitCmdlineTokens splits a command line into argv tokens, treating spaces
+// inside quotes as part of the token (e.g. `python "/opt/My App/main.py"`).
+func splitCmdlineTokens(cmdline string) []string {
+	var tokens []string
+	var current strings.Builder
+	var quote rune
+	for _, r := range cmdline {
+		switch {
+		case r == '"' || r == '\'':
+			if quote == 0 {
+				quote = r
+			} else if quote == r {
+				quote = 0
+			} else {
+				current.WriteRune(r)
+			}
+		case r == ' ' && quote == 0:
+			if current.Len() > 0 {
+				tokens = append(tokens, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		tokens = append(tokens, current.String())
+	}
+	return tokens
 }
 
 func Resolve(t model.Target, exact bool) ([]int, error) {
