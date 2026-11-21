@@ -72,10 +72,17 @@ func SanitizeTerminal(s string) string {
 // or table cell (process names, command lines, env entries, paths).
 // SanitizeTerminal intentionally preserves \n and \t for multi-line layout; in a
 // single-line field those let an embedded value forge extra output lines or
-// shift columns, so they are escaped here too.
+// shift columns, so they are escaped here too. Unicode line and paragraph
+// separators can break a single-line field the same way, so they are escaped
+// to visible sequences as well.
 func SanitizeTerminalLine(s string) string {
-	if strings.ContainsAny(s, "\n\t") {
-		s = strings.NewReplacer("\n", `\n`, "\t", `\t`).Replace(s)
+	if strings.ContainsAny(s, "\n\t\u2028\u2029") {
+		s = strings.NewReplacer(
+			"\n", `\n`,
+			"\t", `\t`,
+			"\u2028", `\u2028`,
+			"\u2029", `\u2029`,
+		).Replace(s)
 	}
 	return SanitizeTerminal(s)
 }
