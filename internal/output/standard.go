@@ -651,7 +651,11 @@ func securityLabel(p model.Process) string {
 	if p.SecurityLabel == "" || strings.Contains(p.SecurityLabel, "unconfined") {
 		return ""
 	}
-	return SanitizeTerminalLine(p.SecurityModule + " " + p.SecurityLabel)
+	label := p.SecurityLabel
+	if p.SecurityModule != "" {
+		label = p.SecurityModule + " " + label
+	}
+	return SanitizeTerminalLine(label)
 }
 
 // formatSocket renders one row of the Sockets section as

@@ -250,6 +250,7 @@ func TestIntegrityAndSecurityLabel(t *testing.T) {
 		{"SELinux", "system_u:system_r:httpd_t:s0", "SELinux system_u:system_r:httpd_t:s0"},
 		{"SELinux", "unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023", ""},
 		{"", "", ""},
+		{"", "system_u:system_r:httpd_t:s0", "system_u:system_r:httpd_t:s0"},
 	}
 	for _, tt := range tests {
 		if got := securityLabel(model.Process{SecurityModule: tt.module, SecurityLabel: tt.label}); got != tt.want {
