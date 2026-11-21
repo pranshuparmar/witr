@@ -190,6 +190,10 @@ func parsePlistXML(data []byte, info *LaunchdInfo) error {
 					cal := parseCalendarDict(decoder)
 					info.StartCalendarInterval = formatCalendarInterval(cal)
 					currentKey = ""
+					// parseCalendarDict consumes the nested </dict> that we
+					// just counted above; balance the depth here so the rest
+					// of the root dictionary is still parsed.
+					dictDepth--
 					continue
 				}
 				// Skip other nested dicts by clearing currentKey
