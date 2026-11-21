@@ -495,7 +495,7 @@ man witr
 <summary><strong>Shell Completions</strong></summary>
 <br>
 
-`witr` supports tab completion for all flags. To enable it, add the appropriate line to your shell configuration:
+`witr` supports tab completion for all flags. The deb, rpm and apk packages and the Nix flake install completion scripts for Bash, Zsh and Fish. Fish picks them up as is; Bash needs the `bash-completion` package and Zsh needs `compinit` enabled, which most setups already have. Otherwise, or when installed another way, add the appropriate line to your shell configuration:
 
 **Bash**
 ```bash
