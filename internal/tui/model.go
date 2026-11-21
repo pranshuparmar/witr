@@ -233,6 +233,11 @@ type MainModel struct {
 	// exactly (names with -x, ports always) until the user edits them.
 	exactName bool
 	exactPort bool
+
+	// Replay mode state
+	snapshots     []*model.Snapshot
+	snapshotIndex int
+	isReplay      bool
 }
 
 func InitialModel(version string) MainModel {
@@ -371,6 +376,23 @@ func Start(version string, targets []model.Target, exact bool) error {
 	return nil
 }
 
+// StartReplay launches the interactive TUI browsing recorded snapshots.
+func StartReplay(version string, snapshots []*model.Snapshot, targets []model.Target, exact bool) error {
+	lipgloss.SetColorProfile(lipglossProfile(colorProfile))
+
+	m := InitialModel(version)
+	m.snapshots = snapshots
+	m.isReplay = true
+	if len(snapshots) > 0 {
+		m.snapshotIndex = len(snapshots) - 1
+	}
+	p := tea.NewProgram(m.withTargets(targets, exact), tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("error running tui: %w", err)
+	}
+	return nil
+}
+
 // withTargets seeds the initial tab, filter and selection from the CLI
 // targets so `witr -i` opens where a non-interactive run would have looked.
 // The TUI shows one target of each type; any others are listed in the status
@@ -424,8 +446,10 @@ func (m MainModel) withTargets(targets []model.Target, exact bool) MainModel {
 func (m MainModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		m.refreshProcesses(),
-		waitTick(),
 		tea.EnableMouseCellMotion,
+	}
+	if !m.isReplay {
+		cmds = append(cmds, waitTick())
 	}
 	switch m.activeTab {
 	case tabPorts:

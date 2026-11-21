@@ -59,6 +59,9 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MainModel) handleTick(msg tickMsg) (tea.Model, tea.Cmd) {
+	if m.isReplay {
+		return m, nil
+	}
 	var cmd tea.Cmd
 	if m.state == stateList && !m.quitting && !m.actionActive() && !m.input.Focused() && !m.portInput.Focused() && !m.containerInput.Focused() && !m.lockInput.Focused() && m.refreshDue() {
 		m.lastRefresh = time.Now()
@@ -1090,6 +1093,18 @@ func (m MainModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
+	case "[", ",":
+		if m.isReplay && m.snapshotIndex > 0 {
+			m.snapshotIndex--
+			m.statusMsg = fmt.Sprintf("Snapshot [%d/%d] (%s)", m.snapshotIndex+1, len(m.snapshots), m.snapshots[m.snapshotIndex].Timestamp.Format(time.RFC3339))
+			return m, m.refreshReplayData()
+		}
+	case "]", ".":
+		if m.isReplay && m.snapshotIndex+1 < len(m.snapshots) {
+			m.snapshotIndex++
+			m.statusMsg = fmt.Sprintf("Snapshot [%d/%d] (%s)", m.snapshotIndex+1, len(m.snapshots), m.snapshots[m.snapshotIndex].Timestamp.Format(time.RFC3339))
+			return m, m.refreshReplayData()
+		}
 	case "q", "Q", "esc":
 		m.quitting = true
 		return m, tea.Quit
@@ -1364,6 +1379,10 @@ func (m MainModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.refreshProcesses()
 	case "a", "A":
+		if m.isReplay {
+			m.statusMsg = "Actions disabled in replay mode"
+			return m, nil
+		}
 		if actionsSupported && m.selectedDetail != nil {
 			m.openActionMenu(m.selectedDetail.Process)
 		}
