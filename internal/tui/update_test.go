@@ -120,6 +120,18 @@ func TestUpdateSlashFocusesFilter(t *testing.T) {
 	}
 }
 
+func TestLocksSearchAcceptsNumericText(t *testing.T) {
+	m := InitialModel("test")
+	m.activeTab = tabLocks
+	m, _ = step(t, m, keyRunes("/"))
+	for _, digit := range "1234" {
+		m, _ = step(t, m, keyRunes(string(digit)))
+	}
+	if m.activeTab != tabLocks || m.lockInput.Value() != "1234" {
+		t.Errorf("typing in Locks search: tab=%v, filter=%q, want Locks and 1234", m.activeTab, m.lockInput.Value())
+	}
+}
+
 func TestHandleSortKey(t *testing.T) {
 	t.Run("processes new column defaults to desc, re-press toggles", func(t *testing.T) {
 		m := InitialModel("test") // starts sorted by mem
