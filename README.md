@@ -1022,7 +1022,7 @@ Non‑blocking observations:
 
 | Command | Output |
 |---------|--------|
-| `witr <target> --json` | The full report: `Target`, `Process`, `Ancestry`, `Source`, `Warnings` and the rest |
+| `witr <target> --json` | The full report: `Target`, `Process`, `Ancestry`, `Source`, `Warnings` and the rest. Environment variables are left out: use `--env --json` |
 | `--short --json` | A list of `{PID, Command}` from the top of the chain to the process, with `PPID` and `ParentExited` where the process that started it has exited |
 | `--tree --json` | `{Ancestry, Children}`, each a list of the same entries |
 | `--warnings --json` | `{PID, Process, Command, Warnings}` |

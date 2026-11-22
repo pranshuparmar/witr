@@ -52,7 +52,7 @@ With several targets, the most severe result wins.
 
 Then the JSON (the full contract is in the README, section "7.3 JSON Output"):
 
-- **Found:** `Process` (`PID`, `Command`, `Cmdline`, `User`, `StartedAt`, `WorkingDir`, `Sockets`, ...), `Ancestry` (the chain from the top down to the process), `Source` (`Type`: `systemd`, `launchd`, `bsdrc`, `container`, `shell`, `ssh`, `cron`, `supervisor`, `windows_service`, `init` or `unknown`; `Name`; `Description`), `Warnings`, and `Container` when it runs in one.
+- **Found:** `Process` (`PID`, `Command`, `Cmdline`, `User`, `StartedAt`, `WorkingDir`, `Sockets`, ...), `Ancestry` (the chain from the top down to the process), `Source` (`Type`: `systemd`, `launchd`, `bsdrc`, `container`, `shell`, `ssh`, `cron`, `supervisor`, `windows_service`, `init` or `unknown`; `Name`; `Description`), `Warnings`, and `Container` when it runs in one. Environment variables aren't included: only `--env --json` prints them, and they often hold secrets.
 - **Failed lookup:** `{Target, Error}`, plus `Matches` when the target was ambiguous.
 - **`--short --json`:** a list of `{PID, Command}`. Where the process that started one has exited, that entry also has `PPID` and `ParentExited: true`.
 - **A container whose processes aren't visible** (Docker Desktop, a VM): `{ContainerName, Image, Ports, ..., Note}`.
