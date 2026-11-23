@@ -8,7 +8,6 @@ Ancestry[].Container string
 Ancestry[].ContainerHealthcheck string
 Ancestry[].ContainerID string
 Ancestry[].ContainerRuntime string
-Ancestry[].Env[] string
 Ancestry[].Exe string
 Ancestry[].ExeDeleted bool
 Ancestry[].FDCount number
@@ -60,7 +59,6 @@ Children[].Container string
 Children[].ContainerHealthcheck string
 Children[].ContainerID string
 Children[].ContainerRuntime string
-Children[].Env[] string
 Children[].Exe string
 Children[].ExeDeleted bool
 Children[].FDCount number
@@ -134,7 +132,6 @@ Process.Container string
 Process.ContainerHealthcheck string
 Process.ContainerID string
 Process.ContainerRuntime string
-Process.Env[] string
 Process.Exe string
 Process.ExeDeleted bool
 Process.FDCount number

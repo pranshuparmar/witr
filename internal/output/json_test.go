@@ -47,6 +47,20 @@ func TestToJSONIsValidAndIncludesKeyFields(t *testing.T) {
 	}
 }
 
+// TestToJSONOmitsEnv keeps environment variables, which often hold secrets,
+// out of the full report: only --env --json prints them.
+func TestToJSONOmitsEnv(t *testing.T) {
+	t.Parallel()
+
+	s, err := ToJSON(jsonFixture())
+	if err != nil {
+		t.Fatalf("ToJSON returned error: %v", err)
+	}
+	if strings.Contains(s, `"Env"`) || strings.Contains(s, "FOO=bar") {
+		t.Errorf("ToJSON should not include environment variables; got:\n%s", s)
+	}
+}
+
 func TestToShortJSON(t *testing.T) {
 	t.Parallel()
 

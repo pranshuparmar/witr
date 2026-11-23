@@ -44,8 +44,10 @@ type Process struct {
 	// top of a chain, its parent PID now names nothing or a newer process.
 	ParentExited bool `json:",omitempty"`
 
-	// Environment variables (key=value)
-	Env []string
+	// Environment variables (key=value). Kept out of the full --json report,
+	// which would otherwise print the environment of every process in the
+	// chain; --env --json prints the target's own through ToEnvJSON.
+	Env []string `json:"-"`
 
 	// True if the executable was deleted after the process started
 	ExeDeleted bool
