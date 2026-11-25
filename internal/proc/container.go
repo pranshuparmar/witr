@@ -224,7 +224,8 @@ func ContainerHealthcheckStatus(id, runtime string) string {
 // findLongHexID searches for a 64-character hexadecimal string in the input.
 func findLongHexID(s string) string {
 	for i := 0; i <= len(s)-64; i++ {
-		if s[i] < '0' || (s[i] > '9' && s[i] < 'a') {
+		c := s[i]
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
 			continue
 		}
 		sub := s[i : i+64]
@@ -257,13 +258,8 @@ func extractFlagValue(cmdline string, flags ...string) string {
 	args := splitCmdline(cmdline)
 	for i, arg := range args {
 		for _, flag := range flags {
-			// Both "--name value" and "--name=value" are accepted by the
-			// runtimes whose command lines we inspect.
 			if arg == flag && i+1 < len(args) {
 				return args[i+1]
-			}
-			if val, ok := strings.CutPrefix(arg, flag+"="); ok {
-				return val
 			}
 		}
 	}
