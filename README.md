@@ -8,7 +8,6 @@ one command, machine-readable JSON, or an [interactive TUI](#4-interactive-mode-
 
 [![Latest Release](https://img.shields.io/github/v/release/pranshuparmar/witr?label=Latest%20Release&style=flat-square)](https://github.com/pranshuparmar/witr/releases/latest) [![Platforms](https://img.shields.io/badge/platforms-linux%20%7C%20macos%20%7C%20windows%20%7C%20freebsd-blue?style=flat-square)](#8-platform-support) <br> [![Package Managers](https://img.shields.io/badge/Package%20Managers-brew%20|%20conda%20|%20aur%20|%20winget%20|%20npm%20|%20ports%20|%20...%20-blue?style=flat-square)](https://repology.org/project/witr/versions)
 
-<a href="https://hackergit.org/r/pranshuparmar/witr" target="_blank"><img src="https://hackergit.org/badge/pranshuparmar/witr.svg?style=rank" alt="Hacker News rank via HackerGit" width="250" height="55" /></a>
 <a href="https://trendshift.io/repositories/18714" target="_blank"><img src="https://trendshift.io/api/badge/repositories/18714" alt="pranshuparmar/witr on Trendshift" width="250" height="55" /></a>
 <a href="https://www.producthunt.com/products/witr?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-witr" target="_blank" rel="noopener noreferrer"><img alt="witr - Why is this running? Trace process, port, container or file. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1211309&amp;theme=light&amp;t=1785480480150"></a>
 
@@ -496,7 +495,7 @@ man witr
 <summary><strong>Shell Completions</strong></summary>
 <br>
 
-`witr` supports tab completion for all flags. The deb, rpm and apk packages and the Nix flake install completion scripts for Bash, Zsh and Fish. Fish picks them up as is; Bash needs the `bash-completion` package and Zsh needs `compinit` enabled, which most setups already have. Otherwise, or when installed another way, add the appropriate line to your shell configuration:
+`witr` supports tab completion for all flags. To enable it, add the appropriate line to your shell configuration:
 
 **Bash**
 ```bash
@@ -596,7 +595,7 @@ Running `witr` without any arguments or with the `-i` flag launches the **Intera
 - **Containers Tab**: All running containers across Docker, Podman, nerdctl, K8s/crictl, Incus, LXC, LXD, and FreeBSD jails in one list - name, image, status, ports, command, plus a per-container detail view with mounts, networks, and compose project metadata.
 - **Locks Tab**: System-wide file locks (POSIX/FLOCK on Linux, from `lsof` on macOS and `fstat` on FreeBSD). Press `a` to switch into "all open files" mode, where locked entries are merged with every interesting open fd; type into `/` to search across the merged set.
 - **Process Details**: Deep-dive into a process to see its full ancestry tree, child processes, environment variables, working directory, sockets, file context, and more.
-- **Process Actions**: Send signals (Kill, Terminate, Pause, Resume) or Renice processes directly from the UI (Unix only). Press `a` on a process in the list or in its detail view; the confirmation names the exact process before anything is sent.
+- **Process Actions**: Kill, Terminate, Pause, Resume or Renice processes directly from the UI (Unix; on Windows Kill/Terminate/Pause/Resume/Renice map to TerminateProcess, NtSuspendProcess/NtResumeProcess and priority classes). Press `a` on a process in the list or in its detail view; the confirmation names the exact process before anything is sent.
 - **Mouse Support**: Navigate, sort columns, and click rows using your mouse.
 - **Adaptive Theme**: Colors adapt automatically to light and dark terminal backgrounds.
 - **Auto-Refresh**: The process, port, container, and lock lists refresh automatically on an adaptive cadence (starts at 3 seconds, backing off under load).
@@ -1022,7 +1021,7 @@ Non‑blocking observations:
 
 | Command | Output |
 |---------|--------|
-| `witr <target> --json` | The full report: `Target`, `Process`, `Ancestry`, `Source`, `Warnings` and the rest. Environment variables are left out: use `--env --json` |
+| `witr <target> --json` | The full report: `Target`, `Process`, `Ancestry`, `Source`, `Warnings` and the rest |
 | `--short --json` | A list of `{PID, Command}` from the top of the chain to the process, with `PPID` and `ParentExited` where the process that started it has exited |
 | `--tree --json` | `{Ancestry, Children}`, each a list of the same entries |
 | `--warnings --json` | `{PID, Process, Command, Warnings}` |
