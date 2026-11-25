@@ -37,4 +37,3 @@ result
 # Ignore build artifacts
 dist/
 pkg-dist/
-completions/

@@ -132,6 +132,12 @@ func TestMatchesExactToken(t *testing.T) {
 			needle:  "nginx",
 			want:    false,
 		},
+		{
+			name:    "empty name never matches an absolute path",
+			cmdline: "/usr/bin/foo",
+			needle:  "",
+			want:    false,
+		},
 	}
 
 	for _, tt := range tests {
