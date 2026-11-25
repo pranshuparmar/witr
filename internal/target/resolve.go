@@ -2,6 +2,7 @@ package target
 
 import (
 	"fmt"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -48,23 +49,28 @@ func matchesExactToken(cmdline, name string) bool {
 	return false
 }
 
-// splitCmdlineTokens splits a command line into argv tokens, treating spaces
-// inside quotes as part of the token (e.g. `python "/opt/My App/main.py"`).
+// splitCmdlineTokens splits a command line into argv tokens. Windows command
+// lines quote arguments containing spaces with double quotes; apostrophes are
+// ordinary characters there. Other platforms join argv with spaces without
+// shell quoting, so strings.Fields is the correct splitter.
 func splitCmdlineTokens(cmdline string) []string {
+	if runtime.GOOS != "windows" {
+		return strings.Fields(cmdline)
+	}
+	return splitWindowsCmdline(cmdline)
+}
+
+// splitWindowsCmdline splits a Windows command line, honouring double-quoted
+// arguments. A single quote is data, not a quote delimiter.
+func splitWindowsCmdline(cmdline string) []string {
 	var tokens []string
 	var current strings.Builder
-	var quote rune
+	inQuotes := false
 	for _, r := range cmdline {
 		switch {
-		case r == '"' || r == '\'':
-			if quote == 0 {
-				quote = r
-			} else if quote == r {
-				quote = 0
-			} else {
-				current.WriteRune(r)
-			}
-		case r == ' ' && quote == 0:
+		case r == '"':
+			inQuotes = !inQuotes
+		case r == ' ' && !inQuotes:
 			if current.Len() > 0 {
 				tokens = append(tokens, current.String())
 				current.Reset()
