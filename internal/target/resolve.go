@@ -2,6 +2,7 @@ package target
 
 import (
 	"fmt"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,7 +34,7 @@ func addressOwnerPIDs(addressToPIDs map[string][]int) []int {
 // "/snap/core24/1349" because "core24" is a complete path segment.
 // Handles both forward slashes and backslashes as path separators.
 func matchesExactToken(cmdline, name string) bool {
-	for _, part := range strings.Fields(cmdline) {
+	for _, part := range splitCmdlineTokens(cmdline) {
 		if part == name {
 			return true
 		}
@@ -46,6 +47,42 @@ func matchesExactToken(cmdline, name string) bool {
 		}
 	}
 	return false
+}
+
+// splitCmdlineTokens splits a command line into argv tokens. Windows command
+// lines quote arguments containing spaces with double quotes; apostrophes are
+// ordinary characters there. Other platforms join argv with spaces without
+// shell quoting, so strings.Fields is the correct splitter.
+func splitCmdlineTokens(cmdline string) []string {
+	if runtime.GOOS != "windows" {
+		return strings.Fields(cmdline)
+	}
+	return splitWindowsCmdline(cmdline)
+}
+
+// splitWindowsCmdline splits a Windows command line, honouring double-quoted
+// arguments. A single quote is data, not a quote delimiter.
+func splitWindowsCmdline(cmdline string) []string {
+	var tokens []string
+	var current strings.Builder
+	inQuotes := false
+	for _, r := range cmdline {
+		switch {
+		case r == '"':
+			inQuotes = !inQuotes
+		case r == ' ' && !inQuotes:
+			if current.Len() > 0 {
+				tokens = append(tokens, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(r)
+		}
+	}
+	if current.Len() > 0 {
+		tokens = append(tokens, current.String())
+	}
+	return tokens
 }
 
 func Resolve(t model.Target, exact bool) ([]int, error) {
