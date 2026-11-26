@@ -1342,7 +1342,18 @@ func (m MainModel) executeAction(t model.Process) (tea.Model, tea.Cmd) {
 		m.statusMsg = fmt.Sprintf("Error: %v", err)
 		return m, nil
 	}
-	m.statusMsg = fmt.Sprintf("Signal sent to %s", actionTargetLabel(t))
+	verb := "Signal sent"
+	switch action {
+	case actionKill:
+		verb = "Killed"
+	case actionTerm:
+		verb = "Terminated"
+	case actionPause:
+		verb = "Paused"
+	case actionResume:
+		verb = "Resumed"
+	}
+	m.statusMsg = fmt.Sprintf("%s %s", verb, actionTargetLabel(t))
 	if action == actionKill || action == actionTerm {
 		// The process is gone, so leave its detail view for the list.
 		m.state = stateList
